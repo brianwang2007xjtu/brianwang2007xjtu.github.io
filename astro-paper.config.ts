@@ -2,7 +2,7 @@ import { defineAstroPaperConfig } from "./src/types/config";
 
 export default defineAstroPaperConfig({
   site: {
-    url: "https://brianwang2007xjtu-github-io-qz8u.vercel.app/",
+    url: "https://brianwang2007xjtu-github-io.vercel.app/",
     title: "Master's Blog",
     description: "A minimal, responsive and SEO-friendly Astro blog theme.",
     author: "Sat Naing",

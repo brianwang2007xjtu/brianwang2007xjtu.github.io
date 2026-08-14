@@ -32,7 +32,7 @@ export default defineAstroPaperConfig({
     { name: "github",   url: "https://github.com/brianwang2007xjtu" },
     { name: "x",        url: "https://x.com/username" },
     { name: "linkedin", url: "https://www.linkedin.com/in/username/" },
-    { name: "mail",     url: "1952684458@qq.com" },
+    { name: "mail",     url: "brianwang2007xjtu@gmail.com" },
   ],
   shareLinks: [
     { name: "whatsapp", url: "https://wa.me/?text=" },

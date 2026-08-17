@@ -1,0 +1,38 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import MediaCard from "@/components/MediaCard.astro";
+import { books } from "@/data/books";
+import config from "@/config";
+---
+
+<Layout title={`Books | ${config.site.title}`}>
+  <Header />
+
+  <main id="main-content" class="app-layout-wide py-8">
+    <header class="mb-8">
+      <h1 class="text-3xl font-medium sm:text-4xl">Books</h1>
+      <p class="mt-2 text-muted-foreground">
+        Reading notes and shelves of books that shaped how I think.
+      </p>
+    </header>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      {
+        books.map(book => (
+          <MediaCard
+            title={book.title}
+            subtitle={book.author}
+            description={book.description}
+            cover={book.cover}
+            icon="book"
+            badge={book.year ? String(book.year) : undefined}
+          />
+        ))
+      }
+    </div>
+  </main>
+
+  <Footer />
+</Layout>

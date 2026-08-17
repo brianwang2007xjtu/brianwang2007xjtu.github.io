@@ -1,6 +1,5 @@
 ---
 import config from "@/config";
-import LinkButton from "./LinkButton.astro";
 
 const { site, socials } = config;
 
@@ -8,28 +7,46 @@ const icons = import.meta.glob<{
   default: (_props: Record<string, unknown>) => unknown;
 }>("/src/assets/icons/socials/*.svg");
 
+const labelMap: Record<string, string> = {
+  github: "GitHub",
+  mail: "Email",
+  bilibili: "Bilibili",
+  x: "X",
+  linkedin: "LinkedIn",
+  facebook: "Facebook",
+  telegram: "Telegram",
+  whatsapp: "WhatsApp",
+  pinterest: "Pinterest",
+};
+
 const items = await Promise.all(
   socials.map(async ({ name, url, linkTitle }) => {
     const mod = await icons[`/src/assets/icons/socials/${name}.svg`]?.();
     const Icon = mod?.default;
+    const isMail = url.startsWith("mailto:") || name === "mail";
     const title =
       linkTitle ??
-      (url.startsWith("mailto:") || name === "mail"
+      (isMail
         ? `Send an email to ${site.title}`
-        : `${site.title} on ${name.charAt(0).toUpperCase() + name.slice(1)}`);
-    return { url, title, Icon };
+        : `${site.title} on ${labelMap[name] ?? name}`);
+    return { name, url, title, Icon, label: labelMap[name] ?? name };
   })
 );
 ---
 
-<div class="flex flex-wrap items-center gap-1">
+<div class="flex flex-wrap items-center gap-2">
   {
-    items.map(({ url, title, Icon }) =>
+    items.map(({ url, title, Icon, label }) =>
       Icon ? (
-        <LinkButton href={url} class="p-2 hover:rotate-6 sm:p-1" title={title}>
-          <Icon class="inline-block size-6 scale-125 fill-transparent stroke-current stroke-2 opacity-90 group-hover:fill-transparent sm:scale-110" />
+        <a
+          href={url}
+          title={title}
+          class="group relative flex items-center gap-2 rounded-lg border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 px-3 py-2 text-sm font-medium text-muted-foreground backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:text-accent hover:shadow-md hover:shadow-accent/10"
+        >
+          <Icon class="size-4 shrink-0" />
+          <span>{label}</span>
           <span class="sr-only">{title}</span>
-        </LinkButton>
+        </a>
       ) : null
     )
   }

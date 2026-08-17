@@ -1,160 +1,135 @@
 ---
 import { getCollection } from "astro:content";
 import { getRelativeLocaleUrl } from "astro:i18n";
-import IconRss from "@/assets/icons/IconRss.svg";
-import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
-import Card from "@/components/Card.astro";
-import LinkButton from "@/components/LinkButton.astro";
+import PostCard from "@/components/PostCard.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
-import { useTranslations } from "@/i18n";
 import config from "@/config";
 import avatar from "@/assets/images/8CBB3CC5-C7FE-425F-8008-18668A098F3B.jpeg";
 
-const { socials, posts: postsConfig } = config;
-
+const { posts: postsConfig } = config;
 const locale = Astro.currentLocale ?? config.site.lang;
-const t = useTranslations(locale);
 
-const posts = await getCollection("posts");
+const posts = await getCollection("posts", ({ data }) => !data.draft);
 const totalPosts = posts.length;
-const sortedPosts = getSortedPosts(posts);
-const featuredPosts = sortedPosts.filter(({ data }) => data.featured);
-const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
+const recentPosts = getSortedPosts(posts).slice(0, postsConfig.perIndex);
+
+// Hardcoded statistics — to be wired to real sources later.
+const stats = [
+  { label: "Total Posts", value: String(totalPosts) },
+  { label: "Total Visits", value: "12,847" },
+  { label: "GitHub Stars", value: "128" },
+];
+
 const homePath = getRelativeLocaleUrl(locale, "");
+const postsHref = getRelativeLocaleUrl(locale, "posts");
+const aboutHref = getRelativeLocaleUrl(locale, "about");
 ---
 
 <Layout>
   <Header />
+
   <main
     id="main-content"
     data-layout="index"
     data-home-path={homePath}
-    class="app-layout my-1"
+    class="app-layout-wide my-1"
   >
-    <section id="hero" class="border-border border-b pt-8 pb-6">
-      <div class="flex items-center justify-center gap-6">
-        <img
-          src={avatar.src}
-          alt="master的头像"
-          width="100"
-          height="100"
-          class="rounded-full object-cover"
-        />
-      </div>
-      <div class="flex items-center justify-center gap-6 mt-6">
-        <h1 class="text-3xl font-bold sm:text-4xl">
-          Master
-        </h1>
-      </div>
-      {
-        socials.length > 0 && (
-          <div class="mt-4 flex max-sm:flex-col sm:items-center justify-center">
-            <div class="me-2 mb-1 whitespace-nowrap sm:mb-0">
-              {t.home.socialLinks}
-            </div>
-            <Socials />
-          </div>
-        )
-      }
-    </section>
-
-    <section id="about" class="border-border border-b pt-12 pb-6">
-      <h2 class="text-2xl font-semibold tracking-wide">About</h2>
-      <div class="mt-4 space-y-6">
-        <p class="text-base leading-relaxed">
-          我是一名西安交通大学的 sophomore，从事脑机接口领域的研究。
-          <a href="/about" class="hover:text-accent underline decoration-dashed underline-offset-4">
+    <!-- Hero -->
+    <section class="flex flex-col gap-8 pt-8 pb-12 sm:flex-row sm:items-center">
+      <img
+        src={avatar.src}
+        alt="master's avatar"
+        width="144"
+        height="144"
+        class="h-32 w-32 shrink-0 rounded-2xl border border-border object-cover sm:h-36 sm:w-36"
+      />
+      <div class="flex flex-col gap-4">
+        <h1 class="text-3xl font-bold sm:text-4xl">Master</h1>
+        <p class="max-w-xl text-muted-foreground">
+          Hi, I&#39;m master — an undergraduate at Xi&#39;an Jiaotong
+          University working on brain-computer interfaces.{" "}
+          <a
+            href={aboutHref}
+            class="text-accent decoration-dashed underline-offset-4 hover:underline"
+          >
             More about me
           </a>
         </p>
-        <div>
-          <h3 class="text-lg font-semibold">Education</h3>
-          <div class="mt-2 space-y-3">
-            <a href="http://www.aiar.xjtu.edu.cn/" target="_blank" rel="noopener" class="block border border-current rounded px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <div class="font-medium">西安交通大学</div>
-              <div class="text-sm text-muted-foreground">人工智能专业，本科</div>
-              <div class="text-sm text-muted-foreground">Sep 2022 – Jun 2026</div>
-            </a>
+        <div class="flex flex-wrap items-center gap-2">
+          <div
+            class="flex items-center gap-2 rounded-lg border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 px-3 py-2 text-sm font-medium text-muted-foreground backdrop-blur-sm"
+          >
+            <svg
+              class="size-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path>
+              <path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z"></path>
+            </svg>
+            <span>China</span>
           </div>
-        </div>
-        <div>
-          <h3 class="text-lg font-semibold">Statistics</h3>
-          <div class="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div>
-              <div class="text-3xl font-bold">788</div>
-              <div class="text-sm text-muted-foreground">Days Online</div>
-            </div>
-            <div>
-              <div class="text-3xl font-bold">Aug 11, 2026</div>
-              <div class="text-sm text-muted-foreground">Last Updated</div>
-            </div>
-            <div>
-              <div class="text-3xl font-bold">36w</div>
-              <div class="text-sm text-muted-foreground">Total Words</div>
-            </div>
-            <div>
-              <div class="text-3xl font-bold">{totalPosts}</div>
-              <div class="text-sm text-muted-foreground">Total Posts</div>
-            </div>
-          </div>
+          <Socials />
         </div>
       </div>
     </section>
 
-    {
-      featuredPosts.length > 0 && (
-        <section
-          id="featured"
-          class:list={[
-            "pt-12 pb-6",
-            { "border-border border-b": recentPosts.length > 0 },
-          ]}
+    <!-- Statistics -->
+    <section class="border-border border-t pt-10 pb-4">
+      <h2 class="text-2xl font-semibold tracking-wide">Statistics</h2>
+      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {
+          stats.map(stat => (
+            <div
+              class="rounded-2xl border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 p-5 backdrop-blur-sm transition-colors hover:border-accent/30"
+            >
+              <div class="text-3xl font-bold tabular-nums">{stat.value}</div>
+              <div class="mt-1 text-sm text-muted-foreground">{stat.label}</div>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <!-- Recent posts -->
+    <section class="pt-12 pb-4">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-2xl font-semibold tracking-wide">Recent Posts</h2>
+        <a
+          href={postsHref}
+          class="text-sm text-muted-foreground transition-colors hover:text-accent"
         >
-          <h2 class="text-2xl font-semibold tracking-wide">
-            {t.home.featured}
-          </h2>
-          <ul>
-            {featuredPosts.map(data => (
-              <Card variant="h3" {...data} />
-            ))}
+          All posts →
+        </a>
+      </div>
+      {
+        recentPosts.length > 0 ? (
+          <ul class="flex flex-col gap-4">
+            {recentPosts.map(post => <PostCard {...post} />)}
           </ul>
-        </section>
-      )
-    }
-
-    {
-      recentPosts.length > 0 && (
-        <section id="recent-posts" class="pt-12 pb-6">
-          <h2 class="text-2xl font-semibold tracking-wide">
-            {t.home.recentPosts}
-          </h2>
-          <ul>
-            {recentPosts.slice(0, postsConfig.perIndex).map(data => (
-              <Card variant="h3" {...data} />
-            ))}
-          </ul>
-        </section>
-      )
-    }
-
-    <div class="my-8 text-center">
-      <LinkButton href={getRelativeLocaleUrl(locale, "posts")}>
-        {t.home.allPosts}
-        <IconArrowRight class="inline-block rtl:-rotate-180" />
-      </LinkButton>
-    </div>
+        ) : (
+          <p class="text-muted-foreground">No posts yet.</p>
+        )
+      }
+    </section>
   </main>
+
   <Footer />
 </Layout>
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    const indexLayout = (document.querySelector("#main-content") as HTMLElement)
-      ?.dataset;
+    const indexLayout = (
+      document.querySelector("#main-content") as HTMLElement
+    )?.dataset;
     const baseRoot = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     if (indexLayout?.layout) {
       sessionStorage.setItem("backUrl", indexLayout.homePath ?? baseRoot);

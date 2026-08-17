@@ -9,7 +9,7 @@
   * {
     @apply border-border outline-accent/75;
     scrollbar-width: auto;
-    scrollbar-color: var(--color-muted) transparent;
+    scrollbar-color: var(--muted) transparent;
   }
   a,
   button,
@@ -19,6 +19,20 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+
+  html {
+    scroll-padding-top: 6rem;
+  }
+
+  /* Subtle top glow, matching the highlight gradient of axi404.com */
+  body {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--highlight) 10%, transparent),
+      transparent 28rem
+    );
+    background-repeat: no-repeat;
   }
 }
 
@@ -30,10 +44,38 @@
   @apply max-w-app mx-auto w-full px-4;
 }
 
+@utility app-layout-wide {
+  @apply max-w-5xl mx-auto w-full px-4;
+}
+
 @utility active-nav {
-  @apply underline decoration-wavy decoration-2 underline-offset-8;
+  @apply text-accent;
 }
 
 :target {
   scroll-margin-block: 1rem;
+}
+
+/* ===== Brand title: gradient flow on hover ===== */
+@keyframes brand-flow {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.brand-link:hover {
+  background-image: linear-gradient(
+    100deg,
+    var(--accent) 0%,
+    #3ea8ff 25%,
+    #34d8b0 50%,
+    #a78bfa 75%,
+    var(--accent) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: brand-flow 2.5s linear infinite;
 }

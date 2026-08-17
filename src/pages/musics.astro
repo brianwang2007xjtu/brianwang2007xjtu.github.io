@@ -1,0 +1,64 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import MediaCard from "@/components/MediaCard.astro";
+import { albums } from "@/data/music";
+import config from "@/config";
+
+const classical = albums.filter(a => a.category === "classical");
+const nonClassical = albums.filter(a => a.category === "non-classical");
+---
+
+<Layout title={`Music | ${config.site.title}`}>
+  <Header />
+
+  <main id="main-content" class="app-layout-wide py-8">
+    <header class="mb-8">
+      <h1 class="text-3xl font-medium sm:text-4xl">Music</h1>
+      <p class="mt-2 text-muted-foreground">
+        Albums I keep coming back to, classical and otherwise.
+      </p>
+    </header>
+
+    <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold tracking-wide">Classical</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        {
+          classical.map(album => (
+            <MediaCard
+              title={album.title}
+              subtitle={album.artist}
+              description={album.description}
+              cover={album.cover}
+              icon="music"
+              badge="Classical"
+              action={{ label: "Download", href: album.downloadUrl ?? "#" }}
+            />
+          ))
+        }
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-4 text-xl font-semibold tracking-wide">Non-Classical</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        {
+          nonClassical.map(album => (
+            <MediaCard
+              title={album.title}
+              subtitle={album.artist}
+              description={album.description}
+              cover={album.cover}
+              icon="music"
+              badge="Non-Classical"
+              action={{ label: "Download", href: album.downloadUrl ?? "#" }}
+            />
+          ))
+        }
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</Layout>

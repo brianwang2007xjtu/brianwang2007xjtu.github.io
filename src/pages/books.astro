@@ -1,10 +1,23 @@
 ---
+import type { MediaMetaItem, MediaSection } from "@/types/media";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import MediaCard from "@/components/MediaCard.astro";
-import { books } from "@/data/books";
+import MediaModal from "@/components/MediaModal.astro";
+import { books, type Book } from "@/data/books";
 import config from "@/config";
+
+function bookMeta(b: Book): MediaMetaItem[] {
+  const meta: MediaMetaItem[] = [];
+  if (b.nationality) meta.push({ label: "Nationality", value: b.nationality });
+  if (b.category) meta.push({ label: "Category", value: b.category });
+  return meta;
+}
+
+function bookSections(b: Book): MediaSection[] {
+  return [{ label: "About", body: b.details }];
+}
 ---
 
 <Layout title={`Books | ${config.site.title}`}>
@@ -28,11 +41,16 @@ import config from "@/config";
             cover={book.cover}
             icon="book"
             badge={book.year ? String(book.year) : undefined}
+            meta={bookMeta(book)}
+            quote={book.quote ? { label: "Favorite quote", text: book.quote } : undefined}
+            sections={bookSections(book)}
           />
         ))
       }
     </div>
   </main>
+
+  <MediaModal />
 
   <Footer />
 </Layout>

@@ -23,10 +23,7 @@ export default defineAstroPaperConfig({
     dynamicOgImage: false,
     showArchives: true,
     showBackButton: true,
-    editPost: {
-      enabled: true,
-      url: "https://github.com/brianwang2007xjtu/brianwang2007xjtu.github.io/edit/main/",
-    },
+    editPost: { enabled: false },
     search: "pagefind",
   },
   socials: [

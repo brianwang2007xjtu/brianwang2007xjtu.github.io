@@ -1,13 +1,46 @@
 ---
+import type { MediaMetaItem, MediaSection } from "@/types/media";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import MediaCard from "@/components/MediaCard.astro";
-import { albums } from "@/data/music";
+import MediaModal from "@/components/MediaModal.astro";
+import { albums, type Album } from "@/data/music";
 import config from "@/config";
 
 const classical = albums.filter(a => a.category === "classical");
 const nonClassical = albums.filter(a => a.category === "non-classical");
+
+const classicalTabs = [
+  { key: "symphonies", label: "Symphonies" },
+  { key: "operas", label: "Operas" },
+  { key: "concertos", label: "Concertos" },
+  { key: "others", label: "Others" },
+];
+
+function albumMeta(a: Album): MediaMetaItem[] {
+  const meta: MediaMetaItem[] = [];
+  if (a.conductor) meta.push({ label: "Conductor", value: a.conductor });
+  if (a.orchestra) meta.push({ label: "Orchestra", value: a.orchestra });
+  if (a.soloist) meta.push({ label: "Soloist", value: a.soloist });
+  if (a.vocalists) meta.push({ label: "Vocalists", value: a.vocalists });
+  if (a.releaseDate) meta.push({ label: "Release", value: a.releaseDate });
+  if (a.catalogNumber)
+    meta.push({ label: "Catalog No.", value: a.catalogNumber });
+  if (a.albumType)
+    meta.push({
+      label: "Type",
+      value: a.albumType === "studio" ? "Studio Album" : "Live Album",
+    });
+  return meta;
+}
+
+function albumSections(a: Album): MediaSection[] {
+  return [
+    { label: "Why I recommend", body: a.recommendation },
+    { label: "About", body: a.details },
+  ];
+}
 ---
 
 <Layout title={`Music | ${config.site.title}`}>
@@ -23,7 +56,31 @@ const nonClassical = albums.filter(a => a.category === "non-classical");
 
     <section class="mb-10">
       <h2 class="mb-4 text-xl font-semibold tracking-wide">Classical</h2>
-      <div class="grid gap-4 sm:grid-cols-2">
+
+      <div
+        class="mb-4 flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="Classical subcategories"
+      >
+        {
+          classicalTabs.map((tab, i) => (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={i === 0 ? "true" : "false"}
+              data-subcat={tab.key}
+              class:list={[
+                "rounded-full border border-border px-4 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-accent",
+                { "border-accent/40 bg-muted text-accent": i === 0 },
+              ]}
+            >
+              {tab.label}
+            </button>
+          ))
+        }
+      </div>
+
+      <div id="classical-grid" class="grid gap-4 sm:grid-cols-2">
         {
           classical.map(album => (
             <MediaCard
@@ -33,7 +90,11 @@ const nonClassical = albums.filter(a => a.category === "non-classical");
               cover={album.cover}
               icon="music"
               badge="Classical"
-              action={{ label: "Download", href: album.downloadUrl ?? "#" }}
+              subcategory={album.subCategory}
+              class={album.subCategory === "symphonies" ? "" : "hidden"}
+              action={{ label: "Try", href: album.listenUrl ?? "#" }}
+              meta={albumMeta(album)}
+              sections={albumSections(album)}
             />
           ))
         }
@@ -52,7 +113,9 @@ const nonClassical = albums.filter(a => a.category === "non-classical");
               cover={album.cover}
               icon="music"
               badge="Non-Classical"
-              action={{ label: "Download", href: album.downloadUrl ?? "#" }}
+              action={{ label: "Try", href: album.listenUrl ?? "#" }}
+              meta={albumMeta(album)}
+              sections={albumSections(album)}
             />
           ))
         }
@@ -60,5 +123,52 @@ const nonClassical = albums.filter(a => a.category === "non-classical");
     </section>
   </main>
 
+  <MediaModal />
+
   <Footer />
 </Layout>
+
+<script>
+  function initMusicTabs() {
+    const tabs = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("[data-subcat]")
+    );
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "#classical-grid [data-media-card]"
+      )
+    );
+    if (tabs.length === 0 || items.length === 0) return () => {};
+
+    function activate(key: string) {
+      for (const t of tabs) {
+        const active = t.dataset.subcat === key;
+        t.classList.toggle("bg-muted", active);
+        t.classList.toggle("text-accent", active);
+        t.classList.toggle("border-accent/40", active);
+        t.setAttribute("aria-selected", active ? "true" : "false");
+      }
+      for (const it of items) {
+        const sub = it.dataset.subcategory ?? "";
+        it.classList.toggle("hidden", sub !== key);
+      }
+    }
+
+    const onClick = (e: Event) => {
+      const key = (e.currentTarget as HTMLElement).dataset.subcat;
+      if (key) activate(key);
+    };
+    for (const t of tabs) t.addEventListener("click", onClick);
+    activate("symphonies");
+
+    return () => {
+      for (const t of tabs) t.removeEventListener("click", onClick);
+    };
+  }
+
+  let cleanup: (() => void) | undefined;
+  document.addEventListener("astro:page-load", () => {
+    cleanup?.();
+    cleanup = initMusicTabs();
+  });
+</script>

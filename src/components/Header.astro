@@ -40,7 +40,7 @@ const lifeLinks = [
 
 const lifeActive = lifeLinks.some(l => isActive(l.href));
 const navItemClass =
-  "rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:text-accent";
+  "rounded-lg px-3 py-2 text-base font-medium transition-colors hover:text-accent";
 ---
 
 <a
@@ -54,11 +54,11 @@ const navItemClass =
 <header id="site-header" class="app-layout-wide sticky top-3 z-40">
   <nav
     id="site-nav"
-    class="flex items-center justify-between rounded-2xl border border-transparent px-2 py-1.5 transition-all duration-300 [&.not-top]:border-border [&.not-top]:bg-background/70 [&.not-top]:shadow-sm [&.not-top]:backdrop-blur-xl"
+    class="group flex items-center justify-between rounded-2xl border border-transparent px-2 py-1.5 transition-all duration-300 [&.not-top]:border-border [&.not-top]:bg-background/70 [&.not-top]:shadow-sm [&.not-top]:backdrop-blur-xl"
   >
     <a
       href={homeHref}
-      class="brand-link z-30 shrink-0 px-2 py-2 text-xl font-semibold whitespace-nowrap"
+      class="brand-link z-30 shrink-0 px-2 py-2 text-xl font-semibold whitespace-nowrap transition-[margin-inline-start] duration-300 group-[.not-top]:ms-3 sm:group-[.not-top]:ms-5"
     >
       {site.title}
     </a>
@@ -78,7 +78,7 @@ const navItemClass =
           Academic
         </a>
       </li>
-      <li class="group relative">
+      <li class="group/drop relative">
         <button
           type="button"
           class:list={[
@@ -92,7 +92,7 @@ const navItemClass =
           Life
           <svg
             aria-hidden="true"
-            class="size-3.5 transition-transform duration-200 group-hover:rotate-180"
+            class="size-3.5 transition-transform duration-200 group-hover/drop:rotate-180"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -104,7 +104,7 @@ const navItemClass =
           </svg>
         </button>
         <div
-          class="invisible absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-xl border border-border bg-background/90 p-1 opacity-0 shadow-lg backdrop-blur-xl transition-all duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+          class="invisible absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-xl border border-border bg-background/90 p-1 opacity-0 shadow-lg backdrop-blur-xl transition-all duration-150 group-hover/drop:visible group-hover/drop:opacity-100 group-focus-within/drop:visible group-focus-within/drop:opacity-100"
         >
           {
             lifeLinks.map(link => (
@@ -132,6 +132,29 @@ const navItemClass =
     </ul>
 
     <div class="flex items-center gap-0.5">
+      <!-- Language switch -->
+      <div
+        id="lang-switch"
+        class="flex items-center rounded-lg border border-border p-0.5"
+        role="group"
+        aria-label="Language"
+      >
+        <button
+          type="button"
+          data-lang="en"
+          class="rounded-md px-2 py-1 text-xs font-medium transition-colors"
+        >
+          EN
+        </button>
+        <button
+          type="button"
+          data-lang="zh"
+          class="rounded-md px-2 py-1 text-xs font-medium transition-colors"
+        >
+          中文
+        </button>
+      </div>
+
       <a
         href={searchHref}
         class:list={[
@@ -171,8 +194,8 @@ const navItemClass =
     id="mobile-menu"
     class="mt-2 hidden rounded-2xl border border-border bg-background/90 p-2 shadow-lg backdrop-blur-xl md:hidden"
   >
-    <a href={blogHref} class:list={["block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/posts") }]}>Blog</a>
-    <a href={academicHref} class:list={["block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/academic") }]}>Academic</a>
+    <a href={blogHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/posts") }]}>Blog</a>
+    <a href={academicHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/academic") }]}>Academic</a>
     <p class="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
       Life
     </p>
@@ -189,8 +212,8 @@ const navItemClass =
         </a>
       ))
     }
-    <a href={aboutHref} class:list={["block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/about") }]}>About</a>
-    <a href={searchHref} class:list={["block rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted hover:text-accent sm:hidden", { "text-accent": isActive("/search") }]}>Search</a>
+    <a href={aboutHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/about") }]}>About</a>
+    <a href={searchHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent sm:hidden", { "text-accent": isActive("/search") }]}>Search</a>
   </div>
 </header>
 
@@ -218,7 +241,6 @@ const navItemClass =
       menuIcon?.classList.toggle("hidden");
       closeIcon?.classList.toggle("hidden");
     };
-
     menuBtn?.addEventListener("click", toggleMenu);
 
     return () => {
@@ -227,9 +249,45 @@ const navItemClass =
     };
   }
 
-  let cleanup: (() => void) | undefined;
+  function initLangSwitch() {
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("#lang-switch [data-lang]")
+    );
+    if (buttons.length === 0) return () => {};
+
+    const apply = (lang: string) => {
+      document.documentElement.setAttribute(
+        "lang",
+        lang === "zh" ? "zh-CN" : "en"
+      );
+      for (const btn of buttons) {
+        const active = btn.dataset.lang === lang;
+        btn.classList.toggle("bg-muted", active);
+        btn.classList.toggle("text-accent", active);
+      }
+    };
+
+    apply(localStorage.getItem("lang") ?? "en");
+
+    const onClick = (e: Event) => {
+      const lang = (e.currentTarget as HTMLElement).dataset.lang;
+      if (!lang) return;
+      localStorage.setItem("lang", lang);
+      apply(lang);
+    };
+    for (const btn of buttons) btn.addEventListener("click", onClick);
+
+    return () => {
+      for (const btn of buttons) btn.removeEventListener("click", onClick);
+    };
+  }
+
+  let cleanupHeader: (() => void) | undefined;
+  let cleanupLang: (() => void) | undefined;
   document.addEventListener("astro:page-load", () => {
-    cleanup?.();
-    cleanup = initHeader();
+    cleanupHeader?.();
+    cleanupLang?.();
+    cleanupHeader = initHeader();
+    cleanupLang = initLangSwitch();
   });
 </script>

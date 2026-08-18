@@ -6,7 +6,6 @@ import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import Pagination from "@/components/Pagination.astro";
 import PostCard from "@/components/PostCard.astro";
-import ReadingProgress from "@/components/ReadingProgress.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
 import config from "@/config";
 
@@ -21,7 +20,7 @@ const { page } = Astro.props;
 <Layout title={`Blog | ${config.site.title}`}>
   <Header />
 
-  <main id="main-content" class="app-layout-wide py-8">
+  <main id="main-content" data-posts-page class="app-layout-wide py-8">
     <header
       class="mb-8 flex flex-col justify-between gap-2 sm:flex-row sm:items-end"
     >
@@ -37,19 +36,22 @@ const { page } = Astro.props;
     </header>
 
     <ul class="flex flex-col gap-4">
-      {page.data.map(post => <PostCard {...post} trackProgress />)}
+      {page.data.map(post => <PostCard {...post} />)}
     </ul>
   </main>
 
   <Pagination {page} />
-
-  <ReadingProgress />
 
   <Footer noMarginTop={page.lastPage > 1} />
 </Layout>
 
 <script>
   document.addEventListener("astro:page-load", () => {
-    sessionStorage.setItem("backUrl", window.location.pathname);
+    const main = document.querySelector("#main-content");
+    // Only record the referrer when actually on the listing page so the
+    // persisted listener doesn't overwrite it after navigating into a post.
+    if (main?.hasAttribute("data-posts-page")) {
+      sessionStorage.setItem("backUrl", window.location.pathname);
+    }
   });
 </script>

@@ -1,10 +1,23 @@
 ---
+import type { MediaMetaItem, MediaSection } from "@/types/media";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import MediaCard from "@/components/MediaCard.astro";
-import { movies } from "@/data/movies";
+import MediaModal from "@/components/MediaModal.astro";
+import { movies, type Movie } from "@/data/movies";
 import config from "@/config";
+
+function movieMeta(m: Movie): MediaMetaItem[] {
+  const meta: MediaMetaItem[] = [];
+  if (m.cast) meta.push({ label: "Cast", value: m.cast });
+  if (m.category) meta.push({ label: "Category", value: m.category });
+  return meta;
+}
+
+function movieSections(m: Movie): MediaSection[] {
+  return [{ label: "About", body: m.details }];
+}
 ---
 
 <Layout title={`Movies | ${config.site.title}`}>
@@ -28,11 +41,16 @@ import config from "@/config";
             cover={movie.poster}
             icon="film"
             badge={movie.year ? String(movie.year) : undefined}
+            meta={movieMeta(movie)}
+            quote={movie.quote ? { label: "Favorite line", text: movie.quote } : undefined}
+            sections={movieSections(movie)}
           />
         ))
       }
     </div>
   </main>
+
+  <MediaModal />
 
   <Footer />
 </Layout>

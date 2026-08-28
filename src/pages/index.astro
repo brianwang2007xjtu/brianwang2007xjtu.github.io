@@ -7,6 +7,9 @@ import Footer from "@/components/Footer.astro";
 import Socials from "@/components/Socials.astro";
 import PostCard from "@/components/PostCard.astro";
 import { getSortedPosts } from "@/utils/getSortedPosts";
+import { getPostUrl } from "@/utils/getPostPaths";
+import { getGithubStars } from "@/utils/getGithubStars";
+import { walineServerURL } from "@/data/waline";
 import config from "@/config";
 import avatar from "@/assets/images/8CBB3CC5-C7FE-425F-8008-18668A098F3B.jpeg";
 
@@ -17,12 +20,11 @@ const posts = await getCollection("posts", ({ data }) => !data.draft);
 const totalPosts = posts.length;
 const recentPosts = getSortedPosts(posts).slice(0, postsConfig.perIndex);
 
-// Hardcoded statistics — to be wired to real sources later.
-const stats = [
-  { label: "Total Posts", value: String(totalPosts) },
-  { label: "Total Visits", value: "12,847" },
-  { label: "GitHub Stars", value: "128" },
-];
+// Real, auto-updating stats.
+const githubStars = await getGithubStars();
+const allPostPaths = posts.map(p =>
+  getPostUrl(p.id, p.filePath, locale).replace(/\/+$/, "")
+);
 
 const homePath = getRelativeLocaleUrl(locale, "");
 const postsHref = getRelativeLocaleUrl(locale, "posts");
@@ -86,16 +88,23 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
     <section class="border-border border-t pt-10 pb-4">
       <h2 class="text-2xl font-semibold tracking-wide">Statistics</h2>
       <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {
-          stats.map(stat => (
-            <div
-              class="rounded-2xl border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 p-5 backdrop-blur-sm transition-colors hover:border-accent/30"
-            >
-              <div class="text-3xl font-bold tabular-nums">{stat.value}</div>
-              <div class="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))
-        }
+        <div class="rounded-2xl border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 p-5 backdrop-blur-sm transition-colors hover:border-accent/30">
+          <div class="text-3xl font-bold tabular-nums">{totalPosts}</div>
+          <div class="mt-1 text-sm text-muted-foreground">Total Posts</div>
+        </div>
+        <div
+          class="rounded-2xl border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 p-5 backdrop-blur-sm transition-colors hover:border-accent/30"
+          data-waline-paths={JSON.stringify(allPostPaths)}
+        >
+          <div class="text-3xl font-bold tabular-nums">
+            <span id="total-visits">—</span>
+          </div>
+          <div class="mt-1 text-sm text-muted-foreground">Total Visits</div>
+        </div>
+        <div class="rounded-2xl border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 p-5 backdrop-blur-sm transition-colors hover:border-accent/30">
+          <div class="text-3xl font-bold tabular-nums">{githubStars}</div>
+          <div class="mt-1 text-sm text-muted-foreground">GitHub Stars</div>
+        </div>
       </div>
     </section>
 
@@ -135,4 +144,33 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
       sessionStorage.setItem("backUrl", indexLayout.homePath ?? baseRoot);
     }
   });
+</script>
+
+<script is:inline define:vars={{ walineServerURL }}>
+  (function () {
+    const run = () => {
+      const el = document.querySelector("#total-visits");
+      if (!el) return;
+      const host = el.closest("[data-waline-paths]");
+      const paths = host?.getAttribute("data-waline-paths") || "";
+      if (!window.Waline || !paths) return;
+      try {
+        window.Waline.getArticleCounter({
+          serverURL: walineServerURL,
+          paths: JSON.parse(paths),
+          type: ["pageview"],
+        })
+          .then(rows => {
+            const total = (Array.isArray(rows) ? rows : []).reduce(
+              (sum, r) => sum + (r?.pageview || 0),
+              0
+            );
+            el.textContent = total.toLocaleString();
+          })
+          .catch(() => {});
+      } catch (e) {}
+    };
+    document.addEventListener("waline-ready", run, { once: true });
+    if (window.Waline) run();
+  })();
 </script>

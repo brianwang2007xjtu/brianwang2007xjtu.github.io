@@ -26,8 +26,11 @@ const isActive = (path: string) => {
   return currentPath === path || currentPathArray[0] === pathArray[0];
 };
 
+// Exact match (used for dropdown sub-items, so only the current one highlights).
+// getRelativeLocaleUrl may return a trailing slash; currentPath has it stripped.
+const isExact = (path: string) => currentPath === path.replace(/\/+$/, "");
+
 const homeHref = getRelativeLocaleUrl(locale, "");
-const blogHref = getRelativeLocaleUrl(locale, "posts");
 const academicHref = getRelativeLocaleUrl(locale, "academic");
 const aboutHref = getRelativeLocaleUrl(locale, "about");
 const searchHref = getRelativeLocaleUrl(locale, "search");
@@ -39,6 +42,14 @@ const lifeLinks = [
 ];
 
 const lifeActive = lifeLinks.some(l => isActive(l.href));
+
+const blogLinks = [
+  { label: "Research", href: getRelativeLocaleUrl(locale, "blog/research") },
+  { label: "Daily Life", href: getRelativeLocaleUrl(locale, "blog/daily") },
+  { label: "Others", href: getRelativeLocaleUrl(locale, "blog/others") },
+];
+const blogActive = blogLinks.some(l => isActive(l.href));
+
 const navItemClass =
   "rounded-lg px-3 py-2 text-base font-medium transition-colors hover:text-accent";
 ---
@@ -65,10 +76,48 @@ const navItemClass =
 
     <!-- Desktop navigation -->
     <ul class="hidden items-center gap-1 md:flex">
-      <li>
-        <a href={blogHref} class:list={[navItemClass, { "active-nav": isActive("/posts") }]}>
+      <li class="group/drop relative">
+        <button
+          type="button"
+          class:list={[
+            navItemClass,
+            "inline-flex items-center gap-1",
+            { "active-nav": blogActive },
+          ]}
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
           Blog
-        </a>
+          <svg
+            aria-hidden="true"
+            class="size-3.5 transition-transform duration-200 group-hover/drop:rotate-180"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m6 9 6 6 6-6"></path>
+          </svg>
+        </button>
+        <div
+          class="invisible absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-xl border border-border bg-background/90 p-1 opacity-0 shadow-lg backdrop-blur-xl transition-all duration-150 group-hover/drop:visible group-hover/drop:opacity-100 group-focus-within/drop:visible group-focus-within/drop:opacity-100"
+        >
+          {
+            blogLinks.map(link => (
+              <a
+                href={link.href}
+                class:list={[
+                  "block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted hover:text-accent",
+                  { "text-accent": isExact(link.href) },
+                ]}
+              >
+                {link.label}
+              </a>
+            ))
+          }
+        </div>
       </li>
       <li>
         <a
@@ -194,7 +243,22 @@ const navItemClass =
     id="mobile-menu"
     class="mt-2 hidden rounded-2xl border border-border bg-background/90 p-2 shadow-lg backdrop-blur-xl md:hidden"
   >
-    <a href={blogHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/posts") }]}>Blog</a>
+    <p class="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      Blog
+    </p>
+    {
+      blogLinks.map(link => (
+        <a
+          href={link.href}
+          class:list={[
+            "block rounded-lg px-3 py-2 ps-6 text-sm hover:bg-muted hover:text-accent",
+            { "text-accent": isExact(link.href) },
+          ]}
+        >
+          {link.label}
+        </a>
+      ))
+    }
     <a href={academicHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/academic") }]}>Academic</a>
     <p class="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
       Life

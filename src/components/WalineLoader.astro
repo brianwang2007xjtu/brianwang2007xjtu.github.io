@@ -1,0 +1,38 @@
+---
+import { walineServerURL } from "@/data/waline";
+const enabled = walineServerURL.trim() !== "";
+const server = walineServerURL.trim();
+---
+
+{
+  enabled && (
+    <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
+  )
+}
+
+{
+  enabled && (
+    <script is:inline define:vars={{ server }}>
+      (function () {
+        function boot() {
+          if (!window.Waline) return;
+          // Fill any per-path pageview counters on the page (post cards / post detail).
+          if (document.querySelector(".waline-pageview-count")) {
+            window.Waline.pageviewCount({ serverURL: server });
+          }
+          window.dispatchEvent(
+            new CustomEvent("waline-ready", { detail: { serverURL: server } })
+          );
+        }
+
+        if (window.Waline) return boot();
+
+        var s = document.createElement("script");
+        s.src = "https://unpkg.com/@waline/client@v3/dist/waline.js";
+        s.async = true;
+        s.onload = boot;
+        document.head.appendChild(s);
+      })();
+    </script>
+  )
+}

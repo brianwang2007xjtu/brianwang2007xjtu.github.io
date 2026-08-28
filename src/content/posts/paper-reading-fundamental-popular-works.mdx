@@ -1,0 +1,38 @@
+---
+title: "Paper Reading: Fundamental & Popular Works"
+author: master
+pubDatetime: 2026-08-28T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "Annotated PDFs of four foundational AI papers — Transformer, RT-2, I-JEPA, and LeWorldModel."
+---
+
+import PdfEmbed from "@/components/PdfEmbed.astro";
+
+This post gathers annotated PDFs of four foundational papers that I keep coming back to. Each section embeds the full annotated paper, with a download button at the end.
+
+## Transformer
+
+*"Attention Is All You Need"* (Vaswani et al., 2017). The paper that introduced the self-attention architecture which underpins almost every modern sequence model.
+
+<PdfEmbed src="/papers/Transformer.pdf" title="Transformer" label="Download Transformer" />
+
+## RT-2
+
+*"RT-2: Vision-Language-Action Model Transfers Web Knowledge to Robotic Control"* (Brohan et al., 2023). Co-training a vision-language model with robotic data to obtain a single model that can see, understand, and act.
+
+<PdfEmbed src="/papers/RT-2.pdf" title="RT-2" label="Download RT-2" />
+
+## I-JEPA
+
+*"Revisiting Feature Prediction for Learning Visual Representations from Unconstrained Data"* (Assran et al., 2023). A method that predicts missing regions in latent space rather than pixels, learning representations without reconstruction.
+
+<PdfEmbed src="/papers/I-JEPA.pdf" title="I-JEPA" label="Download I-JEPA" />
+
+## LeWorldModel
+
+A world-model paper about learning structured, generalizable representations of the environment, enabling planning and prediction.
+
+<PdfEmbed src="/papers/LeWorldModel.pdf" title="LeWorldModel" label="Download LeWorldModel" />

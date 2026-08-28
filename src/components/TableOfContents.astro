@@ -1,0 +1,150 @@
+---
+type TocHeading = { depth: number; slug: string; text: string };
+
+type Props = { headings?: TocHeading[] };
+
+const { headings = [] } = Astro.props;
+const tocHeadings = headings.filter(h => h.depth >= 2 && h.depth <= 4);
+// Indent deeper headings so the hierarchy is visible (h2 at level 0, h3 +1, h4 +2).
+const minDepth = tocHeadings.length
+  ? Math.min(...tocHeadings.map(h => h.depth))
+  : 2;
+---
+
+{
+  tocHeadings.length > 0 && (
+    <aside
+      id="toc-sidebar"
+      data-pagefind-ignore
+      class="max-md:hidden md:sticky md:top-24 md:order-2 md:basis-56 lg:basis-60"
+      style="height: calc(100vh - 8rem);"
+    >
+      <nav
+        id="toc"
+        aria-label="Table of contents"
+        class="h-full overflow-y-auto pe-1"
+      >
+        <h2 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          Table of Contents
+        </h2>
+        <ul class="mt-4">
+          {
+            tocHeadings.map(h => (
+              <li>
+                <div
+                  class="relative"
+                  style={`margin-inline-start: ${(h.depth - minDepth) * 0.875}rem`}
+                >
+                  <span
+                    class="toc-line absolute top-[5%] w-[2px] rounded transition-colors duration-300 [&.highlight-bg]:bg-accent [&.readed]:bg-border"
+                  ></span>
+                  <a
+                    href={`#${h.slug}`}
+                    class="toc-link line-clamp-2 ms-2 flex-1 px-3 py-1 text-sm text-foreground/75 transition-all hover:text-foreground [&.highlight]:font-medium [&.highlight]:text-accent [&.readed]:text-muted-foreground/60 [&.highlight-bg-translucent]:rounded-md [&.highlight-bg-translucent]:bg-muted"
+                  >
+                    {h.text}
+                  </a>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </aside>
+  )
+}
+
+<script>
+  function initToc() {
+    const toc = document.getElementById("toc");
+    const article = document.getElementById("article");
+    if (!toc || !article) return () => {};
+
+    const headings = Array.from(
+      article.querySelectorAll<HTMLElement>("h2, h3, h4, h5, h6")
+    );
+    const links = Array.from(
+      toc.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')
+    ).map(a => ({
+      element: a,
+      line: a.previousElementSibling as HTMLElement | null,
+      slug: (a.getAttribute("href") ?? "").slice(1),
+    }));
+
+    const state: Record<string, { inView: boolean; progress: number }> = {};
+
+    function update() {
+      const vh = window.innerHeight;
+      const contentTop = article!.getBoundingClientRect().top + window.scrollY;
+      const contentBottom = article!.offsetHeight + contentTop;
+
+      headings.forEach((heading, i) => {
+        const top = heading.getBoundingClientRect().top + window.scrollY;
+        const nextTop = headings[i + 1]
+          ? headings[i + 1].getBoundingClientRect().top + window.scrollY
+          : contentBottom;
+        const o0 = top - window.scrollY;
+        const o1 = nextTop - window.scrollY - heading.offsetHeight;
+        const s = (vh - o0) / (o1 - o0);
+        state[heading.id] = {
+          inView: o0 < vh && o1 > 0,
+          progress: Math.max(0, Math.min(1, s)),
+        };
+      });
+
+      links.forEach(link => {
+        const p = state[link.slug];
+        if (!p) return;
+        link.element.classList.toggle("highlight", p.inView);
+        link.element.classList.toggle("highlight-bg-translucent", p.inView);
+        link.element.classList.toggle("readed", !p.inView && p.progress === 1);
+        if (link.line) {
+          link.line.classList.toggle("highlight-bg", p.inView);
+          link.line.classList.toggle("readed", !p.inView && p.progress === 1);
+          link.line.style.height = `${p.progress * 90}%`;
+        }
+      });
+    }
+
+    links.forEach(link => {
+      link.element.addEventListener("click", e => {
+        e.preventDefault();
+        const heading = headings.find(h => h.id === link.slug);
+        if (heading) {
+          history.pushState(
+            null,
+            heading.textContent ?? "",
+            link.element.getAttribute("href") ?? "#"
+          );
+          heading.scrollIntoView({ behavior: "smooth" });
+        }
+      });
+    });
+
+    let frame: number | undefined;
+    const schedule = () => {
+      if (frame === undefined) {
+        frame = requestAnimationFrame(() => {
+          frame = undefined;
+          update();
+        });
+      }
+    };
+
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }
+
+  let cleanup: (() => void) | undefined;
+  document.addEventListener("astro:page-load", () => {
+    cleanup?.();
+    cleanup = initToc();
+  });
+</script>

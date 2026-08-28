@@ -3,9 +3,8 @@ import tailwindcss from "@tailwindcss/vite";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import { unified } from "@astrojs/markdown-remark";
-import remarkToc from "remark-toc";
-import remarkCollapse from "remark-collapse";
 import rehypeCallouts from "rehype-callouts";
+import stripTableOfContentsHeading from "./src/utils/remark/stripTocHeading";
 import {
   transformerNotationDiff,
   transformerNotationHighlight,
@@ -32,10 +31,7 @@ export default defineConfig({
   },
   markdown: {
     processor: unified({
-      remarkPlugins: [
-        remarkToc,
-        [remarkCollapse, { test: "Table of contents" }],
-      ],
+      remarkPlugins: [stripTableOfContentsHeading],
       rehypePlugins: [rehypeCallouts],
     }),
     shikiConfig: {

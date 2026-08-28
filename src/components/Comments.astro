@@ -1,0 +1,53 @@
+---
+import { walineServerURL } from "@/data/waline";
+const enabled = walineServerURL.trim() !== "";
+const server = walineServerURL.trim();
+const path = Astro.url.pathname;
+---
+
+{
+  enabled && (
+    <section data-pagefind-ignore aria-label="Comments">
+      <div class="border-border mt-12 border-t pt-8">
+        <h2 class="mb-4 text-lg font-semibold">Comments</h2>
+        <div id="waline" class="waline"></div>
+      </div>
+    </section>
+  )
+}
+
+{
+  enabled && (
+    <script is:inline define:vars={{ server, path }}>
+      (function () {
+        var inited = null;
+        var init = function () {
+          if (!window.Waline) return;
+          // Re-init on each navigation so the widget matches the current post.
+          if (inited && typeof inited === "function") {
+            try {
+              inited();
+            } catch {}
+          } else {
+            inited = window.Waline.init({
+              el: "#waline",
+              serverURL: server,
+              path: path,
+              lang: "zh-CN",
+              pageview: false,
+            });
+          }
+        };
+
+        var onReady = function () {
+          init();
+          document.removeEventListener("waline-ready", onReady);
+        };
+        document.addEventListener("waline-ready", onReady);
+        document.addEventListener("astro:page-load", onReady);
+
+        if (window.Waline) init();
+      })();
+    </script>
+  )
+}

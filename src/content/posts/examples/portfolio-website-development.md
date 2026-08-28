@@ -10,6 +10,7 @@ tags:
   - TailwindCSS
   - HeadlessCMS
   - Blog
+  - manual
 description:
   "EXAMPLE POST: My experience about developing my first portfolio website and a blog
   using NextJS and a headless CMS."

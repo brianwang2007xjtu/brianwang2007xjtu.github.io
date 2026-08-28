@@ -6,6 +6,7 @@ featured: false
 ogImage: ../../../assets/images/AstroPaper-v5.png
 tags:
   - release
+  - manual
 description: "AstroPaper v5: keep the clean look, updates under the hood."
 ---
 

@@ -10,6 +10,7 @@ tags:
   - astro
   - blog
   - docs
+  - manual
 description: Comment function on a static blog hosted on GitHub Pages with Giscus.
 ---
 

@@ -3,6 +3,7 @@ import type { CollectionEntry } from "astro:content";
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { getPostUrl } from "@/utils/getPostPaths";
 import { slugifyStr } from "@/utils/slugify";
+import { walineServerURL } from "@/data/waline";
 import config from "@/config";
 
 type Props = CollectionEntry<"posts">;
@@ -12,6 +13,8 @@ const { title, description, pubDatetime, tags = [] } = data;
 
 const locale = Astro.currentLocale ?? config.site.lang;
 const url = getPostUrl(id, filePath, locale);
+const viewPath = url.replace(/\/+$/, "");
+const viewsEnabled = walineServerURL.trim() !== "";
 
 const date = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -21,18 +24,6 @@ const date = new Intl.DateTimeFormat("en-US", {
 
 const words = (body ?? "").split(/\s+/).filter(Boolean).length;
 const minutes = Math.max(1, Math.ceil(words / 200));
-
-// Deterministic placeholder view count (to be wired to real analytics later).
-function hashInt(str: string, mod: number): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = (h * 31 + str.charCodeAt(i)) % mod;
-  }
-  return h;
-}
-const viewsRaw = 120 + (hashInt(title, 4200) % 4200);
-const views =
-  viewsRaw >= 1000 ? `${(viewsRaw / 1000).toFixed(1)}k` : `${viewsRaw}`;
 
 const visibleTags = tags.slice(0, 3);
 ---
@@ -50,7 +41,18 @@ const visibleTags = tags.slice(0, 3);
         {description}
       </p>
       <p class="mt-2 text-xs italic text-muted-foreground">
-        {minutes} min read · {views} views
+        {minutes} min read
+        {
+          viewsEnabled && (
+            <>
+              {" · "}
+              <span class="waline-pageview-count" data-path={viewPath}>
+                0
+              </span>
+              {" views"}
+            </>
+          )
+        }
       </p>
     </div>
   </a>

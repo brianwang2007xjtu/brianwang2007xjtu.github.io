@@ -6,6 +6,7 @@ featured: true
 ogImage: assets/AstroPaper-v6.png
 tags:
   - release
+  - manual
 description: "AstroPaper v6: a from-scratch rewrite on Astro v6, Tailwind v4, and a new config system."
 ---
 

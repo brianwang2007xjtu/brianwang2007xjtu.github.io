@@ -7,6 +7,7 @@ draft: false
 tags:
   - TypeScript
   - Astro
+  - manual
 description: "EXAMPLE POST: About Tailwind Typography Plugin and how you can use it effectively."
 ---
 

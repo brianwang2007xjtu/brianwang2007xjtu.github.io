@@ -2,7 +2,7 @@ import { defineAstroPaperConfig } from "./src/types/config";
 
 export default defineAstroPaperConfig({
   site: {
-    url: "https://brianwang2007xjtu-github-io.vercel.app/",
+    url: "https://brianwang2007.com/",
     title: "master's blog",
     description:
       "Notes on artificial intelligence, brain-computer interfaces, and life.",

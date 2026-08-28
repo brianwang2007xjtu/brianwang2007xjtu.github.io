@@ -244,6 +244,7 @@ export const albums: Album[] = [
     recommendation:
       "Best of Mahler.",
     orchestra: "New Philharmonia Orchestra",
+    conductor: "Otto Klemperer",
     releaseDate: "2024",
     listenUrl: "https://music.163.com/#/album?id=188698210",
   },
@@ -260,10 +261,46 @@ export const albums: Album[] = [
       "Karajan and the Berlin Philharmonic’s 1973–74 recording of Strauss’s Also sprach Zarathustra is the definitive account of this monumental tone poem. The famous “sunrise” opening is just the beginning—Karajan shapes the entire work with architectural grandeur and philosophical depth, while the Berliners deliver their signature golden sound: lustrous strings, blazing brass, and breathtaking orchestral colours. Paired on DG with Don Juan or Till Eulenspiegel, this disc remains a Penguin Guide three-star favourite and one of the landmark recordings of the 1970s.",
     recommendation:
       "One of my first CDs.",
+    conductor: "Herbert von Karajan",
+    orchestra: "Berliner Philharmoniker",
     releaseDate: "1995",
     listenUrl: "https://music.163.com/#/album?id=1677976",
   },
-  
+  {
+    cover: "/covers/music-covers/kleiber_set.webp",
+    slug: "kleiber",
+    title: "Kleiber: Complete Recordings On DG",
+    artist: "Carlos Kleiber",
+    category: "classical",
+    subCategory: "others",
+    description:
+      "Carlos Kleiber is one of the greatest conductors of all time, but he also remains the personification of the genius recluse. He made few recordings but they are among the greatest treasures of the classical catalogue, gloriously showcasing the Kleiber characteristics of intellectual rigour, passion and perfectionism. This re-issue unites Carlos Kleiber’s complete recordings on DG, on CD, in High Resolution sound on a Blu-ray audio disc and now for the first time in Dolby Atmos on a 2nd Blu-ray audio disc. The set is now available for general pre-order and will be released on 12 July. \n Carlos Kleiber disliked recordings — he once said that “every unproduced record is a good record” — but those he made have naturally come to occupy a special place in recording history. Deutsche Grammophon had the good fortune to be the label with which this most charismatic of conductors was associated. Imbued with Kleiber’s characteristics of intellectual rigour, passion and perfectionism, the few recordings he did make are among the greatest treasures of the DG catalogue. In 2011, 100 members of his own profession voted Carlos Kleiber ‘the greatest conductor of all time,’ but he also remains the personification of the genius recluse — Herbert von Karajan used to joke that Kleiber would only conduct when his fridge was empty.",
+    details:
+      "Carlos Kleiber is one of the greatest conductors of all time, but he also remains the personification of the genius recluse. He made few recordings but they are among the greatest treasures of the classical catalogue, gloriously showcasing the Kleiber characteristics of intellectual rigour, passion and perfectionism. This re-issue unites Carlos Kleiber’s complete recordings on DG, on CD, in High Resolution sound on a Blu-ray audio disc and now for the first time in Dolby Atmos on a 2nd Blu-ray audio disc. The set is now available for general pre-order and will be released on 12 July. \n Carlos Kleiber disliked recordings — he once said that “every unproduced record is a good record” — but those he made have naturally come to occupy a special place in recording history. Deutsche Grammophon had the good fortune to be the label with which this most charismatic of conductors was associated. Imbued with Kleiber’s characteristics of intellectual rigour, passion and perfectionism, the few recordings he did make are among the greatest treasures of the DG catalogue. In 2011, 100 members of his own profession voted Carlos Kleiber ‘the greatest conductor of all time,’ but he also remains the personification of the genius recluse — Herbert von Karajan used to joke that Kleiber would only conduct when his fridge was empty.",
+    recommendation:
+      "The most cherishable",
+    conductor: "Carlos Kleiber",
+    releaseDate: "2024",
+    listenUrl: "https://www.prestomusic.com/classical/products/9636540--carlos-kleiber-complete-recordings-on-deutsche-grammophon",
+  },
+  {
+    cover: "/covers/music-covers/ravel_daphnis_et_chloe.webp",
+    slug: "Daphnis-et-Chloé",
+    title: "Daphnis et Chloé",
+    artist: "Maurice Ravel",
+    category: "classical",
+    subCategory: "others",
+    description:
+      "It is unrivalled for power and intensity, variety of colour and immaculate attention to detail. As with most Decca discs of the era, the superb recorded sound can be taken as read.",
+    details:
+      "It is unrivalled for power and intensity, variety of colour and immaculate attention to detail. As with most Decca discs of the era, the superb recorded sound can be taken as read.",
+    recommendation:
+      "My first ballet recordings.",
+    orchestra: "London Symphony Orchestra",
+    conductor: "Pierre Monteux",
+    releaseDate: "2006",
+    listenUrl: "https://www.prestomusic.com/classical/products/7944040--ravel-daphnis-et-chloe",
+  },
   // non-classical
   {
     cover: "/covers/music-covers/transfer_steve_chou.jpg",

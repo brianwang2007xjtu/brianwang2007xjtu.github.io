@@ -1,0 +1,79 @@
+---
+---
+
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+/>
+
+<script is:inline>
+  (function () {
+    // Renders $...$ (inline) and $$...$$ (block) LaTeX in the article content
+    // using KaTeX loaded from a CDN. Skips code/pre/already-rendered nodes.
+    function renderMath() {
+      if (!window.katex) return;
+      var nodes = [];
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          if (!n.nodeValue || n.nodeValue.indexOf("$") === -1)
+            return NodeFilter.FILTER_REJECT;
+          var p = n.parentElement;
+          if (!p) return NodeFilter.FILTER_REJECT;
+          if (p.closest("code, pre, script, style, .katex, textarea, [data-pagefind-ignore]"))
+            return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(process);
+    }
+
+    function make(tex, display) {
+      var span = document.createElement("span");
+      span.innerHTML = window.katex.renderToString(tex, {
+        throwOnError: false,
+        displayMode: display,
+      });
+      return span.firstElementChild;
+    }
+
+    function process(node) {
+      var text = node.nodeValue;
+      if (!text || text.indexOf("$") === -1) return;
+      var parts = text.split(/(\$\$[^$]+\$\$|\$[^$]+\$)/g);
+      if (parts.length === 1) return;
+      var frag = document.createDocumentFragment();
+      parts.forEach(function (part) {
+        if (part.length >= 4 && part.startsWith("$$") && part.endsWith("$$")) {
+          var el = make(part.slice(2, -2), true);
+          if (el) frag.appendChild(el);
+        } else if (
+          part.length >= 2 &&
+          part.startsWith("$") &&
+          part.endsWith("$")
+        ) {
+          var el2 = make(part.slice(1, -1), false);
+          if (el2) frag.appendChild(el2);
+        } else {
+          frag.appendChild(document.createTextNode(part));
+        }
+      });
+      node.parentNode.replaceChild(frag, node);
+    }
+
+    function ensureKatex() {
+      if (window.katex) {
+        renderMath();
+        return;
+      }
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js";
+      s.onload = renderMath;
+      s.onerror = function () {};
+      document.head.appendChild(s);
+    }
+
+    document.addEventListener("astro:page-load", ensureKatex);
+    ensureKatex();
+  })();
+</script>

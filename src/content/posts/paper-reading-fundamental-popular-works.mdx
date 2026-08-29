@@ -6,33 +6,99 @@ category: research
 tags:
   - paper-reading
   - ai-paper
-description: "Annotated PDFs of four foundational AI papers — Transformer, RT-2, I-JEPA, and LeWorldModel."
+description: "第一篇AI论文阅读笔记📝。"
 ---
 
-import PdfEmbed from "@/components/PdfEmbed.astro";
+import PaperNote from "@/components/PaperNote.astro";
 
-This post gathers annotated PDFs of four foundational papers that I keep coming back to. Each section embeds the full annotated paper, with a download button at the end.
+最近一段时间才终于意识到阅读 original paper 的重要性，于是挑了几篇，或在各自领域被视为基础的，或较新的有意思的工作来读。
+包含了最基础的 Transformer 模型、VLA 系列的开山之作 RT-2，以及 JEPA 系列的 I-JEPA 和 LeWorldModel。
 
+Paper Reading 系列博客从本篇起会持续更新 ...
 ## Transformer
 
-*"Attention Is All You Need"* (Vaswani et al., 2017). The paper that introduced the self-attention architecture which underpins almost every modern sequence model.
+<PaperNote
+  title="Transformer"
+  arxivId="1706.03762"
+  noteUrl="/papers/Transformer.pdf"
+  summary="经典的 “Attention is all you need.”"
+  images={["/papers/transformer.png"]}
+>
 
-<PdfEmbed src="/papers/Transformer.pdf" title="Transformer" label="Download Transformer" />
+Transformer 是 Google 提出的有别于传统CNN和RNN的深度学习架构。最早发表在2017年的NeurIPS上。很有意思的一点是，《Attention Is All You Need》这篇文章的8位作者都是均等贡献。Transformer遵循了主流的 encoder-decoder 架构，且是第一个仅使用注意力机制的框架。
+
+Transformer 要解决的是传统 RNN 架构难以处理长序列输入的问题。原因主要有两个，一是 LSTM 和 GRU 都使用 hidden state $h_t$，最开始输入的信息会随着序列的变长而逐渐被“遗忘”。二是 RNN 自身的时序性使得**并行计算**非常困难。Transformer 通过注意力机制和 self-attention 矩阵运算的并行，完美地解决了这两个问题。 
+
+如架构图所示，Encoder 的 embedding 是初始随机的，Positional Encoding 为本来相互 attention 、相互平等的 Tokens 之间，加入了非常重要的位置信息。之后，每个 representation 再通过可学习的参数矩阵，映射成 Q、K、V，经过 **Multi-Head Attention Layer** 以及**残差链接**、**LayerNorm**，学出 tokens 之间的关系，再由 position-wise 的 两层 MLP 进一步学习表征。最后，输入的序列的 embedding 作为 key-value-pair 进入 Decoder 的注意力层。Decoder 的架构和 Encoder 类似， 唯一的区别在于：做 self-attention 的时候需要掩码，以防已生成的序列在训练时看到未来的信息。
+
+![-2](/papers/transformer2.png)
+
+值得注意的一些细节。首先，Transformer 原文使用的是 **Scaled** Dot-Product Attention，从而规避了模型维度 $d_k$ 过大而造成的 softmax 梯度太小难以训练的问题。其次，多头注意力机制效仿 CNN 的多通道设计，通过提取不同的特征再 Concat 并投影回原来的维度，显著提升了模型效果。
+
+最后总结一下，Transformer 是 AI 领域近10年来最重要的工作之一，它仅仅使用注意力机制就完成了卷积等复杂操作才有的表现。此外，Transformer 的 Encoder 体现出了较强的特征表示能力，也为后续 BERT 和 ViT 等工作提供了架构基础。其实，Transformer 的注意力机制很简单，通过 Tokens 内在的相互关联学习合适的表征的想法似乎比 CNN 的卷积更为直观。这便给了我们反思，为什么这么简单的思想却在继 CNN 和 RNN 架构之后很长的一段时间内无人提出？正如同8位作者之一的 Llion Jones 所说：“我厌倦了 Transformer"。这个时代，我们需要的是“厌倦的能力”。
+</PaperNote>
+
 
 ## RT-2
 
-*"RT-2: Vision-Language-Action Model Transfers Web Knowledge to Robotic Control"* (Brohan et al., 2023). Co-training a vision-language model with robotic data to obtain a single model that can see, understand, and act.
+<PaperNote
+  title="RT-2"
+  arxivId="2307.15818"
+  noteUrl="/papers/RT-2.pdf"
+  summary= "运用 co-fine-tuning 和 action tokenization，以 LLM 作为 Backbone 的 VLA 架构"
+  images={["/papers/RT-2.png"]}
+>
 
-<PdfEmbed src="/papers/RT-2.pdf" title="RT-2" label="Download RT-2" />
+RT-2 是 Google 团队在发布 RT-1 一年后提出的，可以说是全新的 VLA 架构，其 Backbone 给定机器状态、视觉和文字输入下的下一动作 Token 为目标的 LLM。RT-2 不是 end2end 模型，而是有整个 pretrain 的 VLM（论文中使用的是 PaLI-X 和 PaLM-E）。
+
+RT-2 的优异性能主要源自于良好的训练技巧。**co-fine-tuning** 使用了 robotics data 和 web data 的混合数据。在提升机器人应对专业场景能力的同时，显著提升了策略的泛化能力。同时，对于两种不同的 Data，RT-2 采取了两种截然不同的 Output Contraint。对于 web data，VLA 输出的 Token 并不限制；而对于 robotics data，模型限制输出为 valid action tokens。
+
+在 Inference 的过程中，运用 “Plan” step 和 chain-of-thought 可较为显著地提高模型应对复杂任务的能力。
+
+总结一下，RT-2 的架构开创了一个新的 VLA 派别。在此之后，OpenVLA 等工作对该架构进行了效仿、改进和完善。
+
+PS: RT-2 是我第一篇完整读下来并标注笔记的论文。
+</PaperNote>
 
 ## I-JEPA
 
-*"Revisiting Feature Prediction for Learning Visual Representations from Unconstrained Data"* (Assran et al., 2023). A method that predicts missing regions in latent space rather than pixels, learning representations without reconstruction.
+<PaperNote
+  title="I-JEPA"
+  arxivId="2301.08243"
+  noteUrl="/papers/I-JEPA.pdf"
+  summary="在 latent space 做 feature prediction，而非逐像素重建，学到更可迁移的表示。"
+  images={["/papers/I-JEPA.png"]}
+>
 
-<PdfEmbed src="/papers/I-JEPA.pdf" title="I-JEPA" label="Download I-JEPA" />
+I-JEPA 的全称是 Image-based Joint-Embedding Predictive Architecture，是 Yann LeCun 团队提出的 JEPA 系列的基础之作。JEPA 的最大特点是，所有的预测和 loss 都是在 representation space 中进行。后续的实验（如 object counting 和 depth prediction）证明，这样做似乎更有利于模型学出更好的 semantic features，往大了说就是可以真正理解世界运行的物理规律。
+
+![-2](/papers/I-JEPA2.png)
+
+JEPA 实际上是一种对比学习 Contrastive Learning 的架构，因此，**reprsentation collapse** 是训练 JEPA 时经常遇到的问题。I-JEPA 的训练过程非常简单：对一张图片，随机取若干个 patches 作为可见的 context，经过 context encoder (ViT)，加上 positional tokens，再通过 predictor (narrow ViT)预测若干个不重叠的区域的 embedding。同理，target encoder 得到需要预测的区域的 embedding。目标函数即为两种 embedding 在 embedding space 上的 L2 的平均值。为了解决 collapse 的问题，target encoder 的权重由 context encoder 权重的 EMA 得到。
+
+I-JEPA 的实验结果比较出色，并且是 scalable 的。通过消融实验，latent-space predicting 表现显著优于 pixel-space predicting。JEPA 具有更强的语义学习能力。I-JEPA 是 JEPA 系列的开山之作，引领的范式激发了之后的一众 JEPA 论文，如 V-JEPA 和 LeWM。
+</PaperNote>
 
 ## LeWorldModel
 
-A world-model paper about learning structured, generalizable representations of the environment, enabling planning and prediction.
+<PaperNote
+  title="LeWorldModel"
+  arxivId="2603.19312"
+  noteUrl="/papers/LeWorldModel.pdf"
+  summary="一种 from pixels 的 end-to-end JEPA 世界模型。"
+  images={["/papers/LeWM.png"]}
+>
 
-<PdfEmbed src="/papers/LeWorldModel.pdf" title="LeWorldModel" label="Download LeWorldModel" />
+LeWorldModel 是 Yann LeCun 团队提出的基于 JEPA 的 WM。其目标是构建端到端、稳定（stable）的 JEPA 世界模型：直接从像素（pixels）输入，在 latent space 学习预测未来表示（future representation），用于 robot policy learning 与规划。这里的 “from pixels” 指的是从 raw picture data 构建、训练整个模型，仍然是在 latent space 中做预测，而不是在 pixel space 中。
+
+LeWorldModel 的 autoregressive 架构异常简单，只有一个 Encoder（ViT） 和一个 Predictor（6-layer transformer）。特别的是，它引入了 **SIGReg**，通过约束 embedding 各项投影为标准正态分布，有效地解决了 representation collapse 的问题。
+
+![-2](/papers/LeWM2.png)
+
+需要注意的是，对于 LeWorldModel 的 Latent Planning，为了避免误差累积的问题，LeWorldModel “走K步，看H步”，通过 CEM 实现 MPC: 先设置 horizon $H$，然后随机生成若干个 $H$ steps 的、从 initial observation **$o_1$** 到最终状态预测值 embedding 的路径，选择 embedding space 上 MSE 最小的若干条 best candidates，用他们的均值和方差更新采样，如此循环往复，就会得到收敛的最优路径。最后，每走 $K$ 步重复一次上述步骤。
+
+实验方面，LeWorldModel 在 Push-T、Reacher 等任务上成功率高达 96%，显著优于同类端到端模型 PLDM，与依赖预训练的 DINO-WM 持平或更强；且其潜在空间能编码物理状态并可靠检测异常事件。
+
+相关后续工作还包括 Temporally Centered SIGReg、Depth-Regularized JEPA World Models 等，都在探讨如何让世界模型学到更可迁移、更稳定的表示。
+
+</PaperNote>

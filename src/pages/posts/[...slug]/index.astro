@@ -15,6 +15,7 @@ import BackToTopButton from "./_components/BackToTopButton.astro";
 import AdjacentPostNav from "./_components/AdjacentPostNav.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import Comments from "@/components/Comments.astro";
+import MathRenderer from "@/components/MathRenderer.astro";
 import { walineServerURL } from "@/data/waline";
 import config from "@/config";
 
@@ -173,6 +174,8 @@ const ogImage = ogImageUrl
 
         <Comments />
       </div>
+
+      <MathRenderer />
 
       <TableOfContents headings={headings} />
     </div>

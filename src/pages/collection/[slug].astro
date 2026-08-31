@@ -27,7 +27,7 @@ const sortedPosts = getSortedPosts(posts);
 <Layout title={`${title} | ${config.site.title}`}>
   <Header />
 
-  <main id="main-content" class="app-layout-wide py-8">
+  <main id="main-content" data-back-url-page class="app-layout-wide py-8">
     <header class="mb-8 overflow-hidden rounded-2xl border border-border">
       <div class="bg-gradient-to-r from-accent/15 via-accent/5 to-transparent p-6 sm:p-8">
         <h1 class="text-3xl font-bold sm:text-4xl">{title}</h1>
@@ -53,3 +53,12 @@ const sortedPosts = getSortedPosts(posts);
 
   <Footer />
 </Layout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const main = document.querySelector("#main-content");
+    if (main?.hasAttribute("data-back-url-page")) {
+      sessionStorage.setItem("backUrl", window.location.pathname);
+    }
+  });
+</script>

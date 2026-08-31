@@ -28,12 +28,32 @@ const t = useTranslations(locale);
   function updateGoBackUrl() {
     const backButton: HTMLAnchorElement | null =
       document.querySelector("#back-button");
+    if (!backButton) return;
 
     const backUrl = sessionStorage.getItem("backUrl");
-
-    if (backUrl && backButton) {
+    if (backUrl) {
       backButton.href = backUrl;
     }
+
+    // Avoid binding the click handler twice on the same element.
+    if (backButton.dataset.bound) return;
+    backButton.dataset.bound = "true";
+
+    backButton.addEventListener("click", e => {
+      // Let middle-click / cmd+click open in a new tab normally.
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)
+        return;
+      e.preventDefault();
+
+      // Go back to the previous (upper) page in history.
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        // Fresh load with no back history: fall back to the stored URL (or home).
+        const target = backUrl || backButton.getAttribute("href");
+        if (target) window.location.href = target;
+      }
+    });
   }
 
   document.addEventListener("astro:page-load", updateGoBackUrl);

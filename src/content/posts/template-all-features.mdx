@@ -1,0 +1,238 @@
+---
+title: "Blog 模板：所有功能演示 (Template: All Features)"
+author: master
+pubDatetime: 2026-08-29T00:00:00Z
+category: others
+tags:
+  - manual
+description: "这是一篇模板文章，演示了本站支持的全部功能：标题层级、列表、引用与 Callout、代码高亮与 diff、图片与图注、KaTeX 公式、表格、MDX 组件、可折叠内容等。内容均为占位示例。"
+---
+
+import ResponsiveTable from "@/components/ResponsiveTable.astro";
+import ImageRow from "@/components/ImageRow.astro";
+
+> 这篇文章用于演示本博客的**全部**排版与功能。复制这份文件（如 `template-all-features.mdx`）改个名字即可作为新文章起点。页面右侧的 Table of Contents 会由 `##/###/####` 标题自动生成。
+
+## 一、基础排版 (Basic Formatting)
+
+这是普通段落：支持 **加粗**、*斜体*、~~删除线~~、`行内代码`、[站内链接](/about)、[外部链接](https://astro.build) 以及行内公式 $h_t$、$\alpha \le \beta$、$E = mc^2$。也可以加 emoji ✨🚀📌。
+
+### 三级标题 (h3)
+
+这一段在 `###` 标题下，会出现在 TOC 的第二层（缩进）。
+
+#### 四级标题 (h4)
+
+这是 `####` 四级标题，会出现在 TOC 的第三层（再次缩进）。
+
+---
+
+## 二、列表 (Lists)
+
+无序列表：
+
+- 第一项
+- 第二项
+  - 嵌套的子项
+  - 另一个子项
+- 第三项
+
+有序列表：
+
+1. 第一步
+2. 第二步
+   1. 嵌套的 2.1
+   2. 嵌套的 2.2
+3. 第三步
+
+任务列表（Task list）：
+
+- [x] 已完成的项
+- [ ] 未完成的项
+- [ ] 另一个待办
+
+---
+
+## 三、引用与 Callout (Quotes & Callouts)
+
+普通引用：
+
+> 这里是普通的 blockquote。**引用里也可以加粗**。
+
+本站支持 Obsidian 风格的 callout（由 rehype-callouts 渲染，样式为 obsidian 主题）：
+
+> [!TIP]
+> 这是一条 **Tip** 提示。适合给读者建议或提醒。
+
+> [!NOTE]
+> 这是一条 **Note** 备注。适合补充说明。
+
+> [!IMPORTANT]
+> 这是一条 **Important** 重要提示。用于强调关键信息。
+
+> [!WARNING]
+> 这是一条 **Warning** 警告。提醒潜在问题。
+
+> [!CAUTION]
+> 这是一条 **Caution** 小心提示。用于有风险的操作。
+
+> [!WARNING]- 可折叠的 Warning (默认收起)
+> 点击标题就会展开看到里面的内容。这是 collapsible callout。
+
+> [!TIP]+ 可展开的 Tip (默认展开)
+> 这是默认展开的 collapsible callout，先看到正文，点击可收起。
+
+自定义 Callout（**无图标**、自定义名称与背景色）：
+
+> [!derivation]
+> 这是自定义的 **derivation** 类型：无图标、靛蓝色背景。标题取自配置里的「推导说明」，也可写成 `[!derivation] 自定义标题` 覆盖。
+
+> [!notation]
+> 自定义 **notation** 类型：琥珀色背景。用途：标注符号含义。
+
+> [!insight]
+> 自定义 **insight** 类型：青绿色背景。用途：点出关键见解。
+
+---
+
+## 四、代码与高亮 (Code)
+
+普通 bash 代码块（带复制按钮）：
+
+```bash
+pnpm install
+pnpm dev
+```
+
+带文件名、行高亮、关键词高亮和 diff 的 TypeScript 代码块：
+
+```ts file=src/demo.ts
+interface Demo { // [!code highlight]
+  name: string;
+  age: number;
+}
+
+// [!code --:1]
+const oldVersion = "v1";
+// [!code ++:1]
+const nowVersion = "v2";
+
+export const demo: Demo = { name: "master", age: 20 }; // [!code word:demo]
+```
+
+说明：`file=` 显示文件名；`{1}` 或 `[!code highlight]` 高亮行；`[!code word:xxx]` 高亮关键词；`[!code ++]/[!code --]` 显示 diff 增删。
+
+---
+
+## 五、图片与图注 (Images)
+
+下面是一张真实渲染的示例图片（**点击图片可以放大预览**）：
+
+<figure>
+  <img src="/default-og.jpg" alt="示例图片" />
+  <figcaption>这是一张示例图片（默认支持点击放大）。</figcaption>
+</figure>
+
+对应的写法：
+
+```mdx
+<figure>
+  <img src="/default-og.jpg" alt="示例图片" />
+  <figcaption>图片说明文字（默认支持点击放大）。</figcaption>
+</figure>
+```
+
+> 提示：图片放在 `public/` 目录下，用 `/文件名` 引用。文章中的图片默认支持点击放大（lightbox）。
+
+### 两图并排 / 多图一行 (ImageRow)
+
+使用 `ImageRow` 组件可以把多张图**并排**展示（移动端自动上下堆叠）：
+
+<ImageRow
+  images={[
+    { src: "/default-og.jpg", alt: "左图", caption: "左图说明" },
+    { src: "/default-og.jpg", alt: "右图", caption: "右图说明" },
+  ]}
+/>
+
+用法（在 `.mdx` 中）：
+
+```mdx
+<ImageRow
+  images={[
+    { src: "/pics/a.png", alt: "A", caption: "A 的说明" },
+    { src: "/pics/b.png", alt: "B", caption: "B 的说明" },
+  ]}
+/>
+```
+
+- 传几个就显示几个，默认**一行两张**（`sm` 及以上两列，移动端单列）。
+- 每张图可加 `caption`（说明文字）和 `href`（点击跳转链接）。
+
+---
+
+## 六、公式 (LaTeX / KaTeX)
+
+行内公式：$h_t$、$\alpha \le \beta$、$E = mc^2$、$\sum\_\{i=1\}^\{n\} x\_i$、$\nabla \cdot \mathbf\{E\}$。
+
+块级公式：
+
+$$ x = \frac\{-b \pm \sqrt\{b^2 - 4ac\}\}\{2a\} $$
+
+多行对齐公式：
+
+$$ \begin\{aligned\} \nabla \cdot \mathbf\{E\} &= \frac\{\rho\}\{\varepsilon_0\} \\\\ \nabla \cdot \mathbf\{B\} &= 0 \end\{aligned\} $$
+
+---
+
+## 七、表格 (Tables)
+
+普通 Markdown 表格：
+
+| 参数 | 说明 | 默认值 |
+| ---- | ---- | ------ |
+| `title` | 站点标题 | master's blog |
+| `lang` | 语言 | en |
+| `timezone` | 时区 | Asia/Shanghai |
+
+带 `ResponsiveTable` 组件的表格（移动端可横向滚动）：
+
+<ResponsiveTable>
+
+| 选项 | 描述 |
+| ---- | ---- |
+| `category` | 文章分类：research / daily / others |
+| `tags` | 标签数组，用于 Tags 页与合集归类 |
+| `pubDatetime` | 发布时间，ISO 格式 |
+
+</ResponsiveTable>
+
+---
+
+## 八、MDX 组件 (Components)
+
+本文支持 MDX，可引入自定义组件。例如上面的 `ResponsiveTable` 与下面的可折叠 HTML：
+
+<details>
+  <summary>点击展开查看可折叠内容 (details/summary)</summary>
+  <p>这是 <code>&lt;details&gt;</code> 折叠块里的内容。</p>
+  <ul>
+    <li>列表项 A</li>
+    <li>列表项 B</li>
+  </ul>
+</details>
+
+> 其它可用组件：`PdfEmbed`（内嵌 PDF + 下载）、`PaperNote`（论文阅读卡片，含 Arxiv ID 与笔记下载）等，使用方法见对应源码 `src/components/`。
+
+---
+
+## 九、其它 (Misc)
+
+- 文章页自带：顶部阅读进度条、右侧 Table of Contents（scrollspy 高亮）、上一篇/下一篇导航、分享按钮、返回顶部按钮。
+- 配置了 Waline 后：评论区与真实浏览量。
+- Frontmatter 支持 `draft: true`（草稿不发布）、`featured: true`（主页精选）等字段。
+- 保存后即可预览；发布只需删除 `draft` 或设为 `false`。
+
+---
+
+*模板结束。祝你写博客愉快！*

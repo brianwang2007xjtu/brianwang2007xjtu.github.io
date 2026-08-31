@@ -1,0 +1,47 @@
+---
+type ImageItem = {
+  src: string;
+  alt?: string;
+  caption?: string;
+  href?: string;
+};
+
+type Props = { images?: ImageItem[] };
+
+const { images = [] } = Astro.props;
+---
+
+<div class="my-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+  {
+    images.map(img => (
+      <figure class="m-0">
+        {
+          img.href ? (
+            <a href={img.href} target="_blank" rel="noopener noreferrer">
+              <img
+                src={img.src}
+                alt={img.alt ?? ""}
+                class="w-full rounded-lg border border-border object-cover"
+                loading="lazy"
+              />
+            </a>
+          ) : (
+            <img
+              src={img.src}
+              alt={img.alt ?? ""}
+              class="w-full rounded-lg border border-border object-cover"
+              loading="lazy"
+            />
+          )
+        }
+        {
+          img.caption && (
+            <figcaption class="mt-1 text-center text-xs text-muted-foreground">
+              {img.caption}
+            </figcaption>
+          )
+        }
+      </figure>
+    ))
+  }
+</div>

@@ -23,7 +23,7 @@ for (const collection of collections) {
 <Layout title={`Collections | ${config.site.title}`}>
   <Header />
 
-  <main id="main-content" class="app-layout-wide py-8">
+  <main id="main-content" data-back-url-page class="app-layout-wide py-8">
     <header class="mb-8">
       <h1 class="text-3xl font-medium sm:text-4xl">Collections</h1>
       <p class="mt-2 text-muted-foreground">
@@ -55,3 +55,12 @@ for (const collection of collections) {
 
   <Footer />
 </Layout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const main = document.querySelector("#main-content");
+    if (main?.hasAttribute("data-back-url-page")) {
+      sessionStorage.setItem("backUrl", window.location.pathname);
+    }
+  });
+</script>

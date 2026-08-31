@@ -37,6 +37,7 @@ const tags = getUniqueTags(categoryPosts);
 
   <main
     id="main-content"
+    data-back-url-page
     class="app-layout-wide py-8"
   >
     <div class="grid gap-y-12 sm:grid-cols-[minmax(0,1fr)_280px] sm:gap-x-8">
@@ -114,3 +115,12 @@ const tags = getUniqueTags(categoryPosts);
 
   <Footer />
 </Layout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const main = document.querySelector("#main-content");
+    if (main?.hasAttribute("data-back-url-page")) {
+      sessionStorage.setItem("backUrl", window.location.pathname);
+    }
+  });
+</script>

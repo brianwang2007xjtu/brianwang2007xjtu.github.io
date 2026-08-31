@@ -1,0 +1,212 @@
+---
+title: "Diffusion Model 的数学原理"
+author: master
+pubDatetime: 2026-08-31T00:00:00Z
+category: research
+tags:
+  - diffusion-model
+  - math
+description: "拆分逻辑和推导，大名鼎鼎的 Diffusion Model 也没那么艰涩难懂 ～"
+---
+
+import ResponsiveTable from "@/components/ResponsiveTable.astro";
+import ImageRow from "@/components/ImageRow.astro";
+
+<figure>
+  <img src="/diffusion-model/ddpm.png" alt="diffusion-process" />
+  <figcaption> * 图片来源：[《Denoising Diffusion Probablistic Models》](/papers/DDPM.pdf)</figcaption>
+</figure>
+
+> The sculpture is already complete within the marble block before i start my work. It is already there, I just have to chsiel away the superfluous material. 
+
+<p style="text-align: right; font-style: italic;"> —— Michelangero </p>
+
+## 引言
+
+学习 DL 至今，遇到最数学最繁杂的概念非 Diffusion Model 莫属。很多人在学习这部分内容的时候，会被许多所谓的“先修”知识吓退，诸如 Energy-based Models，Langevin Process 或者 Score Matching 此类。但绝大多数的这类内容需归于传统扩散模型的范畴，不能完全掌握并不会影响对 DDPM 的理解。但即便如此，Master 还是花费了相当大的精力才略微捋清楚 diffusion 故事的来龙去脉，才基本理解其背后的数学原理和公式推导。
+
+Diffusion Model 的火爆主要始于 2020 年提出的 **DDPM（Denosing Diffusion Probablistic Model**）的提出，凭借远超GAN的生成质量与训练稳定性、避免模式崩塌的优势，成为当前 DALL-E、Stable Diffusion 等顶级图像生成模型的理论基石，并因其基于分数函数的灵活数学结构，在众多领域都有很好的 performance。
+
+---
+
+## 何谓 Diffusion Model
+
+在尝试理解清楚 Diffusion Model 的数学原理之前，需要对 Diffusion Model 的设计哲学以及训练、推理模式有一定的了解。和 VAE 等其他生成模型类似，DDPM 的根本任务是从随机采样的 Noise 出发，学习出与真实分布 $p\_\{\text\{data\}\}$ 尽可能相近的 $p\_\theta$（就如同 VAE 的 Decoder 部分）。
+
+<figure>
+  <img src="/diffusion-model/diffusion-process.png" alt="diffusion-process" />
+  <figcaption> * 图片来源：[【【大白话01】一文理清 Diffusion Model 扩散模型 | 原理图解+公式推导】](https://www.bilibili.com/video/BV1xih7ecEMb/?spm_id_from=333.337.search-card.all.click)</figcaption>
+</figure>
+
+**Forward Diffusion Process** 或者简称为 Diffusion Process，是拟合过程的反向：从数据集中随机采样一个原始样本 $\mathbf\{x\}\_0$，通过不断加入标准 Gussian 噪声 $\mathbf\{\epsilon\}\_t \sim \mathcal\{N\}(0, 1)$，逐步转化为噪声 $\mathbf\{x\}\_T$。
+而对于 **Denoising Process** 来说，训练时，需要随机选取 $\mathbf\{x\}\_t$ 以及 $t$ 时刻的 embedding，通过 **Noise Predictor** 得到 $\mathbf\{\epsilon\}\_\{\theta\}(\mathbf\{x\}\_t, t)$，并与真实噪声 $\epsilon$ 计算 Loss。推理时，用 $\mathbf\{x\}\_t$ 去除 $\mathbf\{\epsilon\}\_\{\theta\}$ 就可得到 $\mathbf\{x\}\_\{t-1}$，再 autoregressive，最终得到 $\mathbf\{x}\_0$。
+
+<figure>
+  <img src="/diffusion-model/noise-predictor.png" alt="diffusion-process" />
+  <figcaption> * 图片来源：[【扩散模型 - Diffusion Model【李宏毅2023】】](https://www.bilibili.com/video/BV14c411J7f2?spm_id_from=333.788.videopod.episodes&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)</figcaption>
+</figure>
+
+---
+
+## 我们能从 Diffusion Process 得到什么
+
+简单地加入标准正态噪声无法得到最后的标准正态“噪声”。这是因为，如果直接令 $\mathbf\{x}\_t = \mathbf\{x}\_\{t-1} + \sqrt\{\beta} \epsilon $，那么 $q(\mathbf\{x}\_t | \mathbf\{x}\_0) = \mathcal\{N\}(\mathbf\{x}\_0, t \beta)$ 而不是 $\mathcal\{N\}(0, 1)$。
+因此，为了修正这个分布，$\mathbf\{x}\_\{t-1}$ 前需要系数 $\sqrt\{1-\beta}$。再令 $\alpha\_t = 1-\beta\_t$，便可以得到：
+
+$$
+\begin\{aligned\} 
+  \mathbf\{x\}\_t &= \sqrt\{\alpha\_t\} \cdot \mathbf\{x\}\_\{t-1\} + \sqrt\{1-\alpha\_t\} \cdot \epsilon\_\{t-1\} \\\\ 
+  &= \sqrt\{\alpha\_t} \cdot (\sqrt\{\alpha\_\{t-1}\} \cdot \mathbf\{x}\_\{t-2} + \sqrt\{1-\alpha\_\{t-1}} \cdot \mathbf\{\epsilon}\_\{t-2}) + \sqrt\{1-\alpha\_t\} \cdot \epsilon\_\{t-1\} \\\\
+  &= \cdots \\\\
+  &= \sqrt\{\alpha\_t \alpha\_\{t-1} \cdots \alpha\_1} \cdot \mathbf\{x}\_0 + \sqrt\{1-\alpha\_t \alpha\_\{t-1} \cdots \alpha\_1} \cdot \mathbf\{\epsilon}
+\end\{aligned\}
+$$
+
+简洁起见，令 $\bar\{\alpha}\_t = \alpha\_1 \alpha\_2 \cdots \alpha\_t$，于是有：
+
+$$
+  \mathbf\{x}\_t = \bar\{\alpha}\_t \cdot \mathbf\{x}\_0 + \sqrt\{1-\bar\{\alpha}\_t} \cdot \mathbf\{\epsilon}
+$$
+
+这个式子非常有用，实际上是说：直觉上不停加噪的过程，其实可以“**一步到底**”，等价于只加一次 Gussian Noise。
+
+---
+
+## 反过来就是 Denoising Process
+<figure>
+  <img src="/diffusion-model/reverse.png" alt="diffusion-process" />
+  <figcaption> * 图片来源：[【【大白话01】一文理清 Diffusion Model 扩散模型 | 原理图解+公式推导】](https://www.bilibili.com/video/BV1xih7ecEMb/?spm_id_from=333.337.search-card.all.click)</figcaption>
+</figure>
+
+我们的最终目标是要预测每一步加入的噪声，也就是想办法推测出 $q(\mathbf\{x}\_\{t-1} | \mathbf\{x}\_t)$。这个分布很难直接计算得到，因为正向加噪的过程是熵增的，而反向去噪的过程是熵减的，所以必须加入一些额外条件才可计算出来（见后文）。
+
+在训练过程中，我们需要用模型 $p\_\{\theta}(\mathbf\{x}\_\{t-1} | \mathbf\{x}\_t)$ 来拟合这个真实分布。因此，由概率论的知识，可以用最大似然估计（Maximum Likelihood Estimation）的方法$^\{*}$设置目标函数：
+
+Sample \{$\bm\{x\}^1, \bm\{x\}^2, \cdots, \bm\{x\}^m$\} from $p\_\{data\}$
+
+$$
+\theta^* = \arg\max\_\{\theta\} \prod\_\{i=1\}^\{m\} p\_\{\theta\}(\bm\{x\}^i) \approx \arg\max\_\{\theta\} \mathbb\{E}\_\{\bm\{x\}\sim p\_\{data\}\}\left[\log p\_\{\theta\}(\bm\{x\})\right] 
+$$
+
+由于 KL Divergence 恒非负，所以
+
+$$ 
+  -\log p\_\{\theta}(\bm\{x\}\_0) \leq -\log p\_\{\theta}(\bm\{x\}\_0) + D\_\{KL}(q(\bm\{x\}\_\{1:T} | \bm\{x\}\_0) || p\_\{\theta}(\bm\{x\}\_\{1:T}|\bm\{x\}\_0))
+$$
+
+即
+
+$$
+  -\log p\_\{\theta}(\bm\{x\}\_0) \leq \mathbb\{E}\_\{q(\bm\{x\}\_\{1:T}|\bm\{x\}\_0)} \left[ \log \frac\{q(\bm\{x\}\_\{1:T}|\bm\{x\}\_0)}\{p\_\{\theta}(\bm\{x\}\_\{0:T})} \right]
+$$
+
+也即
+
+$$
+  \log p\_\{\theta}(\bm\{x\}\_0) \geq \mathbb\{E}\_\{q(\bm\{x\}\_\{1:T}|\bm\{x\}\_0)} \left[ \log \frac\{p\_\{\theta}(\bm\{x\}\_\{0:T})}\{q(\bm\{x\}\_\{1:T}|\bm\{x\}\_0)} \right]
+$$
+
+上式的右侧是 DDPM 中的 **ELBO（证据下界）**，最大化目标函数的问题可以转化为最大化 **ELBO** 的问题。再经过一系列的复杂变形（详见：[《Denoising Diffusion Probablistic Models》](/papers/DDPM.pdf)），可以将 **ELBO** 化成如下形式：
+
+$$
+\begin\{aligned\}
+  \mathrm\{ELBO} &= \mathbb\{E}\_\{q(\bm\{x\}\_1|\bm\{x\}\_0)} \log p\_\{\theta}(\bm\{x\}\_0|\bm\{x\}\_1) - D\_\{KL}(q(\bm\{x\}\_T|\bm\{x\}\_0)||p(\bm\{x\}\_T)) \\\\
+  &-\sum\_\{t=2\}^\{T\} \mathbb\{E}\_\{q(\bm\{x\}\_t|\bm\{x\}\_0)} D\_\{KL}(q(\bm\{x\}\_\{t-1}|\bm\{x\}\_t,\bm\{x\}\_0)||p\_\{\theta}(\bm\{x\}\_\{t-1}|\bm\{x\}\_t)) \\\\
+\end\{aligned\}
+$$
+
+其中，$D\_\{KL}(q(\bm\{x\}\_T|\bm\{x\}\_0)||p(\bm\{x\}\_T))$ 与模型参数 $\theta$ 无关，$\mathbb\{E}\_\{q(\bm\{x\}\_1|\bm\{x\}\_0)} \log p\_\{\theta}(\bm\{x\}\_0|\bm\{x\}\_1)$ 可以忽略不计。因此，最大化 **ELBO** 可以转化为：
+
+$$
+\min \sum\_\{t=2\}^\{T\} \mathbb\{E}\_\{q(\bm\{x\}\_t|\bm\{x\}\_0)} D\_\{KL}(q(\bm\{x\}\_\{t-1}|\bm\{x\}\_t,\bm\{x\}\_0)||p\_\{\theta}(\bm\{x\}\_\{t-1}|\bm\{x\}\_t)) 
+$$
+
+要求出满足这个式子的 $\theta$，必须先求出 $q(\bm\{x\}\_\{t-1}|\bm\{x\}\_t,\bm\{x\}\_0)$。由 **Bayes** 公式与 **Markov** 性可得：
+
+$$
+  q(\bm\{x\}\_\{t-1}|\bm\{x\}\_t,\bm\{x\}\_0) = \frac\{q(\bm\{x\}\_\{t-1},\bm\{x\}\_t,\bm\{x\}\_0)}\{q(\bm\{x\}\_t,\bm\{x\}\_0)} = \frac\{q(\bm\{x\}\_t|\bm\{x\}\_\{t-1})q(\bm\{x\}\_\{t-1}|\bm\{x\}\_0)}\{q(\bm\{x\}\_t|\bm\{x\}\_0)}
+$$
+
+上式三个部分的分布都由 **Forward Diffusion Process** 所确定，可推导出：
+
+$$
+  q(\bm\{x\}\_\{t-1}|\bm\{x\}\_t,\bm\{x\}\_0) = \mathcal\{N\}\left(\bm\{x\}\_\{t-1}\frac\{\sqrt\{\alpha\_t}(1-\bar\{\alpha}\_\{t-1})\bm\{x\}\_t+\sqrt\{\bar\{\alpha}\_\{t-1}}(1-\alpha_t)\bm\{x}_0}\{1-\bar\{\alpha}_t}, \frac\{(1-\alpha_t)(1-\bar\{\alpha}\_\{t-1})}\{1-\bar\{\alpha}_t}\right) 
+$$
+
+<figure>
+  <img src="/diffusion-model/compute_KL.png" alt="diffusion-process" />
+  <figcaption> * 图片来源：[【扩散模型 - Diffusion Model【李宏毅2023】】](https://www.bilibili.com/video/BV14c411J7f2?spm_id_from=333.788.videopod.episodes&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)</figcaption>
+</figure>
+
+两个 Gussian 分布的 KL Divergence 只与均值和方差有关，由于上式的方差是固定的，最小化 KL Divergence 就是**最小化均值之差**，即：
+
+$$
+  \theta^* = \arg\min_\{\theta} \frac\{1}\{2\sigma_q^2(t)} \left[ \lVert \bm\{\mu}\_\{\theta} - \bm\{\mu}_q \rVert_2^2 \right]
+$$
+
+注意到，$\bm\{\mu}_q$ 中的 $\bm\{x}_0$ 是最终的目标生成，因此无法提前预知，需要转化成已知条件可表示的形式。由 **Forward Diffusion Process**，可知：
+
+$$\bm\{x}_0 = \frac\{\bm\{x}_t-\sqrt\{1-\bar\{\alpha}_t}\mathbf\{\epsilon}_t}\{\sqrt\{\bar\{\alpha}_t}}$$
+
+代入可得：
+
+$$
+  \bm\{\mu}_q = \frac\{1}\{\sqrt\{\alpha_t}} \left(\bm\{x}_t - \frac\{1-\alpha_t}\{\sqrt\{1-\bar\{\alpha}_t}}\mathbf\{\epsilon}_t \right)
+$$
+
+再进一步，便得到了训练和采样循环最重要的两个公式：
+
+> [!train]
+> $$ \arg\min_\{\theta} \frac\{1}\{2\sigma_q^2(t)} \frac\{(1-\alpha_t)^2}\{(1-\bar\{\alpha}_t)\alpha_t}\left[ \lVert \mathbf\{\epsilon}_t - \mathbf\{\epsilon}\_\{\theta}(\bm\{x}_t, t) \rVert_2^2 \right]$$
+
+> [!sample]
+> $$ \bm\{x}\_\{t-1} = \frac\{1}\{\sqrt\{\alpha_t}} \left(\bm\{x}_t - \frac\{1-\alpha_t}\{\sqrt\{1-\bar\{\alpha}_t}}\mathbf\{\epsilon}\_\{\theta}(\bm\{x}_t, t) \right) + \sigma_t\bm\{z}$$
+
+---
+
+## *为什么能用最大似然估计
+
+**KL Divergence** 即 KL 散度，是衡量两个分布相似程度的指标。显然地，训练出的模型预测的分布，与真实的分布越接近，效果越好。因此，只需要证明**最大化似然函数和最小化 KL 散度等价**，即可说明此处用最大似然估计法的合理性。这个证明非常简单：
+
+$$
+\begin\{aligned\}
+\theta^* &= \arg\max\_\{\theta\} \prod\_\{i=1\}^\{m\} P\_\{\theta\}(\bm\{x\}^i) = \arg\max\_\{\theta\} \log \prod\_\{i=1\}^\{m\} P\_\{\theta\}(\bm\{x\}^i) \\\\
+&= \arg\max\_\{\theta\} \sum\_\{i=1\}^\{m\} \log P\_\{\theta\}(\bm\{x\}^i) \approx \arg\max\_\{\theta\} \mathbb\{E}\_\{\bm\{x\}\sim p\_\{data\}\}[\log P\_\{\theta\}(\bm\{x\})] \\\\
+&= \arg\max\_\{\theta\} \int\_\{\bm\{x\}\} P\_\{data\}(\bm\{x\})\log P\_\{\theta\}(\bm\{x\})dx - \int\_\{\bm\{x\}\} P\_\{data\}(\bm\{x\})\log P\_\{data\}(\bm\{x\})dx \\\\
+&= \arg\max\_\{\theta\} \int\_\{\bm\{x\}\} P\_\{data\}(\bm\{x\})\log\frac\{P\_\{\theta\}(\bm\{x\})\}\{P\_\{data\}(\bm\{x\})\}dx = \arg\min\_\{\theta\} D\_\{KL}(P\_\{data\}||P\_\{\theta\})
+\end\{aligned\}
+$$
+
+于是，说明了目标函数的合理性。
+
+---
+
+## 训练与推理
+**[DDPM](/papers/DDPM.pdf)** 的论文里给出了 Training 和 Sampling 的算法：
+
+<img src="/diffusion-model/diffusion-ago.png" alt="diffusion-process" />
+
+在理解了本博客之前的数学分析与推导后，再回过头来看这两个算法，应该会觉得亲切而简单。正可谓“两图胜两千言”，Master 在这里偷懒不再用文字叙述 process。还没有完完全全理解的读者，可以点开下面两张图（均来自[b站优秀讲解视频](https://www.bilibili.com/video/BV1xih7ecEMb/?spm_id_from=333.337.search-card.all.click)）：
+
+<ImageRow
+  images={[
+    { src: "/diffusion-model/train.png", alt: "train", caption: "Training" },
+    { src: "/diffusion-model/sample.png", alt: "sample", caption: "Sampling" },
+  ]}
+/>
+
+---
+
+## 结语
+至此，Diffusion Model 的数学骨架终于从层层公式中“雕琢”而出，就像米开朗基罗所言的那块大理石——冗余的噪波被一刀刀凿去，剩下的便是纯净的生成之形。回顾全程，我们不过做了三件事：**定义前向加噪、似然最大化、用 Bayes 与 Markov 假设化目标为噪声预测**。每一步都环环相扣，每一步又都“有惊无险”地落在已知分布的温床之上。Master 最初面对这一堆积分、期望和 KL 散度时，也曾怀疑自己是否绕了远路。但当你真正动手推导一遍，便会发现所谓“艰涩”不过是层层包装下的必然逻辑——就像反向过程本身，去噪的每一步都在消除不确定性，而数学的每一步也都在消解模糊性。
+
+当然，推导的终点并非理解的终点。DDPM 的优雅之处，不仅在于它给出了可复现的训练算法，更在于它为后续的加速采样、条件生成乃至跨模态扩散打开了大门。读懂公式只是第一步，亲手跑通代码、调整噪声调度、观察中间隐变量的变化，才是真正让理论活过来的时刻。
+
+希望这篇笼统的梳理能为你省去一些翻找资料的时间。当然，若是时间充足，Master 还是推荐读者研读[原文](/papers/DDPM.pdf) ~
+
+---
+
+## Reference
+1. [https://www.bilibili.com/video/BV1xih7ecEMb/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32](https://www.bilibili.com/video/BV1xih7ecEMb/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)
+2. [https://www.bilibili.com/video/BV14c411J7f2/?p=5&spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32](https://www.bilibili.com/video/BV14c411J7f2/?p=5&spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)
+3. [https://www.kexue.fm/archives/9119](https://www.kexue.fm/archives/9119)

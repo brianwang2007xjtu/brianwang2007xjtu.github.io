@@ -32,7 +32,22 @@ export default defineConfig({
   markdown: {
     processor: unified({
       remarkPlugins: [stripTableOfContentsHeading],
-      rehypePlugins: [rehypeCallouts],
+      rehypePlugins: [
+        [
+          rehypeCallouts,
+          {
+            // Custom callout types (no icon, custom title/colour). Colours are
+            // styled in src/styles/global.css via [data-callout='...'].
+            callouts: {
+              derivation: { title: "推导说明" },
+              notation: { title: "符号说明" },
+              insight: { title: "关键洞察" },
+              train: {title: "Training"},
+              sample: {title: "Sampling"},
+            },
+          },
+        ],
+      ],
     }),
     shikiConfig: {
       themes: { light: "min-light", dark: "night-owl" },

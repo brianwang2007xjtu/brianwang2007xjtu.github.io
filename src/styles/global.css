@@ -79,3 +79,28 @@
   -webkit-text-fill-color: transparent;
   animation: brand-flow 2.5s linear infinite;
 }
+
+/* ===== Custom rehype-callouts (no icon, custom colour) =====
+   These set the same --rc-color-* variables used by the obsidian theme,
+   so a custom callout type defined in astro.config.ts gets its own colour. */
+[data-callout="derivation"] {
+  --rc-color-light: #6366f1;
+  --rc-color-dark: #818cf8;
+}
+[data-callout="notation"] {
+  --rc-color-light: #f59e0b;
+  --rc-color-dark: #fbbf24;
+}
+[data-callout="insight"] {
+  --rc-color-light: #14b8a6;
+  --rc-color-dark: #2dd4bf;
+}
+
+[data-callout="train"] {
+  --rc-color-light: #14b8a6;
+  --rc-color-dark: #2dd4bf;
+}
+
+[data-callout="sample"] {
+  --rc-color-light:#0284c7; --rc-color-dark:#38bdf8; 
+}

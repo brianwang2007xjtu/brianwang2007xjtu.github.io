@@ -5,6 +5,12 @@
   .app-prose {
     @apply prose;
 
+    /* Match axi404.com article body typography:
+       Century Gothic stack + 16px body + comfortable 1.75 reading leading. */
+    font-family: var(--font-app);
+    font-size: 1rem;
+    line-height: 1.75;
+
     h1,
     h2,
     h3,
@@ -107,6 +113,24 @@
 
     pre {
       @apply focus-visible:outline-accent focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-dashed;
+    }
+
+    /* Long KaTeX display formulas: keep them inside the article column with a
+       horizontal scrollbar instead of overflowing the page (mobile-safe). */
+    .katex-display {
+      @apply max-w-full;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 0.5em 0;
+    }
+
+    .katex-display::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .katex-display::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+      border-radius: 9999px;
     }
   }
 

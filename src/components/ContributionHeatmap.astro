@@ -1,0 +1,178 @@
+---
+import { getLevelFn, type ContributionMap, type Level } from "@/utils/getContributions";
+
+interface Props {
+  /** "YYYY-MM-DD" -> raw contribution count for the last year window. */
+  contributions: ContributionMap;
+  /** Cutoff date ("YYYY-MM-DD"): only contributions on/after this date count. */
+  since?: string;
+}
+
+const { contributions, since = "2026-08-27" } = Astro.props;
+
+const DAY = 86400000;
+
+/**
+ * Contributions are reported in units of 10 (10 lines of code = 1 contribution),
+ * but the heatmap colors are computed from the raw counts so the palette stays
+ * exactly as before.
+ */
+const UNIT = 10;
+
+/** GitHub calendar palette. Full static class strings so Tailwind's source
+ *  scanner picks them up. */
+const LEVEL_CLASS: string[] = [
+  "stroke-foreground/10 hover:opacity-80 fill-[#ebedf0] dark:fill-[#161b22]",
+  "stroke-foreground/10 hover:opacity-80 fill-[#c6e48b] dark:fill-[#0e4429]",
+  "stroke-foreground/10 hover:opacity-80 fill-[#7bc96f] dark:fill-[#006d32]",
+  "stroke-foreground/10 hover:opacity-80 fill-[#239a3b] dark:fill-[#26a641]",
+  "stroke-foreground/10 hover:opacity-80 fill-[#196127] dark:fill-[#39d353]",
+];
+
+const LEGEND_CLASS: string[] = [
+  "fill-[#ebedf0] dark:fill-[#161b22]",
+  "fill-[#c6e48b] dark:fill-[#0e4429]",
+  "fill-[#7bc96f] dark:fill-[#006d32]",
+  "fill-[#239a3b] dark:fill-[#26a641]",
+  "fill-[#196127] dark:fill-[#39d353]",
+];
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function dateKey(t: number): string {
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+// Last 365 days of activity, aligned to a Sunday-start grid (GitHub style).
+// Contributions before the cutoff (site launch) do not count at all.
+const now = new Date();
+const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+const base = end - 364 * DAY;
+const start = base - new Date(base).getUTCDay() * DAY;
+const [cutY, cutM, cutD] = since.split("-").map(Number);
+const cutoff = Date.UTC(cutY, cutM - 1, cutD);
+
+interface Cell {
+  key: string;
+  week: number;
+  row: number;
+  raw: number;
+  count: number;
+  level: Level;
+  counted: boolean;
+}
+
+const cells: Cell[] = [];
+const rawCounts: number[] = [];
+for (let w = start, week = 0; w <= end; w += 7 * DAY, week++) {
+  for (let r = 0; r < 7; r++) {
+    const t = w + r * DAY;
+    if (t > end) continue;
+    const key = dateKey(t);
+    const counted = t >= base && t >= cutoff;
+    const raw = counted ? contributions[key] ?? 0 : 0;
+    cells.push({ key, week, row: r, raw, count: 0, level: 0, counted });
+    rawCounts.push(raw);
+  }
+}
+// Colors come from the raw counts (quartiles), so they stay unchanged.
+const levelOf = getLevelFn(rawCounts);
+for (const c of cells) {
+  c.count = Math.round(c.raw / UNIT);
+  c.level = levelOf(c.raw);
+}
+
+// Month labels, GitHub style: placed at the first column of the month's first
+// week; partial first months and labels too close to the previous one are
+// skipped so nothing overlaps (e.g. no "Aug"/"Sep" collision at the top-left).
+const columns = Math.floor((end - start) / (7 * DAY)) + 1;
+const width = columns * 16 - 4;
+const height = 130;
+const labels: { x: number; text: string }[] = [];
+{
+  let lastCol = -1;
+  let t = start;
+  while (t <= end) {
+    const d = new Date(t);
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    const fd = Date.UTC(y, m, 1);
+    if (fd > end) break;
+    const col = Math.floor((fd - start) / (7 * DAY));
+    if (col >= 0 && col < columns && (lastCol < 0 || col - lastCol >= 2)) {
+      labels.push({ x: col * 16 + 16, text: MONTHS[m] });
+      lastCol = col;
+    }
+    t = Date.UTC(y, m + 1, 1);
+  }
+}
+const visibleLabels = labels.filter(l => l.x < width);
+
+const total = cells.filter(c => c.counted).reduce((s, c) => s + c.count, 0);
+const startYear = new Date(start).getUTCFullYear();
+const endYear = new Date(end).getUTCFullYear();
+---
+
+<div class="contrib-scroll mt-1 w-full max-w-full overflow-x-auto pb-2.5">
+  <svg class="block" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    <g>
+      {visibleLabels.map(l => (
+        <text x={l.x} y="0" dominant-baseline="hanging" fill="currentColor">{l.text}</text>
+      ))}
+    </g>
+    {cells.map(c => (
+      <rect
+        class={LEVEL_CLASS[c.level]}
+        x={c.week * 16}
+        y={22 + c.row * 16}
+        width="12"
+        height="12"
+        rx="2"
+        ry="2"
+        data-date={c.key}
+        data-level={c.level}
+      >
+        <title>{`${c.count} contribution${c.count === 1 ? "" : "s"} on ${c.key}`}</title>
+      </rect>
+    ))}
+  </svg>
+</div>
+
+<footer class="flex items-center justify-between">
+  <div>{`${total} contributions in ${startYear} ~ ${endYear}`}</div>
+  <div class="flex items-center gap-1">
+    <span>Less</span>
+    {LEGEND_CLASS.map(cls => (
+      <svg width="12" height="12">
+        <rect width="12" height="12" rx="2" ry="2" class={cls} />
+      </svg>
+    ))}
+    <span>More</span>
+  </div>
+</footer>
+
+<style>
+  /* Always-visible, high-contrast horizontal scrollbar so it's clear the
+     heatmap can be scrolled; extra padding keeps it clear of the last row. */
+  .contrib-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent)
+      transparent;
+  }
+  .contrib-scroll::-webkit-scrollbar {
+    height: 10px;
+  }
+  .contrib-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .contrib-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+    border-radius: 9999px;
+  }
+  .contrib-scroll::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--muted-foreground) 65%, transparent);
+  }
+</style>

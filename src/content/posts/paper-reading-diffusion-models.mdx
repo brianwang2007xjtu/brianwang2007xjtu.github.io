@@ -1,0 +1,97 @@
+---
+title: "Paper Reading: Diffusion Models"
+author: master
+pubDatetime: 2026-09-01T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "扩散模型的小合集📝。"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+扩散模型（Diffusion Model）是一类受热力学启发的生成模型，其核心思想包含前向加噪与逆向去噪两个过程。前向过程对清晰图像逐步添加高斯噪声，直至完全破坏为随机噪声；逆向过程则训练神经网络（如U-Net）学习去噪，从随机噪声中一步步恢复出清晰图像。
+
+2020年的DDPM奠定了现代扩散模型的基础，首次生成高质量图像，但计算成本高昂。Stable Diffusion创新性地引入潜在空间（Latent Space），大幅提升效率并支持文生图。与此同时，DALL-E 2利用CLIP模型增强图文关联能力，而Imagen则借助大型预训练语言模型优化文本理解。它们共同推动扩散模型成为AIGC领域的主流技术。
+
+## DDPM
+
+<PaperNote
+  title="DDPM"
+  arxivId="2006.11239"
+  noteUrl="/papers/DDPM.pdf"
+  summary="Diffusion Model 奠基之作"
+  images={["/diffusion-model/ddpm.png"]}
+>
+
+DDPM 即 Denoising Diffusion Probabilistic Models，是一篇来自 UC Berkeley 的三位作者于2020年发表在 NeurIPS 上的论文。早在2015年，[《Deep Unsupervised Learning using Nonequilibrium Thermodynamics》](https://arxiv.org/abs/1503.03585)就首次提出了 Diffusion Model 的概念，将其定义为逐步加噪的正向过程和逐步去噪的逆向过程。
+
+DDPM 相比 这篇论文，最大的进步在于**将理论成功转化为实用的高性能图像生成器**。早期论文虽定义了加噪与去噪的马尔可夫链框架，但仅能在MNIST等小数据集上生成模糊样本，实用性有限；而DDPM做了两项关键革新：一是将训练目标从“预测去噪后的图像”重定义为“**预测每一步添加的噪声（$\mathbf\{\epsilon}$-prediction）**”，极大简化了学习难度并提升了训练稳定性；二是结合了U-Net结构和自注意力机制，并精心设计了方差调度与采样加速方案。
+
+除此之外，DDPM 极简的数学推导，为之后的 Diffusion Models 做了铺垫，使得后续的论文将创新的重心转移到了工业实现上（更多细节请见本站另一篇 blog：[《Diffusion Model 的数学原理》](https://brianwang2007.com/posts/diffusion-model-math/)）。
+
+</PaperNote>
+
+## Stable Diffusion
+
+<PaperNote
+  title="Stable-Diffusion"
+  arxivId="2112.10752"
+  noteUrl="/papers/Stable-Diffusion.pdf"
+  summary= "U-Net 遇上 cross-attention，在 latent space 中碰撞出 efficient 的火花"
+  images={["/papers/stable-diffusion.png"]}
+>
+
+Stable Diffusion 的“学名”应该叫 **LDM（Latent Diffusion Model）**，这一直接出自 paper 的名字很好地揭示了本篇工作的最大特点：将原图大小的 Noise 联合 conditions 一起降维到 **latent space** 做 Denoise。这大大地减少了参数量，**极大地节约了训练和推理成本**，是本篇文章的最大贡献。然而，Stability AI 公司提供了 4000 张 A100 GPUs 训练该模型，出钱出力，于是将公司名中的 “Stable” 冠在模型名前，也算是一种品牌所有权标识吧。
+
+其实私以为这篇 paper 写得不是很好，比较冗长，绕的弯子比较多。不幸中的万幸是，最重要的架构图画得很清晰。整个 LDM 的架构被划分为三个 blocks：**Pixel Space、Latent Space、Conditioning**。从右向左看，Conditioning 将多种 modalities 的输入 concact 并进入 $\tau\_\{\theta}$，投影到低维的 Latent Space。
+
+最重要的部分就是 Latent Space 的模块。相较于 DDPM 中的 U-Net，LDM 的 U-Net 加入了 cross-attention 机制，使得模型很好地学到了多 modalities 的表征。Pixel Space 中的 Encoder 和 Decoder 都来自预训练好的 VAE，节约了部分训练成本。注意一处细节，$\tau\_\{\theta}$ 和 $\epsilon\_\{\theta}$ 是一块训练的。
+
+总结一下，LDM 最核心的贡献，是将扩散过程压缩到潜在空间，显著降低了训练和推理成本；交叉注意力机制则让多模态条件控制变得灵活而自然。更重要的是，Stable Diffusion 的开源与广泛落地，让这项技术真正走出论文，成为设计、艺术和内容创作领域触手可及的生产力工具。
+
+</PaperNote>
+
+## I-JEPA
+
+<PaperNote
+  title="I-JEPA"
+  arxivId="2301.08243"
+  noteUrl="/papers/I-JEPA.pdf"
+  summary="在 latent space 做 feature prediction，而非逐像素重建，学到更可迁移的表示。"
+  images={["/papers/I-JEPA.png"]}
+>
+
+I-JEPA 的全称是 Image-based Joint-Embedding Predictive Architecture，是 Yann LeCun 团队提出的 JEPA 系列的基础之作。JEPA 的最大特点是，所有的预测和 loss 都是在 representation space 中进行。后续的实验（如 object counting 和 depth prediction）证明，这样做似乎更有利于模型学出更好的 semantic features，往大了说就是可以真正理解世界运行的物理规律。
+
+![-2](/papers/I-JEPA2.png)
+
+JEPA 实际上是一种对比学习 Contrastive Learning 的架构，因此，**reprsentation collapse** 是训练 JEPA 时经常遇到的问题。I-JEPA 的训练过程非常简单：对一张图片，随机取若干个 patches 作为可见的 context，经过 context encoder (ViT)，加上 positional tokens，再通过 predictor (narrow ViT)预测若干个不重叠的区域的 embedding。同理，target encoder 得到需要预测的区域的 embedding。目标函数即为两种 embedding 在 embedding space 上的 L2 的平均值。为了解决 collapse 的问题，target encoder 的权重由 context encoder 权重的 EMA 得到。
+
+I-JEPA 的实验结果比较出色，并且是 scalable 的。通过消融实验，latent-space predicting 表现显著优于 pixel-space predicting。JEPA 具有更强的语义学习能力。I-JEPA 是 JEPA 系列的开山之作，引领的范式激发了之后的一众 JEPA 论文，如 V-JEPA 和 LeWM。
+</PaperNote>
+
+## LeWorldModel
+
+<PaperNote
+  title="LeWorldModel"
+  arxivId="2603.19312"
+  noteUrl="/papers/LeWorldModel.pdf"
+  summary="一种 from pixels 的 end-to-end JEPA 世界模型。"
+  images={["/papers/LeWM.png"]}
+>
+
+LeWorldModel 是 Yann LeCun 团队提出的基于 JEPA 的 WM。其目标是构建端到端、稳定（stable）的 JEPA 世界模型：直接从像素（pixels）输入，在 latent space 学习预测未来表示（future representation），用于 robot policy learning 与规划。这里的 “from pixels” 指的是从 raw picture data 构建、训练整个模型，仍然是在 latent space 中做预测，而不是在 pixel space 中。
+
+LeWorldModel 的 autoregressive 架构异常简单，只有一个 Encoder（ViT） 和一个 Predictor（6-layer transformer）。特别的是，它引入了 **SIGReg**，通过约束 embedding 各项投影为标准正态分布，有效地解决了 representation collapse 的问题。
+
+![-2](/papers/LeWM2.png)
+
+需要注意的是，对于 LeWorldModel 的 Latent Planning，为了避免误差累积的问题，LeWorldModel “走K步，看H步”，通过 CEM 实现 MPC: 先设置 horizon $H$，然后随机生成若干个 $H$ steps 的、从 initial observation **$o_1$** 到最终状态预测值 embedding 的路径，选择 embedding space 上 MSE 最小的若干条 best candidates，用他们的均值和方差更新采样，如此循环往复，就会得到收敛的最优路径。最后，每走 $K$ 步重复一次上述步骤。
+
+实验方面，LeWorldModel 在 Push-T、Reacher 等任务上成功率高达 96%，显著优于同类端到端模型 PLDM，与依赖预训练的 DINO-WM 持平或更强；且其潜在空间能编码物理状态并可靠检测异常事件。
+
+相关后续工作还包括 Temporally Centered SIGReg、Depth-Regularized JEPA World Models 等，都在探讨如何让世界模型学到更可迁移、更稳定的表示。
+
+</PaperNote>

@@ -38,13 +38,13 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
 ---
 
 <Layout>
-  <Header />
+  <Header narrow />
 
   <main
     id="main-content"
     data-layout="index"
     data-home-path={homePath}
-    class="app-layout-wide my-1"
+    class="app-layout-home my-1"
   >
     <!-- Hero -->
     <section class="flex flex-col gap-8 pt-8 pb-12 sm:flex-row sm:items-center">
@@ -92,7 +92,9 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
 
     <!-- Statistics -->
     <section class="flex min-w-0 flex-col gap-y-3">
-      <h2 class="text-xl font-semibold">Statistics</h2>
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-xl font-semibold">Statistics</h2>
+      </div>
       <div class="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
           <!-- Days Online -->
           <div class="group flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:border-foreground/25 hover:shadow-lg">
@@ -178,7 +180,7 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
     <!-- Recent posts -->
     <section class="pt-12 pb-4">
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-2xl font-semibold tracking-wide">Recent Posts</h2>
+        <h2 class="text-xl font-semibold">Recent Posts</h2>
         <a
           href={postsHref}
           class="text-sm text-muted-foreground transition-colors hover:text-accent"
@@ -198,7 +200,7 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
     </section>
   </main>
 
-  <Footer />
+  <Footer narrow />
 </Layout>
 
 <script>

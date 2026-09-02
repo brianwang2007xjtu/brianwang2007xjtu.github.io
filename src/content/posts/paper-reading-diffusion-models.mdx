@@ -1,7 +1,7 @@
 ---
 title: "Paper Reading: Diffusion Models"
 author: master
-pubDatetime: 2026-09-01T00:00:00Z
+pubDatetime: 2026-09-02T00:00:00Z
 category: research
 tags:
   - paper-reading
@@ -13,7 +13,7 @@ import PaperNote from "@/components/PaperNote.astro";
 
 扩散模型（Diffusion Model）是一类受热力学启发的生成模型，其核心思想包含前向加噪与逆向去噪两个过程。前向过程对清晰图像逐步添加高斯噪声，直至完全破坏为随机噪声；逆向过程则训练神经网络（如U-Net）学习去噪，从随机噪声中一步步恢复出清晰图像。
 
-2020年的DDPM奠定了现代扩散模型的基础，首次生成高质量图像，但计算成本高昂。Stable Diffusion创新性地引入潜在空间（Latent Space），大幅提升效率并支持文生图。与此同时，DALL-E 2利用CLIP模型增强图文关联能力，而Imagen则借助大型预训练语言模型优化文本理解。它们共同推动扩散模型成为AIGC领域的主流技术。
+2020年的 DDPM 奠定了现代扩散模型的基础，首次生成高质量图像，但计算成本高昂。Stable Diffusion 创新性地引入潜在空间（Latent Space），大幅提升效率并支持文生图。与此同时，DALL-E 2 利用 CLIP 模型增强图文关联能力。它们共同推动扩散模型成为 AIGC 领域的主流技术。
 
 ## DDPM
 
@@ -53,45 +53,23 @@ Stable Diffusion 的“学名”应该叫 **LDM（Latent Diffusion Model）**，
 
 </PaperNote>
 
-## I-JEPA
+## DALL·E 2
 
 <PaperNote
-  title="I-JEPA"
-  arxivId="2301.08243"
-  noteUrl="/papers/I-JEPA.pdf"
-  summary="在 latent space 做 feature prediction，而非逐像素重建，学到更可迁移的表示。"
-  images={["/papers/I-JEPA.png"]}
+  title="DALLE2"
+  arxivId="2204.06125"
+  noteUrl="/papers/DALL·E-2.pdf"
+  summary="用预训练的 CLIP 训练 prior 和 decoder"
+  images={["/papers/DALL·E-2.png"]}
 >
 
-I-JEPA 的全称是 Image-based Joint-Embedding Predictive Architecture，是 Yann LeCun 团队提出的 JEPA 系列的基础之作。JEPA 的最大特点是，所有的预测和 loss 都是在 representation space 中进行。后续的实验（如 object counting 和 depth prediction）证明，这样做似乎更有利于模型学出更好的 semantic features，往大了说就是可以真正理解世界运行的物理规律。
+DALL·E 2 是 OpenAI 公司继 [GLIDE](https://arxiv.org/abs/2112.10741) 之后又一运用于文本条件图像生成任务的大模型。DALL·E 2 在2022年曾风靡一时，开源的 [Mini 版本](https://github.com/borisdayma/dalle-mini)至今已有 **14.7k** Stars 和 **1.2k** Forks。该模型巨大成功的背后是其强大的生成表现，无论是从图像生成的 fidelity 和 creativity 来说，DALL·E 2 都有很强的竞争力。
 
-![-2](/papers/I-JEPA2.png)
+DALL·E 2 的主要创新在于利用 CLIP 的联合表示空间，构建了一个两阶段的分层生成框架。CLIP 的两个 encoders 都是预训练好的，训练过程中会 parameter freezing。模型的主体部分（分割线之下）非常简单：首先训练一个 prior 将文本编码映射为对应的图像 representation，再以此为条件输入到 diffusion-based 的 decoder，最终生成图片。
 
-JEPA 实际上是一种对比学习 Contrastive Learning 的架构，因此，**reprsentation collapse** 是训练 JEPA 时经常遇到的问题。I-JEPA 的训练过程非常简单：对一张图片，随机取若干个 patches 作为可见的 context，经过 context encoder (ViT)，加上 positional tokens，再通过 predictor (narrow ViT)预测若干个不重叠的区域的 embedding。同理，target encoder 得到需要预测的区域的 embedding。目标函数即为两种 embedding 在 embedding space 上的 L2 的平均值。为了解决 collapse 的问题，target encoder 的权重由 context encoder 权重的 EMA 得到。
+一些细节值得注意。模型的训练样本是 image-text pairs，即 $(x,y)$。prior 有两种，一种是 **AR prior**，另一种是 **diffusion prior**。由于后者的效果一般优于前者，因此本篇的 prior 指的都是 diffusion prior。prior 的本质是一个有 **causal attention mask** 的 Transformer，输入是 CLIP text-encoder 生成的文字 representation $z_t$。这个训练过程是 supervised 的：用 image-encoder 生成的 $z_i$ 作为 Ground Truth。decoder 没有什么特别的，只是将 DDPM 等扩散模型的目标改为直接预测图片本身。实验证明，通过 prior 得到 image representation 的环节是不可或缺的，同时，预测图片本身相较于预测噪声在 DALL·E 2 的任务中效果更好。
 
-I-JEPA 的实验结果比较出色，并且是 scalable 的。通过消融实验，latent-space predicting 表现显著优于 pixel-space predicting。JEPA 具有更强的语义学习能力。I-JEPA 是 JEPA 系列的开山之作，引领的范式激发了之后的一众 JEPA 论文，如 V-JEPA 和 LeWM。
+最后再来谈一下 DALL·E 2 的局限：它在根本上缺乏对人类语言和物理世界的深度理解，例如难以处理否定、被动等复杂句法，对“在...里”或“在...上”等基本空间关系的理解正确率极低，甚至会出现一词多义的歧义和属性“泄漏”问题；在图像生成层面，它难以生成可读的文字。（PS：很有意思的是，DALL·E 2 似乎发明了[鸟语](https://x.com/giannis_daras/status/1531693093040230402)和[鲸鱼语](https://x.com/giannis_daras/status/1531693104821985280)～）
 </PaperNote>
 
-## LeWorldModel
 
-<PaperNote
-  title="LeWorldModel"
-  arxivId="2603.19312"
-  noteUrl="/papers/LeWorldModel.pdf"
-  summary="一种 from pixels 的 end-to-end JEPA 世界模型。"
-  images={["/papers/LeWM.png"]}
->
-
-LeWorldModel 是 Yann LeCun 团队提出的基于 JEPA 的 WM。其目标是构建端到端、稳定（stable）的 JEPA 世界模型：直接从像素（pixels）输入，在 latent space 学习预测未来表示（future representation），用于 robot policy learning 与规划。这里的 “from pixels” 指的是从 raw picture data 构建、训练整个模型，仍然是在 latent space 中做预测，而不是在 pixel space 中。
-
-LeWorldModel 的 autoregressive 架构异常简单，只有一个 Encoder（ViT） 和一个 Predictor（6-layer transformer）。特别的是，它引入了 **SIGReg**，通过约束 embedding 各项投影为标准正态分布，有效地解决了 representation collapse 的问题。
-
-![-2](/papers/LeWM2.png)
-
-需要注意的是，对于 LeWorldModel 的 Latent Planning，为了避免误差累积的问题，LeWorldModel “走K步，看H步”，通过 CEM 实现 MPC: 先设置 horizon $H$，然后随机生成若干个 $H$ steps 的、从 initial observation **$o_1$** 到最终状态预测值 embedding 的路径，选择 embedding space 上 MSE 最小的若干条 best candidates，用他们的均值和方差更新采样，如此循环往复，就会得到收敛的最优路径。最后，每走 $K$ 步重复一次上述步骤。
-
-实验方面，LeWorldModel 在 Push-T、Reacher 等任务上成功率高达 96%，显著优于同类端到端模型 PLDM，与依赖预训练的 DINO-WM 持平或更强；且其潜在空间能编码物理状态并可靠检测异常事件。
-
-相关后续工作还包括 Temporally Centered SIGReg、Depth-Regularized JEPA World Models 等，都在探讨如何让世界模型学到更可迁移、更稳定的表示。
-
-</PaperNote>

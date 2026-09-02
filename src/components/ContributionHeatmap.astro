@@ -2,7 +2,7 @@
 import { getLevelFn, type ContributionMap, type Level } from "@/utils/getContributions";
 
 interface Props {
-  /** "YYYY-MM-DD" -> raw contribution count for the last year window. */
+  /** "YYYY-MM-DD" -> raw contribution count (full history). */
   contributions: ContributionMap;
   /** Cutoff date ("YYYY-MM-DD"): only contributions on/after this date count. */
   since?: string;
@@ -46,14 +46,25 @@ function dateKey(t: number): string {
   return new Date(t).toISOString().slice(0, 10);
 }
 
-// Last 365 days of activity, aligned to a Sunday-start grid (GitHub style).
-// Contributions before the cutoff (site launch) do not count at all.
-const now = new Date();
-const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-const base = end - 364 * DAY;
-const start = base - new Date(base).getUTCDay() * DAY;
 const [cutY, cutM, cutD] = since.split("-").map(Number);
 const cutoff = Date.UTC(cutY, cutM - 1, cutD);
+
+const now = new Date();
+const currentYear = now.getUTCFullYear();
+
+// Years available (newest first); the current year is always included.
+const years = [
+  ...new Set([
+    currentYear,
+    ...Object.keys(contributions)
+      .map(k => Number(k.slice(0, 4)))
+      .filter(y => Number.isInteger(y) && y < currentYear),
+  ]),
+].sort((a, b) => b - a);
+
+const yearBtnClass =
+  "rounded-md px-2.5 py-1 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground cursor-pointer";
+const yearBtnActive = "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground!";
 
 interface Cell {
   key: string;
@@ -62,87 +73,137 @@ interface Cell {
   raw: number;
   count: number;
   level: Level;
+  inYear: boolean;
+  /** within the year AND on/after the cutoff (counted in the total). */
   counted: boolean;
 }
 
-const cells: Cell[] = [];
-const rawCounts: number[] = [];
-for (let w = start, week = 0; w <= end; w += 7 * DAY, week++) {
-  for (let r = 0; r < 7; r++) {
-    const t = w + r * DAY;
-    if (t > end) continue;
-    const key = dateKey(t);
-    const counted = t >= base && t >= cutoff;
-    const raw = counted ? contributions[key] ?? 0 : 0;
-    cells.push({ key, week, row: r, raw, count: 0, level: 0, counted });
-    rawCounts.push(raw);
-  }
-}
-// Colors come from the raw counts (quartiles), so they stay unchanged.
-const levelOf = getLevelFn(rawCounts);
-for (const c of cells) {
-  c.count = Math.round(c.raw / UNIT);
-  c.level = levelOf(c.raw);
+interface YearGrid {
+  columns: number;
+  width: number;
+  height: number;
+  cells: Cell[];
+  labels: { x: number; text: string }[];
+  total: number;
 }
 
-// Month labels, GitHub style: placed at the first column of the month's first
-// week; partial first months and labels too close to the previous one are
-// skipped so nothing overlaps (e.g. no "Aug"/"Sep" collision at the top-left).
-const columns = Math.floor((end - start) / (7 * DAY)) + 1;
-const width = columns * 16 - 4;
-const height = 130;
-const labels: { x: number; text: string }[] = [];
-{
+/** Build the Jan 1 - Dec 31 grid (Sunday-aligned columns) for one year. */
+function buildYearGrid(year: number): YearGrid {
+  const jan1 = Date.UTC(year, 0, 1);
+  const gridStart = jan1 - new Date(jan1).getUTCDay() * DAY;
+  const endYear = Date.UTC(year, 11, 31);
+  const columns = Math.floor((endYear - gridStart) / (7 * DAY)) + 1;
+  const width = columns * 16 - 4;
+  const height = 130;
+
+  const cells: Cell[] = [];
+  const rawCounts: number[] = [];
+  for (let w = gridStart, week = 0; w < gridStart + columns * 7 * DAY; w += 7 * DAY, week++) {
+    for (let r = 0; r < 7; r++) {
+      const t = w + r * DAY;
+      const key = dateKey(t);
+      const inYear = t >= jan1 && t <= endYear;
+      const counted = inYear && t >= cutoff;
+      const raw = counted ? contributions[key] ?? 0 : 0;
+      cells.push({ key, week, row: r, raw, count: 0, level: 0, inYear, counted });
+      rawCounts.push(raw);
+    }
+  }
+  const levelOf = getLevelFn(rawCounts);
+  for (const c of cells) {
+    c.count = Math.round(c.raw / UNIT);
+    c.level = levelOf(c.raw);
+  }
+
+  const labels: { x: number; text: string }[] = [];
   let lastCol = -1;
-  let t = start;
-  while (t <= end) {
-    const d = new Date(t);
-    const y = d.getUTCFullYear();
-    const m = d.getUTCMonth();
-    const fd = Date.UTC(y, m, 1);
-    if (fd > end) break;
-    const col = Math.floor((fd - start) / (7 * DAY));
+  for (let m = 0; m < 12; m++) {
+    const fd = Date.UTC(year, m, 1);
+    const col = Math.floor((fd - gridStart) / (7 * DAY));
     if (col >= 0 && col < columns && (lastCol < 0 || col - lastCol >= 2)) {
-      labels.push({ x: col * 16 + 16, text: MONTHS[m] });
+      labels.push({ x: Math.min(col * 16 + 16, width - 30), text: MONTHS[m] });
       lastCol = col;
     }
-    t = Date.UTC(y, m + 1, 1);
   }
-}
-const visibleLabels = labels.filter(l => l.x < width);
 
-const total = cells.filter(c => c.counted).reduce((s, c) => s + c.count, 0);
-const startYear = new Date(start).getUTCFullYear();
-const endYear = new Date(end).getUTCFullYear();
+  const total = cells.filter(c => c.counted && c.raw > 0).reduce((s, c) => s + c.count, 0);
+  return { columns, width, height, cells, labels, total };
+}
+
+const defaultGrid = buildYearGrid(currentYear);
+
+// Only the latest (current) year is shown as a button; all older years go
+// into the "···" dropdown.
+const primaryYears = years.slice(0, 1);
+const moreYears = years.slice(1);
 ---
 
-<div class="contrib-scroll mt-1 w-full max-w-full overflow-x-auto pb-2.5">
-  <svg class="block" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-    <g>
-      {visibleLabels.map(l => (
-        <text x={l.x} y="0" dominant-baseline="hanging" fill="currentColor">{l.text}</text>
-      ))}
-    </g>
-    {cells.map(c => (
-      <rect
-        class={LEVEL_CLASS[c.level]}
-        x={c.week * 16}
-        y={22 + c.row * 16}
-        width="12"
-        height="12"
-        rx="2"
-        ry="2"
-        data-date={c.key}
-        data-level={c.level}
+<div id="contrib-year-picker" class="flex flex-wrap items-center justify-end gap-1.5" data-cutoff={since} data-current-year={currentYear}>
+  {
+    primaryYears.map(y => (
+      <button
+        type="button"
+        data-year-btn={y}
+        aria-pressed={y === currentYear ? "true" : "false"}
+        class:list={[yearBtnClass, y === currentYear ? yearBtnActive : ""]}
       >
-        <title>{`${c.count} contribution${c.count === 1 ? "" : "s"} on ${c.key}`}</title>
-      </rect>
-    ))}
-  </svg>
+        {y}
+      </button>
+    ))
+  }
+  {
+    moreYears.length > 0 && (
+      <details class="relative">
+        <summary class:list={[yearBtnClass, "list-none [&::-webkit-details-marker]:hidden"]}>
+          ···
+        </summary>
+        <div class="absolute end-0 top-full z-10 mt-1 flex min-w-16 flex-col rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur">
+          {
+            moreYears.map(y => (
+              <button
+                type="button"
+                data-year-btn={y}
+                class="rounded-md px-2.5 py-1 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground"
+              >
+                {y}
+              </button>
+            ))
+          }
+        </div>
+      </details>
+    )
+  }
+</div>
+
+<div class="contrib-scroll mt-1 w-full max-w-full overflow-x-auto pb-2.5">
+  <div id="contrib-svg-wrap">
+    <svg class="block" width={defaultGrid.width} height={defaultGrid.height} viewBox={`0 0 ${defaultGrid.width} ${defaultGrid.height}`}>
+      <g>
+        {defaultGrid.labels.map(l => (
+          <text x={l.x} y="0" dominant-baseline="hanging" fill="currentColor">{l.text}</text>
+        ))}
+      </g>
+      {defaultGrid.cells.map(c => (
+        <rect
+          class={LEVEL_CLASS[c.level]}
+          x={c.week * 16}
+          y={22 + c.row * 16}
+          width="12"
+          height="12"
+          rx="2"
+          ry="2"
+          data-date={c.key}
+          data-level={c.level}
+        >
+          {c.inYear && <title>{`${c.count} contribution${c.count === 1 ? "" : "s"} on ${c.key}`}</title>}
+        </rect>
+      ))}
+    </svg>
+  </div>
 </div>
 
 <footer class="flex items-center justify-between">
-  <div>{`${total} contributions in ${startYear} ~ ${endYear}`}</div>
+  <div id="contrib-total">{`${defaultGrid.total} contributions in ${currentYear}`}</div>
   <div class="flex items-center gap-1">
     <span>Less</span>
     {LEGEND_CLASS.map(cls => (
@@ -153,6 +214,149 @@ const endYear = new Date(end).getUTCFullYear();
     <span>More</span>
   </div>
 </footer>
+
+<script type="application/json" id="contrib-data" is:inline set:html={JSON.stringify(contributions)}></script>
+
+<script>
+  // GitHub-style year switching: re-render the Jan-Dec grid for the selected
+  // year from the embedded contribution data.
+  const DAY = 86400000;
+  const UNIT = 10;
+  const MONTHS = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const LEVEL_CLASS = [
+    "stroke-foreground/10 hover:opacity-80 fill-[#ebedf0] dark:fill-[#161b22]",
+    "stroke-foreground/10 hover:opacity-80 fill-[#c6e48b] dark:fill-[#0e4429]",
+    "stroke-foreground/10 hover:opacity-80 fill-[#7bc96f] dark:fill-[#006d32]",
+    "stroke-foreground/10 hover:opacity-80 fill-[#239a3b] dark:fill-[#26a641]",
+    "stroke-foreground/10 hover:opacity-80 fill-[#196127] dark:fill-[#39d353]",
+  ];
+  const ACTIVE_CLASSES = [
+    "bg-accent",
+    "text-accent-foreground",
+    "hover:bg-accent",
+    "hover:text-accent-foreground",
+  ];
+
+  function dateKey(t: number): string {
+    return new Date(t).toISOString().slice(0, 10);
+  }
+
+  function levelOf(n: number, thresholds: number[]): number {
+    if (n <= 0) return 0;
+    if (n <= thresholds[0]!) return 1;
+    if (n <= thresholds[1]!) return 2;
+    if (n <= thresholds[2]!) return 3;
+    return 4;
+  }
+
+  function yearThresholds(year: number, data: Record<string, number>, cutoff: number): number[] {
+    const pos: number[] = [];
+    for (const key in data) {
+      if (Number(key.slice(0, 4)) !== year) continue;
+      const t = Date.parse(key + "T00:00:00Z");
+      if (t < cutoff) continue;
+      const v = data[key]!;
+      if (v > 0) pos.push(v);
+    }
+    pos.sort((a, b) => a - b);
+    if (pos.length === 0) return [0, 0, 0];
+    const q = (p: number) => pos[Math.min(pos.length - 1, Math.floor(p * pos.length))]!;
+    const t1 = q(0.25);
+    const t2 = Math.max(q(0.5), t1);
+    const t3 = Math.max(q(0.75), t2);
+    return [t1, t2, t3];
+  }
+
+  function buildSvg(year: number, data: Record<string, number>, cutoff: number) {
+    const jan1 = Date.UTC(year, 0, 1);
+    const gridStart = jan1 - new Date(jan1).getUTCDay() * DAY;
+    const endYear = Date.UTC(year, 11, 31);
+    const columns = Math.floor((endYear - gridStart) / (7 * DAY)) + 1;
+    const width = columns * 16 - 4;
+    const height = 130;
+
+    // Quartile thresholds from THIS year's raw counts (colors stay consistent).
+    const thresholds = yearThresholds(year, data, cutoff);
+
+    let labels = "";
+    let lastCol = -1;
+    for (let m = 0; m < 12; m++) {
+      const fd = Date.UTC(year, m, 1);
+      const col = Math.floor((fd - gridStart) / (7 * DAY));
+      if (col >= 0 && col < columns && (lastCol < 0 || col - lastCol >= 2)) {
+        const x = Math.min(col * 16 + 16, width - 30);
+        labels += `<text x="${x}" y="0" dominant-baseline="hanging" fill="currentColor">${MONTHS[m]}</text>`;
+        lastCol = col;
+      }
+    }
+
+    let rects = "";
+    let total = 0;
+    for (let w = gridStart, week = 0; w < gridStart + columns * 7 * DAY; w += 7 * DAY, week++) {
+      for (let r = 0; r < 7; r++) {
+        const t = w + r * DAY;
+        const key = dateKey(t);
+        const inYear = t >= jan1 && t <= endYear;
+        const raw = inYear && t >= cutoff ? data[key] ?? 0 : 0;
+        const count = Math.round(raw / UNIT);
+        if (inYear && raw > 0) total += count;
+        const level = inYear ? levelOf(raw, thresholds) : 0;
+        const title = inYear
+          ? `<title>${count} contribution${count === 1 ? "" : "s"} on ${key}</title>`
+          : "";
+        rects += `<rect class="${LEVEL_CLASS[level]}" x="${week * 16}" y="${22 + r * 16}" width="12" height="12" rx="2" ry="2" data-date="${key}" data-level="${level}">${title}</rect>`;
+      }
+    }
+
+    return {
+      svg: `<svg class="block" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><g>${labels}</g>${rects}</svg>`,
+      total,
+    };
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    const picker = document.querySelector<HTMLElement>("#contrib-year-picker");
+    const wrap = document.querySelector<HTMLElement>("#contrib-svg-wrap");
+    const totalEl = document.querySelector<HTMLElement>("#contrib-total");
+    if (!picker || !wrap || !totalEl) return;
+    const data: Record<string, number> = JSON.parse(
+      document.getElementById("contrib-data")?.textContent ?? "{}"
+    );
+    const since = picker.dataset.cutoff ?? "2026-08-27";
+    const [cutY, cutM, cutD] = since.split("-").map(Number);
+    const cutoff = Date.UTC(cutY!, cutM! - 1, cutD!);
+    const currentYear = Number(picker.dataset.currentYear);
+    const buttons = Array.from(
+      picker.querySelectorAll<HTMLButtonElement>("[data-year-btn]")
+    );
+
+    let selected = currentYear;
+    const render = () => {
+      const { svg, total } = buildSvg(selected, data, cutoff);
+      wrap.innerHTML = svg;
+      totalEl.textContent = `${total} contribution${total === 1 ? "" : "s"} in ${selected}`;
+      for (const btn of buttons) {
+        const active = Number(btn.dataset.yearBtn) === selected;
+        btn.setAttribute("aria-pressed", String(active));
+        for (const cls of ACTIVE_CLASSES) btn.classList.toggle(cls, active);
+      }
+    };
+
+    for (const btn of buttons) {
+      btn.addEventListener("click", () => {
+        selected = Number(btn.dataset.yearBtn);
+        render();
+        // close the "more years" dropdown
+        const details = picker.querySelector("details");
+        if (details) details.removeAttribute("open");
+      });
+    }
+    render();
+  });
+</script>
 
 <style>
   /* Always-visible, high-contrast horizontal scrollbar so it's clear the

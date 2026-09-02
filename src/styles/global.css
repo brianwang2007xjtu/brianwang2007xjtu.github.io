@@ -48,6 +48,11 @@
   @apply max-w-5xl mx-auto w-full px-4;
 }
 
+/* Home page container — matches axi404.com's effective home content width. */
+@utility app-layout-home {
+  @apply max-w-4xl mx-auto w-full px-4;
+}
+
 @utility active-nav {
   @apply text-accent;
 }

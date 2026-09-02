@@ -4,9 +4,7 @@ import { countWords } from "./getBlogStats";
 
 type Post = CollectionEntry<"posts">;
 
-const DAY = 86400000;
-
-/** Map of "YYYY-MM-DD" -> contribution count for the last year. */
+/** Map of "YYYY-MM-DD" -> contribution count. */
 export type ContributionMap = Record<string, number>;
 
 export type Level = 0 | 1 | 2 | 3 | 4;
@@ -17,8 +15,8 @@ function dateKey(t: number): string {
 
 /**
  * Real contribution data: lines of code added per day from the repository's
- * git history over the last ~365 days. Returns `null` when git history is
- * unavailable (e.g. shallow clone on some build platforms).
+ * full git history. Returns `null` when git history is unavailable
+ * (e.g. shallow clone on some build platforms).
  */
 function getGitContributions(): ContributionMap | null {
   try {
@@ -32,16 +30,16 @@ function getGitContributions(): ContributionMap | null {
       .toLowerCase();
     if (shallow === "true") return null;
 
-    const since = dateKey(Date.now() - 364 * DAY);
-    const until = dateKey(Date.now() + DAY);
     const out = execSync(
       [
         "git log",
-        `--since="${since}"`,
-        `--until="${until}"`,
         '--date=short',
         '--pretty=format:"%ad"',
         "--numstat",
+        "-- .",
+        // Assets (PDFs, etc.) are not code — git can misread a PDF as text and
+        // inflate "lines added" massively, so exclude them.
+        '":(exclude)**/*.pdf"',
       ].join(" "),
       {
         cwd: process.cwd(),

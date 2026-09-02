@@ -3,15 +3,22 @@ import type { HTMLAttributes } from "astro/types";
 
 type Props = {
   noMarginTop?: boolean;
+  /** Narrow container, matching the home page layout. */
+  narrow?: boolean;
 } & HTMLAttributes<"footer">;
 
-const { noMarginTop = false, class: className, ...attrs } = Astro.props;
+const { noMarginTop = false, narrow = false, class: className, ...attrs } =
+  Astro.props;
 
 const currentYear = new Date().getFullYear();
 ---
 
 <footer
-  class:list={["app-layout-wide", { "mt-auto": !noMarginTop }, className]}
+  class:list={[
+    narrow ? "app-layout-home" : "app-layout-wide",
+    { "mt-auto": !noMarginTop },
+    className,
+  ]}
   {...attrs}
 >
   <div

@@ -1,4 +1,4 @@
----
+--- 
 import { getRelativeLocaleUrl } from "astro:i18n";
 import IconMenuDeep from "@/assets/icons/IconMenuDeep.svg";
 import IconSunHigh from "@/assets/icons/IconSunHigh.svg";
@@ -7,6 +7,13 @@ import IconMoon from "@/assets/icons/IconMoon.svg";
 import IconX from "@/assets/icons/IconX.svg";
 import { stripBase, stripLocale } from "@/utils/withBase";
 import config from "@/config";
+
+interface Props {
+  /** Narrow container, matching the home page layout. */
+  narrow?: boolean;
+}
+
+const { narrow = false } = Astro.props;
 
 const { site } = config;
 const locale = Astro.currentLocale ?? config.site.lang;
@@ -40,6 +47,7 @@ const lifeLinks = [
   { label: "Books", href: getRelativeLocaleUrl(locale, "books") },
   { label: "Movies", href: getRelativeLocaleUrl(locale, "movies") },
 ];
+const lifeHref = lifeLinks[0]!.href;
 
 const lifeActive = lifeLinks.some(l => isActive(l.href));
 
@@ -48,6 +56,7 @@ const blogLinks = [
   { label: "Daily Life", href: getRelativeLocaleUrl(locale, "blog/daily") },
   { label: "Others", href: getRelativeLocaleUrl(locale, "blog/others") },
 ];
+const blogHref = blogLinks[0]!.href;
 const blogActive = blogLinks.some(l => isActive(l.href));
 
 const navItemClass =
@@ -62,7 +71,14 @@ const navItemClass =
   Skip to content
 </a>
 
-<header id="site-header" class="app-layout-wide sticky top-3 z-40">
+<header
+  id="site-header"
+  data-show="true"
+  class:list={[
+    narrow ? "app-layout-home" : "app-layout-wide",
+    "sticky top-3 z-40 transition-[transform] duration-300",
+  ]}
+>
   <nav
     id="site-nav"
     class="group flex items-center justify-between rounded-2xl border border-transparent px-2 py-1.5 transition-all duration-300 [&.not-top]:border-border [&.not-top]:bg-background/70 [&.not-top]:shadow-sm [&.not-top]:backdrop-blur-xl"
@@ -77,15 +93,14 @@ const navItemClass =
     <!-- Desktop navigation -->
     <ul class="hidden items-center gap-1 md:flex">
       <li class="group/drop relative">
-        <button
-          type="button"
+        <a
+          href={blogHref}
           class:list={[
             navItemClass,
             "inline-flex items-center gap-1",
             { "active-nav": blogActive },
           ]}
-          aria-haspopup="true"
-          aria-expanded="false"
+          aria-label="Nav menu item"
         >
           Blog
           <svg
@@ -100,7 +115,7 @@ const navItemClass =
           >
             <path d="m6 9 6 6 6-6"></path>
           </svg>
-        </button>
+        </a>
         <div
           class="invisible absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-xl border border-border bg-background/90 p-1 opacity-0 shadow-lg backdrop-blur-xl transition-all duration-150 group-hover/drop:visible group-hover/drop:opacity-100 group-focus-within/drop:visible group-focus-within/drop:opacity-100"
         >
@@ -128,15 +143,14 @@ const navItemClass =
         </a>
       </li>
       <li class="group/drop relative">
-        <button
-          type="button"
+        <a
+          href={lifeHref}
           class:list={[
             navItemClass,
             "inline-flex items-center gap-1",
             { "active-nav": lifeActive },
           ]}
-          aria-haspopup="true"
-          aria-expanded="false"
+          aria-label="Nav menu item"
         >
           Life
           <svg
@@ -151,7 +165,7 @@ const navItemClass =
           >
             <path d="m6 9 6 6 6-6"></path>
           </svg>
-        </button>
+        </a>
         <div
           class="invisible absolute top-full left-1/2 z-50 mt-1 w-44 -translate-x-1/2 rounded-xl border border-border bg-background/90 p-1 opacity-0 shadow-lg backdrop-blur-xl transition-all duration-150 group-hover/drop:visible group-hover/drop:opacity-100 group-focus-within/drop:visible group-focus-within/drop:opacity-100"
         >
@@ -238,10 +252,10 @@ const navItemClass =
     </div>
   </nav>
 
-  <!-- Mobile menu -->
+  <!-- Mobile menu (axi404-style expanded overlay) -->
   <div
     id="mobile-menu"
-    class="mt-2 hidden rounded-2xl border border-border bg-background/90 p-2 shadow-lg backdrop-blur-xl md:hidden"
+    class="invisible absolute inset-x-0 top-full mt-2 rounded-2xl border border-border bg-background/90 p-2 opacity-0 shadow-lg backdrop-blur-xl transition-all duration-200 pointer-events-none md:hidden"
   >
     <p class="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
       Blog
@@ -283,27 +297,46 @@ const navItemClass =
 
 <script>
   function initHeader() {
-    const header = document.querySelector("#site-nav");
+    const header = document.querySelector("#site-header");
+    const nav = document.querySelector("#site-nav");
     const menuBtn = document.querySelector<HTMLButtonElement>("#menu-btn");
-    const mobileMenu = document.querySelector("#mobile-menu");
     const menuIcon = document.querySelector("#menu-icon");
     const closeIcon = document.querySelector("#close-icon");
+    let lastY = window.scrollY || document.documentElement.scrollTop;
 
     const onScroll = () => {
-      const scrolled = (window.scrollY || document.documentElement.scrollTop) > 8;
-      header?.classList.toggle("not-top", scrolled);
+      const y = window.scrollY || document.documentElement.scrollTop;
+      nav?.classList.toggle("not-top", y > 20);
+      // axi404 logic: hide when scrolling down past 600px, show when scrolling up.
+      header?.setAttribute(
+        "data-show",
+        (y < 600 || y < lastY).toString()
+      );
+      lastY = y;
     };
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    // rAF-throttled, passive — same as axi404.
+    let raf: number | undefined;
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (raf === undefined) {
+          raf = requestAnimationFrame(() => {
+            raf = undefined;
+            onScroll();
+          });
+        }
+      },
+      { passive: true }
+    );
 
     const toggleMenu = () => {
-      if (!menuBtn || !mobileMenu) return;
-      const open = menuBtn.getAttribute("aria-expanded") === "true";
-      menuBtn.setAttribute("aria-expanded", open ? "false" : "true");
-      menuBtn.setAttribute("aria-label", open ? "Open menu" : "Close menu");
-      mobileMenu.classList.toggle("hidden");
-      menuIcon?.classList.toggle("hidden");
-      closeIcon?.classList.toggle("hidden");
+      if (!menuBtn) return;
+      const open = header?.classList.toggle("expanded") ?? false;
+      menuBtn.setAttribute("aria-expanded", String(open));
+      menuBtn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      menuIcon?.classList.toggle("hidden", open);
+      closeIcon?.classList.toggle("hidden", !open);
     };
     menuBtn?.addEventListener("click", toggleMenu);
 
@@ -355,3 +388,27 @@ const navItemClass =
     cleanupLang = initLangSwitch();
   });
 </script>
+
+<style>
+  /* axi404-style header behavior:
+     - on desktop, when scrolled the nav shrinks into a floating pill
+     - when scrolling down past 600px the header slides away; scrolling up
+       brings it back (unless the mobile menu is expanded) */
+  #site-header[data-show="false"]:not(.expanded) {
+    transform: translateY(-5rem);
+  }
+
+  @media (min-width: 768px) {
+    #site-nav.not-top {
+      margin-inline: 8%;
+    }
+  }
+
+  @media (max-width: 767px) {
+    #site-header.expanded #mobile-menu {
+      visibility: visible;
+      pointer-events: auto;
+      opacity: 1;
+    }
+  }
+</style>

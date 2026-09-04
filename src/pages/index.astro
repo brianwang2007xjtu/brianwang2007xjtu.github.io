@@ -22,14 +22,20 @@ import avatar from "@/assets/images/8CBB3CC5-C7FE-425F-8008-18668A098F3B.jpeg";
 const locale = Astro.currentLocale ?? config.site.lang;
 
 const posts = await getCollection("posts", ({ data }) => !data.draft);
-const totalPosts = posts.length;
+
+// Site launch day = day 1; all stats count only from this date.
+const SITE_ONLINE_SINCE = new Date("2026-08-27T00:00:00Z");
+
+const postsSinceLaunch = posts.filter(
+  p => p.data.pubDatetime.getTime() >= SITE_ONLINE_SINCE.getTime()
+);
+const totalPosts = postsSinceLaunch.length;
 const recentPosts = getSortedPosts(posts).slice(0, 3);
 
 // Real, auto-updating stats.
-const SITE_ONLINE_SINCE = new Date("2026-08-27T00:00:00Z"); // launch day = day 1
 const daysOnline = getDaysOnline(SITE_ONLINE_SINCE);
 const lastUpdated = getLastUpdated(posts);
-const totalWords = getTotalWords(posts);
+const totalWords = getTotalWords(postsSinceLaunch);
 const contributions = getContributions(posts);
 
 const homePath = getRelativeLocaleUrl(locale, "");

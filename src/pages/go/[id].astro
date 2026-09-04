@@ -1,0 +1,388 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import { getGoGames, parseSgf, readGoSgf } from "@/utils/go";
+import config from "@/config";
+
+export function getStaticPaths() {
+  return getGoGames().map(game => ({
+    params: { id: game.id },
+    props: { game },
+  }));
+}
+
+const { game } = Astro.props;
+
+// Extract what the client needs: board size, setup stones and mainline moves.
+const rawSgf = readGoSgf(game.id) ?? "";
+const { props, nodes } = parseSgf(rawSgf);
+const size = Math.min(25, Math.max(9, parseInt(props.SZ?.[0] ?? "19", 10) || 19));
+const setup: [string, string][] = [];
+(props.AB ?? []).forEach(p => setup.push(["B", p]));
+(props.AW ?? []).forEach(p => setup.push(["W", p]));
+const moves: [string, string][] = nodes
+  .filter(n => n.B || n.W)
+  .map(n => (n.B ? (["B", n.B[0]] as [string, string]) : (["W", n.W[0]] as [string, string])));
+
+const gameData = JSON.stringify({ size, setup, moves });
+
+const sgfDownload = `/${game.id}.sgf`;
+const reportPdf = game.reportUrl;
+---
+
+<Layout title={`${game.black ?? "Go"} vs ${game.white ?? "Go"} | ${config.site.title}`}>
+  <Header />
+
+  <main id="main-content" class="app-layout-wide py-8">
+    <header class="mb-6 flex items-center gap-3">
+      <a href="/go/" class="text-sm text-muted-foreground transition-colors hover:text-accent">
+        ← Go 棋谱
+      </a>
+    </header>
+
+    <div class="flex flex-col gap-8 lg:flex-row">
+      <!-- Board -->
+      <section class="min-w-0 flex-1" data-go-game={gameData}>
+        <div class="rounded-xl border border-border bg-card p-4">
+          <h1 class="mb-3 px-1 text-lg font-semibold">
+            {game.black}
+            <span class="text-muted-foreground"> (黑) vs </span>
+            {game.white}
+            <span class="text-muted-foreground"> (白)</span>
+          </h1>
+          <div id="go-board" class="mx-auto w-full max-w-[560px]"></div>
+          <input
+            id="go-slider"
+            type="range"
+            min="0"
+            max={moves.length}
+            value={moves.length}
+            class="mt-4 w-full accent-(--accent)"
+          />
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-1.5">
+              <button type="button" data-go-step="-99999" title="到棋局最开始" aria-label="到棋局最开始" class="go-btn">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="4" x2="4" y2="20"/><path d="m18 17-5-5 5-5"/><path d="m11 17-5-5 5-5"/></svg>
+              </button>
+              <button type="button" data-go-step="-5" title="快退5步" aria-label="快退5步" class="go-btn">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+              </button>
+              <button type="button" data-go-step="-1" title="后退一步" aria-label="后退一步" class="go-btn">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <button type="button" data-go-step="1" title="前进一步" aria-label="前进一步" class="go-btn">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+              <button type="button" data-go-step="5" title="前进5步" aria-label="前进5步" class="go-btn">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/></svg>
+              </button>
+              <button type="button" data-go-step="99999" title="到棋局最后" aria-label="到棋局最后" class="go-btn">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+              </button>
+            </div>
+            <span class="text-sm text-muted-foreground">
+              第 <span id="go-move-cur" class="font-medium text-foreground">{moves.length}</span> / {moves.length} 手
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Side panel: info (top-right) + actions (bottom-right) -->
+      <aside class="flex w-full flex-col gap-6 lg:w-80">
+        <div class="rounded-xl border border-border bg-card p-5">
+          <h2 class="text-base font-semibold">对局信息</h2>
+          <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="shrink-0 text-muted-foreground">日期</dt>
+              <dd class="text-right">{game.date}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="shrink-0 text-muted-foreground">黑方</dt>
+              <dd class="text-right font-medium">{game.black}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="shrink-0 text-muted-foreground">白方</dt>
+              <dd class="text-right font-medium">{game.white}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="shrink-0 text-muted-foreground">规则</dt>
+              <dd class="text-right">{game.rule}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="shrink-0 text-muted-foreground">贴目</dt>
+              <dd class="text-right">{game.komi}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="shrink-0 text-muted-foreground">结果</dt>
+              <dd class="text-right font-medium">{game.result}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="mt-auto flex flex-col gap-2.5 rounded-xl border border-border bg-card p-4">
+          <button
+            type="button"
+            id="go-num-toggle"
+            aria-pressed="false"
+            class="rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-foreground/25 hover:bg-muted/60"
+          >
+            显示手数
+          </button>
+          <a
+            href={sgfDownload}
+            download
+            class="rounded-lg border border-border px-3 py-2 text-center text-sm font-medium transition-colors hover:border-foreground/25 hover:bg-muted/60"
+          >
+            下载(.sgf)
+          </a>
+          {
+            reportPdf ? (
+              <a
+                href={reportPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="rounded-lg border border-border px-3 py-2 text-center text-sm font-medium transition-colors hover:border-foreground/25 hover:bg-muted/60"
+              >
+                查看报告(.pdf)
+              </a>
+            ) : (
+              <span class="rounded-lg border border-border/50 px-3 py-2 text-center text-sm text-muted-foreground opacity-60">
+                查看报告(.pdf)
+              </span>
+            )
+          }
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  (() => {
+    const section = document.querySelector<HTMLElement>("[data-go-game]");
+    const raw = section?.dataset.goGame;
+    if (!raw) return;
+    const data = JSON.parse(raw) as {
+      size: number;
+      setup: [string, string][];
+      moves: [string, string][];
+    };
+    const SIZE = data.size;
+    const CELL = 28;
+    const PAD = 16;
+    const BOARD_PX = PAD * 2 + CELL * (SIZE - 1);
+
+    const boardEl = document.getElementById("go-board");
+    const slider = document.getElementById("go-slider") as HTMLInputElement;
+    const moveCur = document.getElementById("go-move-cur");
+    const numToggle = document.getElementById("go-num-toggle") as HTMLButtonElement | null;
+    if (!boardEl || !slider || !moveCur) return;
+
+    const N = data.moves.length;
+    let index = N;
+    let showNums = false; // move numbers on stones: off by default
+
+    const coord = (p: string): [number, number] => {
+      return [p.charCodeAt(0) - 97, p.charCodeAt(1) - 97];
+    };
+
+    // ---------- board model ----------
+    function emptyBoard(): number[][] {
+      return Array.from({ length: SIZE }, () => new Array<number>(SIZE).fill(0));
+    }
+
+    function neighbors(x: number, y: number): [number, number][] {
+      const out: [number, number][] = [];
+      if (x > 0) out.push([x - 1, y]);
+      if (x < SIZE - 1) out.push([x + 1, y]);
+      if (y > 0) out.push([x, y - 1]);
+      if (y < SIZE - 1) out.push([x, y + 1]);
+      return out;
+    }
+
+    function groupLiberties(b: number[][], x: number, y: number, color: number): number {
+      const seen = new Set<string>();
+      const stack: [number, number][] = [[x, y]];
+      seen.add(`${x},${y}`);
+      let libs = 0;
+      while (stack.length) {
+        const [cx, cy] = stack.pop()!;
+        for (const [nx, ny] of neighbors(cx, cy)) {
+          if (b[ny]![nx] === 0) libs++;
+          else if (b[ny]![nx] === color && !seen.has(`${nx},${ny}`)) {
+            seen.add(`${nx},${ny}`);
+            stack.push([nx, ny]);
+          }
+        }
+      }
+      return libs;
+    }
+
+    function removeGroup(b: number[][], nums: number[][], x: number, y: number, color: number): void {
+      const seen = new Set<string>();
+      const stack: [number, number][] = [[x, y]];
+      seen.add(`${x},${y}`);
+      while (stack.length) {
+        const [cx, cy] = stack.pop()!;
+        b[cy]![cx] = 0;
+        nums[cy]![cx] = 0;
+        for (const [nx, ny] of neighbors(cx, cy)) {
+          if (b[ny]![nx] === color && !seen.has(`${nx},${ny}`)) {
+            seen.add(`${nx},${ny}`);
+            stack.push([nx, ny]);
+          }
+        }
+      }
+    }
+
+    /** Place a stone at move `num`; returns false if it would be suicide. */
+    function play(b: number[][], nums: number[][], color: number, x: number, y: number, num: number): boolean {
+      if (b[y]![x] !== 0) return false;
+      b[y]![x] = color;
+      nums[y]![x] = num;
+      const opp = color === 1 ? 2 : 1;
+      for (const [nx, ny] of neighbors(x, y)) {
+        if (b[ny]![nx] === opp && groupLiberties(b, nx, ny, opp) === 0) {
+          removeGroup(b, nums, nx, ny, opp);
+        }
+      }
+      if (groupLiberties(b, x, y, color) === 0) {
+        b[y]![x] = 0;
+        nums[y]![x] = 0;
+        return false;
+      }
+      return true;
+    }
+
+    /** Board + per-stone move numbers at mainline move `k`. */
+    function stateAt(k: number): { board: number[][]; nums: number[][]; last: [number, number] | null } {
+      const b = emptyBoard();
+      const nums = emptyBoard();
+      for (const [color, p] of data.setup) {
+        const [x, y] = coord(p);
+        b[y]![x] = color === "B" ? 1 : 2;
+      }
+      let last: [number, number] | null = null;
+      for (let i = 0; i < k; i++) {
+        const [color, p] = data.moves[i]!;
+        if (!p) continue; // pass
+        const [x, y] = coord(p);
+        play(b, nums, color === "B" ? 1 : 2, x, y, i + 1);
+        last = [x, y];
+      }
+      return { board: b, nums, last };
+    }
+
+    // ---------- rendering ----------
+    const STAR_POINTS: [number, number][] = [];
+    if (SIZE === 19) {
+      for (const c of [3, 9, 15])
+        for (const r of [3, 9, 15]) STAR_POINTS.push([c, r]);
+    } else if (SIZE === 13) {
+      for (const c of [3, 6, 9])
+        for (const r of [3, 6, 9]) STAR_POINTS.push([c, r]);
+    } else if (SIZE === 9) {
+      for (const c of [2, 4, 6])
+        for (const r of [2, 4, 6]) STAR_POINTS.push([c, r]);
+    }
+
+    function render(): void {
+      const { board, nums, last } = stateAt(index);
+      let svg = `<svg viewBox="0 0 ${BOARD_PX} ${BOARD_PX}" class="block h-auto w-full">`;
+      svg += `<rect width="${BOARD_PX}" height="${BOARD_PX}" rx="8" fill="var(--go-board)"/>`;
+      for (let i = 0; i < SIZE; i++) {
+        const p = PAD + i * CELL;
+        svg += `<line x1="${PAD}" y1="${p}" x2="${BOARD_PX - PAD}" y2="${p}" stroke="var(--go-line)" stroke-width="1"/>`;
+        svg += `<line x1="${p}" y1="${PAD}" x2="${p}" y2="${BOARD_PX - PAD}" stroke="var(--go-line)" stroke-width="1"/>`;
+      }
+      svg += `<rect x="${PAD - 1}" y="${PAD - 1}" width="${BOARD_PX - PAD * 2 + 2}" height="${BOARD_PX - PAD * 2 + 2}" fill="none" stroke="var(--go-line)" stroke-width="2"/>`;
+      for (const [cx, cy] of STAR_POINTS) {
+        const px = PAD + cx * CELL;
+        const py = PAD + cy * CELL;
+        svg += `<circle cx="${px}" cy="${py}" r="3.4" fill="var(--go-line)"/>`;
+      }
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          const v = board[y]![x];
+          if (!v) continue;
+          const px = PAD + x * CELL;
+          const py = PAD + y * CELL;
+          const fill = v === 1 ? "var(--go-black)" : "var(--go-white)";
+          const stroke = v === 1 ? "var(--go-black-stroke)" : "var(--go-white-stroke)";
+          svg += `<circle cx="${px}" cy="${py}" r="13.2" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`;
+          const num = nums[y]![x]!;
+          if (showNums && num > 0) {
+            const fs = num >= 100 ? 7.5 : num >= 10 ? 8.5 : 9.5;
+            const textColor = v === 1 ? "var(--go-white)" : "var(--go-black)";
+            svg += `<text x="${px}" y="${py}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-weight="600" fill="${textColor}">${num}</text>`;
+          }
+          if (last && last[0] === x && last[1] === y) {
+            svg += `<circle cx="${px}" cy="${py}" r="14.2" fill="none" stroke="${v === 1 ? "var(--go-white)" : "var(--go-black)"}" stroke-width="1.4" opacity="0.85"/>`;
+          }
+        }
+      }
+      svg += `</svg>`;
+      boardEl!.innerHTML = svg;
+      moveCur!.textContent = String(index);
+    }
+
+    // ---------- controls ----------
+    const clamp = (v: number) => Math.max(0, Math.min(N, v));
+    slider.addEventListener("input", () => {
+      index = parseInt(slider.value, 10) || 0;
+      render();
+    });
+
+    document.querySelectorAll<HTMLButtonElement>("[data-go-step]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const step = parseInt(btn.dataset.goStep || "0", 10);
+        if (step === -99999) index = 0;
+        else if (step === 99999) index = N;
+        else index = clamp(index + step);
+        slider.value = String(index);
+        render();
+      });
+    });
+
+    // Move-number display toggle (default off).
+    if (numToggle) {
+      numToggle.addEventListener("click", () => {
+        showNums = !showNums;
+        numToggle.setAttribute("aria-pressed", String(showNums));
+        numToggle.classList.toggle("border-accent", showNums);
+        numToggle.classList.toggle("text-accent", showNums);
+        render();
+      });
+    }
+
+    render();
+  })();
+</script>
+
+<style>
+  .go-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: var(--card);
+    color: var(--muted-foreground);
+    transition: border-color 0.15s, color 0.15s, background-color 0.15s, transform 0.15s;
+    cursor: pointer;
+  }
+  .go-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--muted);
+    transform: translateY(-1px);
+  }
+  .go-btn:active {
+    transform: translateY(0);
+  }
+</style>

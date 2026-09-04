@@ -1,0 +1,61 @@
+---
+title: "RL 手写笔记"
+author: master
+pubDatetime: 2026-09-04T00:00:00Z
+category: research
+tags:
+  - rl
+  - handwrite
+  
+description: "基础强化学习的手写笔记📒。"
+---
+
+import ResponsiveTable from "@/components/ResponsiveTable.astro";
+
+<img src="/rl-handwrite/rl-cover.jpeg" alt="rl-cover" />
+
+> Experience is the focus and foundation of all intelligence. 
+
+<p style="text-align: right; font-style: italic;"> —— Richard Sutton </p>
+
+## 引言
+
+初次知道「**强化学习**」这个概念还是在 2016 年。彼时的 Master 还正值围棋棋力的迅猛上升期，已经是业余5段，冲击职业的 Dream 尚未破碎。李世石（Lee Sedol）作为彼时的世界围棋第一人，是 Master 当时的偶像之一。但是，那年，新出道的 AI 棋手 **AlphaGo** 在与李世石的五番棋中以 **4:1** 的比分碾压，震惊棋坛。（李世石唯一获胜的第四盘，是依靠着中盘乱战的「**神之一挖**」，艰难地翻盘取胜。但即便如此，在围棋 AI 已趋近完美的今天，这盘“千古奇局”已被证明是由于彼时 AlphaGo 算力不足，而漏算落败）。之后，为了获得更多高水平的训练数据， AlphaGo 使用网名 **master** 在弈城围棋与中日韩的职业高手进行大量对弈，鲜尝败绩。（这便是 Master 名字的由来 ～）在此之后，于 2017 年，AlphaGo 又零封了「**捷豹**」，正式宣告了围棋 AI 时代的到来（和一位天才的陨落 😜）。出于对围棋的兴趣，在那时我就在b站上找了一些强化学习的相关视频，但终归不能算是“学习”。
+
+<figure>
+  <img src="/rl-handwrite/alphago-li.png" alt="alphago-li" />
+  <figcaption> 李世石「**神之一挖**」</figcaption>
+</figure>
+
+10年之后，在 Oxford 的尾巴，和回国后的一段时间， Master 才真正学了一下 RL。
+
+## 笔记
+
+材料：[赵世钰【强化学习的数学原理】](https://www.bilibili.com/video/BV1sd4y167NS/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)
+
+时间：2026.08.13 ~ 2026.08.18
+
+<ResponsiveTable>
+
+| 笔记 | 描述 |
+| ---- | ---- |
+| [1. Bellman Equation](/rl-handwrite/1-Bellman-Equation.pdf) | State Value $v_\{\pi}$、Action Value $q_\{\pi}$ 和 贝尔曼方程|
+| [2. Optimal Policy & BOE](/rl-handwrite/2-Optimal-Policy&BOE.pdf) | 最优策略 与 贝尔曼最优方程 |
+| [3. Value Iteration & Policy Iteration](/rl-handwrite/3-Value-Iteration&Policy-Iteration.pdf) | 值迭代 与 策略迭代|
+| [4. Monte Carlo Learning](/rl-handwrite/4-Monte-Carlo-Learning.pdf) | 几种 MC 算法 |
+| [5. SA & SGD](/rl-handwrite/5-SA&SGD.pdf) | 随机近似 与 随机梯度下降|
+| [6. Temporal-Difference Learning](/rl-handwrite/6-Temporal-Difference-Learning.pdf) | 几种 TD 算法（Sarsa，Q-learning，... ） |
+| [7. State Value Approximation](/rl-handwrite/7-State-Value-Approximation.pdf) | 值函数近似的思想 与 DQN |
+| [8. Policy Gradient Methods](/rl-handwrite/8-Policy-Gradient-Methods.pdf) | 策略梯度的思想与方法 |
+| [9. Actor-Critic Methods](/rl-handwrite/9-Actor-Critic-Methods.pdf) | 几种 AC 算法（QAC，A2C，... ） |
+
+</ResponsiveTable>
+
+Github 链接：https://github.com/brianwang2007xjtu/RL_math_basics
+
+
+
+
+
+
+

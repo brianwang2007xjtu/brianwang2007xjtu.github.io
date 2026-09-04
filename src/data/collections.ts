@@ -19,4 +19,10 @@ export const collections: Collection[] = [
     description: "How-to guides, tips and technical notes",
     tag: "manual",
   },
+  {
+    slug: "lmh-oxford",
+    title: "LMH Oxford",
+    description: "Summary on days in LMH, Oxford",
+    tag: "lmh-oxford"
+  },
 ];

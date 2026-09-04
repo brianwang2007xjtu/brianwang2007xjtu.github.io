@@ -1,0 +1,80 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import { getGoGames } from "@/utils/go";
+import config from "@/config";
+
+const games = getGoGames();
+---
+
+<Layout title={`Go | ${config.site.title}`}>
+  <Header />
+
+  <main id="main-content" class="app-layout-wide py-8">
+    <header class="mb-8">
+      <div>
+        <h1 class="text-3xl font-medium sm:text-4xl">Go</h1>
+        <p class="mt-2 text-muted-foreground">
+          棋谱存档 · {games.length} 局
+        </p>
+      </div>
+    </header>
+
+    {
+      games.length > 0 ? (
+        <section class="overflow-x-auto rounded-xl border border-border" data-go-table>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-border bg-muted/50 text-left text-muted-foreground">
+                <th class="px-4 py-3 font-medium">日期</th>
+                <th class="px-4 py-3 font-medium">黑方</th>
+                <th class="px-4 py-3 font-medium">白方</th>
+                <th class="px-4 py-3 font-medium">规则</th>
+                <th class="px-4 py-3 font-medium">贴目</th>
+                <th class="px-4 py-3 font-medium">结果</th>
+                <th class="px-4 py-3 font-medium">手数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {games.map(game => (
+                <tr
+                  data-href={`/go/${game.id}/`}
+                  class="cursor-pointer border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/40"
+                >
+                  <td class="px-4 py-3 whitespace-nowrap">{game.date}</td>
+                  <td class="px-4 py-3 font-medium">{game.black}</td>
+                  <td class="px-4 py-3 font-medium">{game.white}</td>
+                  <td class="px-4 py-3 whitespace-nowrap">{game.rule}</td>
+                  <td class="px-4 py-3 whitespace-nowrap">{game.komi}</td>
+                  <td class="px-4 py-3 whitespace-nowrap">{game.result}</td>
+                  <td class="px-4 py-3 tabular-nums">{game.moves}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : (
+        <p class="text-muted-foreground">
+          还没有棋谱。把 .sgf 文件放进 public/go/ 目录（可附同名 .json 棋局信息与 .pdf 报告）即可。
+        </p>
+      )
+    }
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  // Clicking anywhere on a row opens the game.
+  document.addEventListener("astro:page-load", () => {
+    const tbody = document.querySelector("[data-go-table] tbody");
+    if (!tbody) return;
+    tbody.addEventListener("click", e => {
+      const row = (e.target as HTMLElement).closest<HTMLElement>("tr[data-href]");
+      if (!row) return;
+      if ((e.target as HTMLElement).closest("a")) return;
+      window.location.href = row.dataset.href ?? "/go/";
+    });
+  });
+</script>

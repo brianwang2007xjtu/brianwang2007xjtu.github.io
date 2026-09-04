@@ -29,6 +29,14 @@
   --muted-foreground: hsl(240 3.8% 28.1%);
   --border: hsl(240 5.9% 88%);
   --highlight: #659eb9;
+
+  /* Go board */
+  --go-board: #dcb35c;
+  --go-line: #6d501f;
+  --go-black: #1c1c1c;
+  --go-black-stroke: #000000;
+  --go-white: #f7f3e8;
+  --go-white-stroke: #b9ad92;
 }
 
 /* Dark theme values */
@@ -43,4 +51,12 @@
   --muted-foreground: hsl(240 5% 74.9%);
   --border: hsl(240 3.7% 19.9%);
   --highlight: #659eb9;
+
+  /* Go board (slightly deeper wood in dark mode) */
+  --go-board: #a87e3c;
+  --go-line: #4d370f;
+  --go-black: #151515;
+  --go-black-stroke: #000000;
+  --go-white: #f4eedd;
+  --go-white-stroke: #a2937a;
 }

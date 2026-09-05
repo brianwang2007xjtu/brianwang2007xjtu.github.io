@@ -53,6 +53,20 @@
       @apply border-border mx-auto border;
     }
 
+    /* Hover zoom for post images — only applied to posts carrying .img-zoom
+       (published on/after 2026-08-27); older posts stay untouched. */
+    &.img-zoom {
+      overflow-x: clip;
+
+      img {
+        transition: transform 0.3s ease;
+
+        &:hover {
+          transform: scale(1.04);
+        }
+      }
+    }
+
     img[role="button"] {
       @apply cursor-zoom-in;
 

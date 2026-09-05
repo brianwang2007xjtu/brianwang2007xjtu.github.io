@@ -9,13 +9,14 @@ tags:
 description: "回顾一下难忘的 Oxford experience，这是「总记」。"
 ---
 
-import ResponsiveTable from "@/components/ResponsiveTable.astro";
 import ImageRow from "@/components/ImageRow.astro";
 import PhotoGrid from "@/components/PhotoGrid.astro";
 
 <PhotoGrid
+  grayscale
+
   images={[
-    { src: "/lmh-oxford/grid/flight.jpg", label: "飞行篇", href: "/posts/diffusion-model-math/" },
+    { src: "/lmh-oxford/grid/flight.jpg", label: "飞行篇", href: "/posts/lmh-oxford-summary-flight/" },
     { src: "/lmh-oxford/grid/transportation.jpg", label: "交通篇", href: "/posts/paper-reading-diffusion-models/" },
     { src: "/lmh-oxford/grid/campus.jpg", label: "校园篇", href: "/posts/paper-reading-fundamental-popular-works/" },
     { src: "/lmh-oxford/grid/music.jpg", label: "音乐篇", href: "/posts/lhm-oxford-summary-intro/" },

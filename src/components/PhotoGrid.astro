@@ -4,57 +4,69 @@ type GridImage = {
   alt?: string;
   /** Hover text shown next to the cursor. */
   label?: string;
-  /** Target blog post; falls back to `defaultHref`. */
+  /** Target page for this cell; falls back to `defaultHref`. */
   href?: string;
 };
 
 interface Props {
-  /** Exactly the images to show (any count; renders in a 3-column grid). */
+  /** The images to show (renders in a 3-column grid). */
   images?: GridImage[];
   /** Default destination for cells without their own `href`. */
   defaultHref?: string;
+  /** Black & white by default, fades to color on hover (like the original). */
+  grayscale?: boolean;
+  /** Wrap cells in links (click to navigate). */
+  links?: boolean;
+  /** Show the label bubble that follows the cursor. */
+  tooltip?: boolean;
 }
 
 const {
   images,
   defaultHref = "/",
+  grayscale = false,
+  links = true,
+  tooltip = true,
 } = Astro.props;
 
-// Placeholder set — every image has its OWN hover text and its OWN
-// destination, so the grid behaves correctly before the real photos,
-// captions and links are filled in (edit the `images` prop of the usage
-// site, e.g. in the blog post, to replace them).
+// Placeholder set when no images are passed (swap via the `images` prop).
 const DEFAULT_ITEMS: GridImage[] = [
-  { src: "https://picsum.photos/seed/oxford-1/600/600", alt: "placeholder-1", label: "图片 1", href: "/posts/diffusion-model-math/" },
-  { src: "https://picsum.photos/seed/oxford-2/600/600", alt: "placeholder-2", label: "图片 2", href: "/posts/paper-reading-diffusion-models/" },
-  { src: "https://picsum.photos/seed/oxford-3/600/600", alt: "placeholder-3", label: "图片 3", href: "/posts/paper-reading-fundamental-popular-works/" },
-  { src: "https://picsum.photos/seed/oxford-4/600/600", alt: "placeholder-4", label: "图片 4", href: "/posts/lhm-oxford-summary-intro/" },
-  { src: "https://picsum.photos/seed/oxford-5/600/600", alt: "placeholder-5", label: "图片 5", href: "/posts/template-all-features/" },
-  { src: "https://picsum.photos/seed/oxford-6/600/600", alt: "placeholder-6", label: "图片 6", href: "/blog/research/" },
-  { src: "https://picsum.photos/seed/oxford-7/600/600", alt: "placeholder-7", label: "图片 7", href: "/blog/daily/" },
-  { src: "https://picsum.photos/seed/oxford-8/600/600", alt: "placeholder-8", label: "图片 8", href: "/archives/" },
-  { src: "https://picsum.photos/seed/oxford-9/600/600", alt: "placeholder-9", label: "图片 9", href: "/about/" },
+  { src: "https://picsum.photos/seed/oxford-1/600/600", alt: "placeholder-1", label: "图片 1", href: defaultHref },
+  { src: "https://picsum.photos/seed/oxford-2/600/600", alt: "placeholder-2", label: "图片 2", href: defaultHref },
+  { src: "https://picsum.photos/seed/oxford-3/600/600", alt: "placeholder-3", label: "图片 3", href: defaultHref },
 ];
 
 const items: GridImage[] = images && images.length > 0 ? images : DEFAULT_ITEMS;
 ---
 
-<div class="photo-grid" data-photo-grid>
-  {items.map((img, i) => (
-    <a
-      href={img.href ?? defaultHref}
-      class="photo-cell group"
-      data-label={img.label ?? `图片 ${i + 1}`}
-      aria-label={img.alt ?? img.label ?? `图片 ${i + 1}`}
-    >
-      <img src={img.src} alt={img.alt ?? ``} loading="lazy" />
-    </a>
-  ))}
+<div class:list={["photo-grid", { "is-grayscale": grayscale }]} data-photo-grid>
+  {
+    items.map((img, i) => {
+      const cellAttrs = {
+        class: "photo-cell group",
+        "data-label": img.label ?? `图片 ${i + 1}`,
+        "aria-label": img.alt ?? img.label ?? `图片 ${i + 1}`,
+      };
+      return links ? (
+        <a href={img.href ?? defaultHref} {...cellAttrs}>
+          <img src={img.src} alt={img.alt ?? ``} loading="lazy" />
+        </a>
+      ) : (
+        <div {...cellAttrs}>
+          <img src={img.src} alt={img.alt ?? ``} loading="lazy" />
+        </div>
+      );
+    })
+  }
 </div>
-<div class="photo-tooltip" data-photo-tooltip aria-hidden="true"></div>
+{
+  tooltip && (
+    <div class="photo-tooltip" data-photo-tooltip aria-hidden="true"></div>
+  )
+}
 
 <script>
-  // Label that follows the cursor while hovering a cell (GitHub-style tooltip).
+  // Label bubble that follows the cursor while hovering a cell.
   document.addEventListener("astro:page-load", () => {
     const grid = document.querySelector<HTMLElement>("[data-photo-grid]");
     const tip = document.querySelector<HTMLElement>("[data-photo-tooltip]");
@@ -73,8 +85,6 @@ const items: GridImage[] = images && images.length > 0 ? images : DEFAULT_ITEMS;
       }
       tip.textContent = cell.dataset.label ?? "";
       tip.classList.add("visible");
-      tip.style.left = "0px";
-      tip.style.top = "0px";
       const pad = 12;
       const w = tip.offsetWidth;
       const h = tip.offsetHeight;
@@ -108,8 +118,8 @@ const items: GridImage[] = images && images.length > 0 ? images : DEFAULT_ITEMS;
     background: var(--muted);
   }
 
-  /* No extra borders/margins from the article prose styles, and any source
-     aspect ratio is auto-cropped to the square cell. */
+  /* Original colors; no borders/margins from the article prose styles, and
+     any source aspect ratio is auto-cropped to the square cell. */
   .photo-grid .photo-cell img {
     position: absolute;
     inset: 0;
@@ -119,16 +129,22 @@ const items: GridImage[] = images && images.length > 0 ? images : DEFAULT_ITEMS;
     margin: 0;
     border: 0;
     object-fit: cover;
-    /* Black & white first; color + slight zoom on hover. */
-    filter: grayscale(1);
     transform: scale(1);
-    transition: filter 0.3s ease, transform 0.3s ease;
+    transition: transform 0.3s ease;
   }
 
-  .photo-grid .photo-cell:hover img,
-  .photo-grid .photo-cell:focus-visible img {
-    filter: grayscale(0);
+  .photo-grid .photo-cell:hover img {
     transform: scale(1.05);
+  }
+
+  /* Classic effect: grayscale by default, color fades in on hover. */
+  .photo-grid.is-grayscale .photo-cell img {
+    filter: grayscale(1);
+    transition: transform 0.3s ease, filter 0.3s ease;
+  }
+
+  .photo-grid.is-grayscale .photo-cell:hover img {
+    filter: grayscale(0);
   }
 
   .photo-cell:focus-visible {

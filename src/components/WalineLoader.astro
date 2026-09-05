@@ -14,16 +14,49 @@ const server = walineServerURL.trim();
   enabled && (
     <script is:inline define:vars={{ server }}>
       (function () {
+        var mo = null;
+        var timer = null;
+
+        // Read-only pageview fill: fetch counts and fill every
+        // `.waline-pageview-count` WITHOUT incrementing (the comment widget on
+        // the post page handles the actual per-post increment).
+        function fill() {
+          if (!window.Waline) return;
+          if (!document.querySelector(".waline-pageview-count")) return;
+          try {
+            window.Waline.pageviewCount({
+              serverURL: server,
+              update: false,
+            });
+          } catch (e) {}
+        }
+
         function boot() {
           if (!window.Waline) return;
-          // Fill any per-path pageview counters on the page (post cards / post detail).
-          if (document.querySelector(".waline-pageview-count")) {
-            window.Waline.pageviewCount({ serverURL: server });
-          }
+
+          fill();
           window.dispatchEvent(
             new CustomEvent("waline-ready", { detail: { serverURL: server } })
           );
+          window.addEventListener("load", fill);
+          // Astro's View Transitions swap the document per navigation, which can
+          // detach listeners/observers. Re-fill a few ticks after each swap.
+          setTimeout(fill, 400);
+          setTimeout(fill, 1000);
+
+          // (Re)attach to the CURRENT root — document.body is replaced on each
+          // client-side navigation, so observe documentElement instead.
+          if (mo) mo.disconnect();
+          try {
+            mo = new MutationObserver(function () {
+              if (timer) clearTimeout(timer);
+              timer = setTimeout(fill, 200);
+            });
+            mo.observe(document.documentElement, { childList: true, subtree: true });
+          } catch (e) {}
         }
+
+        document.addEventListener("astro:page-load", boot);
 
         if (window.Waline) return boot();
 

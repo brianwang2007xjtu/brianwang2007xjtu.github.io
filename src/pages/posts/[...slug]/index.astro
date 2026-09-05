@@ -65,7 +65,7 @@ const { post, prevPost, nextPost } = Astro.props;
 const locale = Astro.currentLocale ?? config.site.lang;
 
 const walineEnabled = walineServerURL.trim() !== "";
-const postPath = getPostUrl(post.id, post.filePath, locale).replace(/\/+$/, "");
+const postPath = getPostUrl(post.id, post.filePath, locale);
 
 const {
   title,

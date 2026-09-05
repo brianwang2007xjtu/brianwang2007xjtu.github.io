@@ -14,7 +14,7 @@ const { title, description, pubDatetime, tags = [] } = data;
 
 const locale = Astro.currentLocale ?? config.site.lang;
 const url = getPostUrl(id, filePath, locale);
-const viewPath = url.replace(/\/+$/, "");
+const viewPath = url;
 const viewsEnabled = walineServerURL.trim() !== "";
 
 const date = new Intl.DateTimeFormat("en-US", {

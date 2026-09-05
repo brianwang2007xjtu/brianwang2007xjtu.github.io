@@ -3,6 +3,7 @@ import type { CollectionEntry } from "astro:content";
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { getPostUrl } from "@/utils/getPostPaths";
 import { slugifyStr } from "@/utils/slugify";
+import { countWords } from "@/utils/getBlogStats";
 import { walineServerURL } from "@/data/waline";
 import config from "@/config";
 
@@ -22,8 +23,9 @@ const date = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 }).format(pubDatetime);
 
-const words = (body ?? "").split(/\s+/).filter(Boolean).length;
-const minutes = Math.max(1, Math.ceil(words / 200));
+// CJK-aware word count (each Chinese char counts as one "word", Latin words
+// counted normally) with markdown/code noise stripped — post body only.
+const minutes = Math.max(1, Math.ceil(countWords(body ?? "") / 200));
 
 const visibleTags = tags.slice(0, 3);
 ---

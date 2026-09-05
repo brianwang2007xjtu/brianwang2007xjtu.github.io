@@ -5,4 +5,4 @@
  * （例如用 Vercel + MySQL / SQLite），然后把它的访问地址填到这里，
  * 例如 "https://waline.yourname.com"。留空则关闭评论与浏览量显示。
  */
-export const walineServerURL = "";
+export const walineServerURL = "https://comments.brianwang2007.com";

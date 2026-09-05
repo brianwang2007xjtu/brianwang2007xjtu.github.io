@@ -6,7 +6,7 @@ const server = walineServerURL.trim();
 
 {
   enabled && (
-    <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.css" />
   )
 }
 
@@ -28,7 +28,7 @@ const server = walineServerURL.trim();
         if (window.Waline) return boot();
 
         var s = document.createElement("script");
-        s.src = "https://unpkg.com/@waline/client@v3/dist/waline.js";
+        s.src = "https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.js";
         s.async = true;
         s.onload = boot;
         document.head.appendChild(s);

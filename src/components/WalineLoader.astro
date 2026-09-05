@@ -27,8 +27,10 @@ const server = walineServerURL.trim();
 
         if (window.Waline) return boot();
 
+        // UMD build exposes a global `window.Waline` (the ES module `waline.js`
+        // only exports named bindings, so we load the UMD variant instead).
         var s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.js";
+        s.src = "https://cdn.jsdelivr.net/npm/@waline/client@v3/dist/waline.umd.js";
         s.async = true;
         s.onload = boot;
         document.head.appendChild(s);

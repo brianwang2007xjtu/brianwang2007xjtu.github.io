@@ -2,7 +2,6 @@
 import { walineServerURL } from "@/data/waline";
 const enabled = walineServerURL.trim() !== "";
 const server = walineServerURL.trim();
-const path = Astro.url.pathname;
 ---
 
 {
@@ -18,30 +17,31 @@ const path = Astro.url.pathname;
 
 {
   enabled && (
-    <script is:inline define:vars={{ server, path }}>
+    <script is:inline define:vars={{ server }}>
       (function () {
-        var inited = null;
+        var instance = null;
+
         var init = function () {
           if (!window.Waline) return;
+          if (!document.querySelector("#waline")) return;
           // Re-init on each navigation so the widget matches the current post.
-          if (inited && typeof inited === "function") {
+          if (instance) {
             try {
-              inited();
-            } catch {}
-          } else {
-            inited = window.Waline.init({
-              el: "#waline",
-              serverURL: server,
-              path: path,
-              lang: "zh-CN",
-              pageview: false,
-            });
+              if (typeof instance.destroy === "function") instance.destroy();
+              else if (typeof instance === "function") instance();
+            } catch (e) {}
           }
+          instance = window.Waline.init({
+            el: "#waline",
+            serverURL: server,
+            path: location.pathname,
+            lang: "zh-CN",
+            pageview: false,
+          });
         };
 
         var onReady = function () {
           init();
-          document.removeEventListener("waline-ready", onReady);
         };
         document.addEventListener("waline-ready", onReady);
         document.addEventListener("astro:page-load", onReady);

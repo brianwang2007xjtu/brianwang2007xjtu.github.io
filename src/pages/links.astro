@@ -1,0 +1,188 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/Header.astro";
+import Footer from "@/components/Footer.astro";
+import Comments from "@/components/Comments.astro";
+import {
+  commonLinks,
+  siteCard,
+  applyRules,
+  friendAvatar,
+} from "@/data/friendLinks";
+import config from "@/config";
+
+const siteCardRows = [
+  ["Name", siteCard.name],
+  ["Desc", siteCard.desc],
+  ["Link", siteCard.link],
+  ["Avatar", siteCard.avatar],
+];
+
+---
+
+<Layout title={`Links | ${config.site.title}`}>
+  <Header />
+
+  <main id="main-content" class="app-layout-wide py-8">
+    <header class="mb-8">
+      <h1 class="text-3xl font-medium sm:text-4xl">Links</h1>
+      <p class="mt-2 text-muted-foreground">
+        博客友链 · 和我一起探索有趣的世界
+      </p>
+    </header>
+
+    <div class="flex flex-col gap-y-12">
+      <!-- ===== Common Links ===== -->
+      <section id="common-links" class="space-y-6">
+        <div class="flex items-center gap-3 border-b border-border/40 pb-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15,3 21,3 21,9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+              <line x1="3" y1="8" x2="14" y2="19"></line>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-2xl font-semibold">Common Links</h2>
+            <p class="text-sm text-muted-foreground">精选博友链 ・ 一起探索有趣的世界</p>
+          </div>
+        </div>
+
+        {
+          commonLinks.length > 0 ? (
+            <div class="rounded-2xl border border-border/40 bg-gradient-to-br from-background to-muted/30 p-6">
+              <div class="grid gap-3.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                {commonLinks.map(f => (
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="no-underline"
+                  >
+                    <div class="group relative h-full overflow-hidden rounded-2xl border border-border bg-background px-3 py-2 transition-colors hover:bg-muted sm:px-4 sm:py-2.5">
+                      <div class="relative z-10 flex h-full items-center gap-3">
+                        <div class="relative h-14 w-14 min-w-14 overflow-hidden rounded-full">
+                          <img
+                            class="my-0 block h-full w-full bg-white object-cover"
+                            src={friendAvatar(f)}
+                            alt={f.name}
+                            loading="lazy"
+                          />
+                          <div class="absolute inset-0 flex items-center justify-center rounded-full bg-foreground opacity-0 transition-opacity duration-300 group-hover:opacity-50">
+                            <svg class="size-6 stroke-background" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                              <line x1="5" y1="12" x2="19" y2="12" class="translate-x-4 scale-x-0 transition-all duration-300 group-hover:translate-x-1 group-hover:scale-x-100"></line>
+                              <polyline points="12 5 19 12 12 19" class="transition-all duration-300 group-hover:translate-x-1"></polyline>
+                            </svg>
+                          </div>
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-y-1">
+                          <p class="my-0 truncate text-sm font-medium">{f.name}</p>
+                          <p class="my-0 line-clamp-1 text-xs text-muted-foreground">{f.desc}</p>
+                        </div>
+                      </div>
+                      <img
+                        class="absolute -start-2 top-0 z-0 my-0 h-full w-2/3 object-cover opacity-15 [mask-image:linear-gradient(to_left,transparent,black)]"
+                        src={friendAvatar(f)}
+                        alt=""
+                        loading="lazy"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p class="text-sm text-muted-foreground">
+              还没有博友。把好友信息加到 <code class="rounded bg-muted px-1 py-0.5">src/data/friendLinks.ts</code> 即可。
+            </p>
+          )
+        }
+      </section>
+
+      <!-- ===== Apply Links ===== -->
+      <section id="apply-links" class="space-y-6">
+        <div class="flex items-center gap-3 border-b border-border/40 pb-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2h8m-8 0v6m8-6v6M8 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-2"></path>
+              <path d="M8 16h8m-4-4v8"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-2xl font-semibold">Apply Links</h2>
+            <p class="text-sm text-muted-foreground">友链申请 ・ 让我们成为朋友吧</p>
+          </div>
+        </div>
+
+        <div class="space-y-6 rounded-2xl border border-border/40 bg-gradient-to-br from-green-50/60 to-blue-50/60 p-6 dark:from-green-950/15 dark:to-blue-950/15">
+          <div>
+            <div class="mb-3 flex items-center gap-3">
+              <span class="text-xs">ℹ️</span>
+              <p class="m-0 text-sm text-muted-foreground">本站信息如下（点击快速复制）：</p>
+            </div>
+            <div class="rounded-xl border border-border/50 bg-background/60 p-5 backdrop-blur-sm">
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 break-words">
+                {
+                  siteCardRows.map(([label, value]) => (
+                    <>
+                      <span class="text-sm font-medium text-muted-foreground">{label}:</span>
+                      <samp
+                        data-copy-value={value}
+                        class="cursor-pointer rounded-md bg-muted/30 px-2 py-1 font-mono text-sm transition-colors hover:bg-muted/50"
+                        title="点击复制"
+                      >
+                        {value}
+                      </samp>
+                    </>
+                  ))
+                }
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="mb-3 flex items-center gap-3">
+              <span class="text-xs">📝</span>
+              <p class="m-0 text-sm text-muted-foreground">申请时还请按照这个模板留言。</p>
+            </div>
+            <div class="rounded-xl border border-border/50 bg-background/60 p-5 backdrop-blur-sm">
+              <h4 class="m-0 mb-3 flex items-center gap-2 text-sm font-medium">
+                <span class="text-green-500">✅</span>申请说明
+              </h4>
+              <ul class="m-0 space-y-2 text-sm text-muted-foreground">
+                {applyRules.map(r => (
+                  <li class="flex items-start gap-2">
+                    <span class="text-blue-500">•</span>
+                    <span>{r}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <Comments />
+  </main>
+
+  <Footer />
+</Layout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    // ---- click-to-copy for the site card ----
+    document.querySelectorAll<HTMLElement>("[data-copy-value]").forEach(el => {
+      el.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(el.dataset.copyValue ?? "");
+          el.textContent = "已复制 ✓";
+          setTimeout(() => (el.textContent = el.dataset.copyValue ?? ""), 1200);
+        } catch {}
+      });
+    });
+
+  });
+</script>

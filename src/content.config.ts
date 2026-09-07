@@ -22,6 +22,8 @@ const posts = defineCollection({
       canonicalURL: z.string().optional(),
       hideEditPost: z.boolean().optional(),
       timezone: z.string().optional(),
+      /** Per-post accent color (hex), e.g. "#e8734a". Optional. */
+      theme: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     }),
 });
 

@@ -5,6 +5,19 @@
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
+/* ===== Language toggle (EN default): only the homepage bio and the About
+   page carry bilingual blocks; every other page is identical in both
+   languages. `data-lang` is set on <html> by the header's language switch. */
+[data-lang-zh] {
+  display: none;
+}
+html[data-lang="zh"] [data-lang-zh] {
+  display: inherit;
+}
+html[data-lang="zh"] [data-lang-en] {
+  display: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-accent/75;

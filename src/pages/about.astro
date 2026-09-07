@@ -8,6 +8,7 @@ import Footer from "@/components/Footer.astro";
 import config from "@/config";
 
 const about = await getEntry("pages", "about");
+const aboutZh = await getEntry("pages", "about-zh");
 
 if (!about) {
   throw new Error(
@@ -16,6 +17,9 @@ if (!about) {
 }
 
 const { Content } = await render(about);
+// Chinese version, shown when the language switch is set to 中文. This page and
+// the homepage bio are the only two places that differ between languages.
+const ZhContent = aboutZh ? (await render(aboutZh)).Content : Content;
 ---
 
 <Layout
@@ -28,8 +32,13 @@ const { Content } = await render(about);
 
   <Breadcrumb />
 
-  <Main pageTitle={about.data.title} class="app-prose">
-    <Content />
+  <Main pageTitle={["关于", about.data.title]} class="app-prose">
+    <div data-lang-en>
+      <Content />
+    </div>
+    <div data-lang-zh>
+      <ZhContent />
+    </div>
   </Main>
 
   <Footer />

@@ -40,6 +40,7 @@ const isExact = (path: string) => currentPath === path.replace(/\/+$/, "");
 const homeHref = getRelativeLocaleUrl(locale, "");
 const academicHref = getRelativeLocaleUrl(locale, "academic");
 const aboutHref = getRelativeLocaleUrl(locale, "about");
+const linksHref = getRelativeLocaleUrl(locale, "links");
 const searchHref = getRelativeLocaleUrl(locale, "search");
 
 const lifeLinks = [
@@ -187,6 +188,14 @@ const navItemClass =
       </li>
       <li>
         <a
+          href={linksHref}
+          class:list={[navItemClass, { "active-nav": isActive("/links") }]}
+        >
+          Links
+        </a>
+      </li>
+      <li>
+        <a
           href={aboutHref}
           class:list={[navItemClass, { "active-nav": isActive("/about") }]}
         >
@@ -291,6 +300,7 @@ const navItemClass =
         </a>
       ))
     }
+    <a href={linksHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/links") }]}>Links</a>
     <a href={aboutHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent", { "text-accent": isActive("/about") }]}>About</a>
     <a href={searchHref} class:list={["block rounded-lg px-3 py-2 text-base font-medium hover:bg-muted hover:text-accent sm:hidden", { "text-accent": isActive("/search") }]}>Search</a>
   </div>
@@ -358,6 +368,9 @@ const navItemClass =
         "lang",
         lang === "zh" ? "zh-CN" : "en"
       );
+      // Drives the bilingual blocks ([data-lang-en]/[data-lang-zh]) on the
+      // homepage bio and About page. Default language: English.
+      document.documentElement.setAttribute("data-lang", lang === "zh" ? "zh" : "en");
       for (const btn of buttons) {
         const active = btn.dataset.lang === lang;
         btn.classList.toggle("bg-muted", active);
@@ -399,9 +412,12 @@ const navItemClass =
     transform: translateY(-5rem);
   }
 
+  /* Shrink the nav into a floating pill. The shrink stays 8% whenever there is
+     room; when the viewport gets tight the margin adapts so the content
+     (incl. the theme toggle on the right) always stays inside the pill. */
   @media (min-width: 768px) {
     #site-nav.not-top {
-      margin-inline: 8%;
+      margin-inline: min(8%, calc(50% - 363px));
     }
   }
 

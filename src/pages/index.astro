@@ -44,7 +44,7 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
 ---
 
 <Layout>
-  <Header narrow />
+  <Header />
 
   <main
     id="main-content"
@@ -64,13 +64,19 @@ const aboutHref = getRelativeLocaleUrl(locale, "about");
       <div class="flex flex-col gap-4">
         <h1 class="text-3xl font-bold sm:text-4xl">Master</h1>
         <p class="max-w-xl text-muted-foreground">
-          Hi, I&#39;m master — an undergraduate at Xi&#39;an Jiaotong
-          University working on brain-computer interfaces.{" "}
+          <span data-lang-en>
+            Hi, I&#39;m master — an undergraduate at Xi&#39;an Jiaotong
+            University working on brain-computer interfaces.{" "}
+          </span>
+          <span data-lang-zh>
+            你好，我是 Master —— 西安交通大学本科生，研究方向是脑机接口。{" "}
+          </span>
           <a
             href={aboutHref}
             class="text-accent decoration-dashed underline-offset-4 hover:underline"
           >
-            More about me
+            <span data-lang-en>More about me</span>
+            <span data-lang-zh>了解更多</span>
           </a>
         </p>
         <div class="flex flex-wrap items-center gap-2">

@@ -8,9 +8,8 @@
     /* Match axi404.com article body typography:
        Century Gothic stack + 16px body + comfortable 1.75 reading leading. */
     font-family: var(--font-app);
-    font-size: 1rem;
+    font-size: 1.08rem;
     line-height: 1.75;
-
 
     h1,
     h2,

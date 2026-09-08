@@ -1,0 +1,160 @@
+---
+title: "VAE 的数学原理"
+author: master
+pubDatetime: 2026-09-08T00:00:00Z
+category: research
+tags:
+  - vae
+  - math
+description: "追根溯源，前来考古 VAE ～"
+---
+
+import ImageRow from "@/components/ImageRow.astro";
+
+<figure>
+  <img src="/vae/vae-cover.jpeg" alt="vae arch." />
+  <figcaption> * 图片来源：[《Difference between AE and VAE》](https://towardsdatascience.com/difference-between-autoencoder-ae-and-variational-autoencoder-vae-ed7be1c038f2/)</figcaption>
+</figure>
+
+> Approximate the impossible.
+
+<p style="text-align: right; font-style: italic;"> —— Diederik P. Kingma </p>
+
+## 引言
+
+**VAE（Variational Autoencoder）** 是个老古董，甚至比 Transformer 还早了两年。因此，一个非常具有代表性的问题是：了解 VAE 尤其是 VAE 背后的数理逻辑，有何必要性？如果把 VAE 仅仅当作「图片生成器」，那么无论是从 fedality 还是 creativity 来说，VAE 都毫无竞争力。但倘若把 VAE 当作一种解决问题的「范式」，一个从 **Deterministic** 走向 **Probabilistic** 的临界点，那么 VAE 的数学，可以很大程度上帮助我们看懂所有现代生成模型。
+
+本博客将从 VAE 与 AE 的关系开篇，讲清楚 VAE 的核心思想和管线，并以此深入到 VAE 背后的数学，着重介绍「重参数化技巧」（Reparameterization Trick），最后再简要介绍 VAE 的一个变体 VQ-VAE 以及它的一些数学直觉。
+
+《××× 的数学原理》系列迎来了第二篇，这一系列并不是笔者以所谓「专家」身份进行解读，而是本人在学习过程中的「中间产物」，为的是记录和巩固加深自己对某知识的理解。所以，叙述过程中难免有不严谨和错误，欢迎各位怒斥，也欢迎各位在下方的评论区批评指正 ～
+
+---
+
+## Variational 意味着什么
+
+Variational 的本身含义是「变分」。也就是说，VAE 有别于普通 AE，是概率性的：输入一张固定的图片，encoder 的输出不再是隐空间中的一个点，而是一个「分布」（一般来说，规定正态分布，因此只需要输出均值和方差即可）。这样做有一个天然的好处。相比于 AE 离散的隐空间，VAE 预测的分布是连续的。试想一下，我们把隐空间假想成一条直线，AE 的 encoder 将输入的图片投射到直线的一些零散的点上；而 VAE 的 encoder 则输出连续的组合分布。
+
+<figure>
+  <img src="/vae/ae&vae.png" alt="ae and vae" />
+  <figcaption> * 图片来源：[【【大白话02】一文理清 VAE 变分自编码器 | 原理图解+公式推导】](https://www.bilibili.com/video/BV1ix4y1x7MR/?spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)</figcaption>
+</figure>
+
+假设有一个隐空间的 representation 不在某个离散点（均值）上，那么 AE 将无法很好地理解这种表示，decoder 很有可能将之恢复为完全是噪声的无意义的图像。而 VAE 则不然，分布空间在该点处仍会有一定的概率密度，因此 decoder 就可能生成介于三角形和圆形之间的圆角三角形。
+
+因此，AE 不能算是一个生成模型，而 VAE 是，并且是生成模型的最小结构单位。更深一层，AE 具有天然的「过拟合」属性，$L_2$ 损失会让 AE 尽可能地把吃进去的图片原封不动地吐出来；而 VAE 加入了「正则化」损失，避免了简单的「恢复」操作，具有较强的泛化能力。
+
+---
+
+## VAE 在干什么
+
+<figure>
+  <img src="/vae/vae.png" alt="vae" />
+  <figcaption> * 图片来源：[《Auto-Encoding Variational Bayes》](https://arxiv.org/abs/1312.6114)</figcaption>
+</figure>
+
+和很多现代生成模型相比，VAE 的架构十分简单。但是这一节还是有必要的，因为讲管线的过程中，可以顺便省去符号说明的篇幅。输入图像 $\mathbf\{x}$，通过 encoder 输出确定性的统计参数 $\mu$ 以及 $\sigma$。接着，随机采样出一个 $\mathbf\{z} \sim \mathcal\{N\}(\mu, \sigma)$。之后，再通过 decoder 的 $p_\{\theta}(\mathbf\{z})p_\{\theta}(\mathbf\{x}|\mathbf\{z})$ 生成 $\hat\{\mathbf\{x}}$。
+
+其中，encoder 的 $q_\{\phi}(\mathbf\{z}|\mathbf\{x})$ 是对不可知的后验 $p_\{\theta}(\mathbf\{z}|\mathbf\{x})$ 的近似。
+
+---
+
+## 损失函数
+
+对于 encoder 来说，近似分布 $q_\{\phi}(\mathbf\{z}|\mathbf\{x})$ 与 $p_\{\theta}(\mathbf\{z}|\mathbf\{x})$ 越接近，效果越好。因此，很自然地想到用 **KL Divergence** 作为 encoder 部分的损失函数。参考上一篇博客[《Diffusion Model 的数学原理》](/posts/diffusion-model-math)中的推导，展开 $D_\{KL}$可以得到：
+
+$$
+  \log p_\{\theta}(\mathbf\{x}) = D_\{KL}(q_\{\phi}(\mathbf\{z}|\mathbf\{x})||p_\{\theta}(\mathbf\{z}|\mathbf\{x})) + \sum\_\{\mathbf\{z}} q_\{\phi}(\mathbf\{z}|\mathbf\{x}) \log \left(\frac\{p_\{\theta}(\mathbf\{x}, \mathbf\{z})}\{q_\{\phi}(\mathbf\{z}|\mathbf\{x})} \right)
+$$ 
+
+对于 encoder（$\phi$）来说，左边的边际似然项是常数，要最小化 KL 散度，就是要最大化最后的求和项，记：
+
+$$
+  \mathcal\{L}\left(\theta, \phi; \mathbf\{x} \right) = \sum\_\{\mathbf\{z}} q_\{\phi}(\mathbf\{z}|\mathbf\{x}) \log \left(\frac\{p_\{\theta}(\mathbf\{x}, \mathbf\{z})}\{q_\{\phi}(\mathbf\{z}|\mathbf\{x})} \right)
+$$
+
+即为 VAE 中的 **ELBO（证据下界）**。在实际训练中，只需要最大化 ELBO，$\log p_\{\theta}(\mathbf\{x})$ 也会自然而然的变大，因此之后只需要优化 ELBO，考虑 ELBO 的梯度。再补充一下，ELBO 这个名词在上一篇博客中也出现了，叫这个名字是因为 KL 散度非负，有不等式 $\log p_\{\theta}(\mathbf\{x}) \geq \mathcal\{L}\left(\theta, \phi; \mathbf\{x} \right)$ 恒成立。
+
+## 重参数化
+
+现在要最大化这个 Lower Bound，先用条件概率公式展开，得到：
+
+$$
+\begin\{aligned\}
+  \mathcal\{L}\left(\theta, \phi; \mathbf\{x} \right) &= \sum\_\{\mathbf\{z}} q_\{\phi}(\mathbf\{z}|\mathbf\{x}) \left[\log p_\{\theta}(\mathbf\{x}|\mathbf\{z}) + \log \frac\{p_\{\theta}(\mathbf\{z})}\{q_\{\phi}(\mathbf\{z}|\mathbf\{x})} \right] \\\\
+  &= \underbrace\{\mathbb\{E}\_\{q_\{\phi}(\mathbf\{z}|\mathbf\{x})} \left(\log p_\{\theta}(\mathbf\{x} | \mathbf\{z}) \right)}\_\{Reconstruction \\: Loss} - \underbrace\{D_\{KL}(q_\{\phi}(\mathbf\{z}|\mathbf\{x})||p_\{\theta}(\mathbf\{z}))}\_\{Regularization \\: Loss}
+\end\{aligned\}
+$$
+
+设中括号内的部分为 $f(z)$，显然该项**与 $\phi$ 有关**，因此**不能**直接使用**蒙特卡洛近似**：
+
+$$
+\begin\{aligned\}
+  \nabla\_\{\phi} \mathbb\{E}\_\{p_\{\phi}(z)\}[f_\{\phi}(z)] &= \nabla_\{\phi} \left[ \int_z p_\{\phi}(z) f_\{\phi}(z) dz \right] \\\\
+  &= \int_z \nabla_\{\phi} \left[ p_\{\phi}(z) f_\{\phi}(z) \right] dz \\\\
+  &= \int_z f\_\{\phi}(z) \nabla_\{\phi} p_\{\phi}(z) dz + \int_z p_\{\phi}(z) \nabla_\{\phi} f_\{\phi}(z) dz \\\\
+  &= \underbrace\{\int_z f\_\{\phi}(z) \nabla_\{\phi} p_\{\phi}(z) dz}\_\{The \\: annoying \\: term} + \mathbb\{E}\_\{p_\{\phi}(z)} \left[ \nabla_\{\phi} f_\{\phi}(z) \right]
+\end\{aligned\}
+$$
+
+为了解决难缠的第一项，可以考虑巧妙的 **Reparameteriztion (重参数化)**。
+
+<figure>
+  <img src="/vae/vae-reparam.png" alt="vae with reparam." />
+  <figcaption> * 图片来源：[《The Reparameterization Trick》](https://gregorygundersen.com/blog/2018/04/29/reparameterization/)</figcaption>
+</figure>
+
+一般的，引入一个辅助随机变量 $\mathbf\{\epsilon} \sim p(\mathbf\{\epsilon})$，让 $\mathbf\{\epsilon}$ 完整表示 $\mathbf\{z}$ 的随机性，则有 $\mathbf\{z} = g_\{\phi}(\mathbf\{\mathbf\{\epsilon}},\mathbf\{x})$。由于 $\mathbf\{\epsilon}$ 与 $\phi$ **无关**，可以直接使用**蒙特卡洛近似**：
+
+$$
+\begin\{aligned\}
+  \nabla\_\{\phi\} \mathbb\{E}\_\{p\_\phi(z)\}[f(\mathbf\{z\}^\{(i)\})] &= \nabla\_\{\phi\} \mathbb\{E}\_\{p(\epsilon)\}[f(g\_\{\phi\}(\epsilon, \mathbf\{x\}^\{(i)\}))] \\\\
+  &= \mathbb\{E}\_\{p(\epsilon)\}[\nabla\_\{\phi\} f(g\_\{\phi\}(\epsilon, \mathbf\{x\}^\{(i)\}))] \\\\
+  &\approx \frac\{1\}\{L\} \sum\_\{l=1\}^\{L\} \nabla\_\{\phi\} f(g\_\{\phi\}(\epsilon^\{(l)\}, \mathbf\{x\}^\{(i)\}))
+\end\{aligned\}
+$$
+
+在 VAE 中，上式的 $p(\mathbf\{\epsilon}) = \mathcal\{N}(0, I)$，$g_\{\phi}(\mathbf\{\mathbf\{\epsilon}},\mathbf\{x}) = \mathbf\{\epsilon} \odot \sigma + \mu$。代入，就可以具体求解 ELBO 的梯度了。
+
+总结一下，重参数化的核心意义在于破解了「**随机采样不可导**」这一训练死结。原始 VAE 中，从 encoder 分布中采样隐变量的操作没有显式梯度，导致 loss 信号无法回传给 encoder 权重。重参数化巧妙地将随机性外包给一个**与模型无关的外部噪声**，让隐变量变成关于均值和方差的确定性函数。这样一来，梯度就能顺畅地流过整个计算图， encoder 得以正常更新。
+
+## 另一种 SGVB
+
+在重参数化的基础之上，还有一种更为简单的去梯度的方式。
+
+在「重参数化」这一小节，我们把整个 ELBO 看作某个函数的期望，将这个函数一整个设为 $f(z)$。但实际上，$\mathcal\{L}$ 的 KL DIvergence 项在已知 $p_\{\theta}(\mathbf\{z})$ 的情况下可以很简便地求出：
+
+$$
+\begin\{aligned\}
+  -D_\{KL\}(q_\{\phi\}(\mathbf\{z\}) \parallel p_\{\theta\}(\mathbf\{z\})) &= \int q_\{\phi\}(\mathbf\{z\}) \left(\log p_\{\theta\}(\mathbf\{z\}) - \log q_\{\phi\}(\mathbf\{z\})\right) d\mathbf\{z\} \\\\
+  &= \frac\{1\}\{2\} \sum_\{j=1\}^\{J\} \left(1 + \log((\sigma_j)^2) - (\mu_j)^2 - (\sigma_j)^2\right)
+\end\{aligned\}
+$$
+
+而 Reconstruction Loss 可以直接用 MSE 来表示。
+
+在之前「Variational 意味着什么」这一小节中，笔者探讨了 VAE 相较于 AE 的区别。提到，简单理解，可以大致说 VAE 比 AE 多了 Regularization Loss（KL）。这个 assertion 并不是空穴来风。在 MNIST 数据集上分别按照不加上 KL 和加上 KL 训练同一个 VAE。不加 KL 得到的 VAE 的隐空间和朴素 AE 几乎完全一样，表征很稀疏，表征能力较弱：
+
+<ImageRow
+  images={[
+    { src: "/vae/without-kl.jpeg", alt: "withoukl", caption:"Without KL"},
+    { src: "/vae/with-kl.jpeg", alt: "withkl", caption: "With KL"},
+  ]}
+/>
+
+## 结语
+
+行文至此，本该来说说 VQ-VAE。但考虑到本篇篇幅已经不短，并且 VQ-VAE 和 VAE 虽是一脉，但是数学细节乃至思想上还是有很大的不同，笔者最终还是决定，之后有时间单开一篇来详细讲 VQ-VAE。
+
+总结一下，至此，我们从 AE 的局限性出发，沿着“为什么要概率化”这条线索，逐步拆解了 VAE 的核心思想、管线设计以及它背后那一套精巧的数学框架。ELBO 的推导、KL 散度的解析求解、重参数化技巧的引入——这些看似繁杂的公式，最终都指向同一个目标：**让神经网络学会一个连续、可生成、有结构的隐空间**。
+
+欢迎持续关注，也欢迎在评论区留下你的思考或疑问。写这篇博客的过程，本身也是笔者自己“把书读薄”又“把书读厚”的过程，如有纰漏，恳请诸位不吝赐教 ～
+
+## Reference
+
+1. [https://towardsdatascience.com/difference-between-autoencoder-ae-and-variational-autoencoder-vae-ed7be1c038f2/](https://towardsdatascience.com/difference-between-autoencoder-ae-and-variational-autoencoder-vae-ed7be1c038f2/)
+2. [https://gregorygundersen.com/blog/2018/04/29/reparameterization/](https://gregorygundersen.com/blog/2018/04/29/reparameterization/)
+3. [https://www.bilibili.com/video/BV1q64y1y7J2/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32](https://www.bilibili.com/video/BV1q64y1y7J2/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)
+4. [https://www.bilibili.com/video/BV1ix4y1x7MR/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32](https://www.bilibili.com/video/BV1ix4y1x7MR/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32)
+
+
+

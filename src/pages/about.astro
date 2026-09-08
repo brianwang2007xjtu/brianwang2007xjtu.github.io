@@ -2,9 +2,8 @@
 import { getEntry, render } from "astro:content";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
-import Breadcrumb from "@/components/Breadcrumb.astro";
-import Main from "@/components/Main.astro";
 import Footer from "@/components/Footer.astro";
+import TableOfContents from "@/components/TableOfContents.astro";
 import config from "@/config";
 
 const about = await getEntry("pages", "about");
@@ -16,7 +15,7 @@ if (!about) {
   );
 }
 
-const { Content } = await render(about);
+const { Content, headings } = await render(about);
 // Chinese version, shown when the language switch is set to 中文. This page and
 // the homepage bio are the only two places that differ between languages.
 const ZhContent = aboutZh ? (await render(aboutZh)).Content : Content;
@@ -30,16 +29,24 @@ const ZhContent = aboutZh ? (await render(aboutZh)).Content : Content;
 >
   <Header />
 
-  <Breadcrumb />
+  <main id="main-content" class="app-layout-wide py-8" data-pagefind-body>
+    <div class="md:flex md:items-start md:gap-8 lg:gap-10">
+      <div class="mx-auto min-w-0 w-full max-w-3xl md:mx-0 md:grow">
+        <h1 class="text-3xl font-medium sm:text-4xl">About</h1>
 
-  <Main pageTitle={["关于", about.data.title]} class="app-prose">
-    <div data-lang-en>
-      <Content />
+        <div id="article" class="app-prose mt-8 w-full max-w-none">
+          <div data-lang-en>
+            <Content />
+          </div>
+          <div data-lang-zh>
+            <ZhContent />
+          </div>
+        </div>
+      </div>
+
+      <TableOfContents headings={headings} />
     </div>
-    <div data-lang-zh>
-      <ZhContent />
-    </div>
-  </Main>
+  </main>
 
   <Footer />
 </Layout>

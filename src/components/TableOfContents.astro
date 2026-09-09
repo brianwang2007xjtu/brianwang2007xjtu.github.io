@@ -55,6 +55,15 @@ const minDepth = tocHeadings.length
 }
 
 <script>
+  declare global {
+    interface Window {
+      katex?: {
+        renderToString: (tex: string, options: object) => string;
+      };
+    }
+  }
+  export {};
+
   function initToc() {
     const toc = document.getElementById("toc");
     const article = document.getElementById("article");
@@ -130,6 +139,45 @@ const minDepth = tocHeadings.length
         });
       }
     };
+
+    // Render `$...$` LaTeX fragments inside TOC labels (the article MathRenderer
+    // skips the TOC via data-pagefind-ignore, so we do it here).
+    let mathAttempts = 0;
+    const renderMathInToc = () => {
+      if (!window.katex) return;
+      links.forEach(link => {
+        if (link.element.dataset.mathDone) return;
+        const text = link.element.textContent ?? "";
+        const parts = text.split(/(\$[^$]+\$)/g);
+        if (parts.length <= 1) {
+          link.element.dataset.mathDone = "1";
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        parts.forEach(part => {
+          if (part.length > 2 && part.startsWith("$") && part.endsWith("$")) {
+            const span = document.createElement("span");
+            span.innerHTML = window.katex!.renderToString(part.slice(1, -1), {
+              throwOnError: false,
+            });
+            frag.appendChild(span.firstElementChild!);
+          } else {
+            frag.appendChild(document.createTextNode(part));
+          }
+        });
+        link.element.replaceChildren(frag);
+        link.element.dataset.mathDone = "1";
+      });
+    };
+    // KaTeX loads async from the CDN; retry a few times until available.
+    const mathTimer = window.setInterval(() => {
+      mathAttempts++;
+      renderMathInToc();
+      if (mathAttempts >= 10 || (links.length && links.every(l => l.element.dataset.mathDone))) {
+        window.clearInterval(mathTimer);
+      }
+    }, 400);
+    renderMathInToc();
 
     schedule();
     window.addEventListener("scroll", schedule, { passive: true });

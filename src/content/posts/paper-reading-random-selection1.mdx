@@ -1,0 +1,76 @@
+---
+title: "Paper Reading: Random Selection 1"
+author: master
+pubDatetime: 2026-09-09T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "记录最近阅读的几篇重要 papers 📝。"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+虽说是 “Random Selection”，但是本 blog 中的三篇论文还是有很深的关联的。其中，ViT 作为统一了视觉与语言的轻量架构，很自然地被 VLA 架构 $\pi_0$ 选为了 Vision Encoder。而 DreamVLA 更有意思，它的官方定义虽然是「一个新颖的 VLA 框架」，但实际上，DreamVLA 先预测世界知识，再指导产生动作，属于 WAM 的范畴。
+
+## ViT
+
+<PaperNote
+  title="ViT"
+  arxivId="2010.11929"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/ViT.pdf"
+  summary="CV 与 NLP 大一统"
+  images={["/papers/ViT.png"]}
+>
+
+ViT 即 Vision Transformer，顾名思义，提出了一种将纯 Transformer 架构直接应用于图像块序列，进行图像分类任务的方法。ViT 的设计目标非常之简单，就是要尽可能少地对原始 Transformer Encoder 进行修改，直接迁移。这体现出了 Transformer 架构极其强大的通用性。
+
+Vision Transformer 架构的设计思路也很清晰。为了将图片送入 Transformer，首先需要把图片均匀切成众多 patches，将 $H \times W \times C$ 的 patch tensor 「拉直」成一个个 1D 的向量，再用一个全链接层 Linear Project 成 1D 的 embeddings 序列，紧接着加入 $\sin$-$\cos$ 位置编码，最后用 Standard Transformer Encoder 接上一个 MLP 的 Classification Head 进行图像分类。其中，Encoder 和最标准的 Transformer Encoder 一模一样，Projection Head 可以 fine-tune。
+
+实验表明，当在足够大的数据集（如 ImageNet-21k 或 JFT-300M）上预训练时，ViT 在多项图像分类基准上超越或媲美最先进的 CNN，且训练成本更低。ViT 统一了 NLP 和 CV，证明标准 Transformer **无需卷积的归纳偏置**，仅凭自注意力即可在视觉任务上达到顶尖性能，为视觉大模型扩展奠定了架构基础。
+
+然而，ViT亦存在显著局限。其一，由于缺乏 CNN 固有的平移等变性和局部感受野先验，其数据效率极低，在小规模数据集上从头训练时性能远逊于 ResNet。其二，ViT 对输入分辨率变化较为敏感，改变分辨率需插值位置编码并微调，无法灵活适应多尺度，限制了其在 Object Detection、Segmentation 等密集预测下游任务中的直接 transfer 的能力。
+
+</PaperNote>
+
+## $\pi_0$
+
+<PaperNote
+  title="pi_0"
+  arxivId="2410.24164"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/%CF%800.pdf"
+  summary= "VLM 与 Actor 分离，再加入 Flow matching，缔造 VLA 经典范式"
+  images={["/papers/pi0.png"]}
+>
+
+$\pi_0$ 是 Physical Intelligence 提出的机器人动作模型，核心思想简单粗暴：把「看懂」和「动手」拆成两个模块。看懂的部分直接用 pre-trained 的 PaliGemma（3B），动手的部分单独训练一个小型 Action Expert（300M），中间用 Flow Matching 把视觉理解转化成**连续**的动作指令。这样做的好处是，能复用互联网级别的语义知识，同时保持高频流畅的物理控制。
+
+它在架构上精妙地采用「KV Cache 的多层复用」。PaliGemma 处理图像和语言时，会把内部 **每一层** 的 K 和 V 都存下来——不只是最后一层，浅层的纹理边缘、深层的语义概念全保留。Conditioned Flow Matching 在 10 步去噪迭代中，每一层都通过 cross-attention 去“翻阅”对应层级的缓存特征，相当于写作业时随时翻看一本从大纲到定稿的完整草稿。
+
+$\pi_0$ 的实验表现非常之突出。模型在叠衣服、桌面清理等灵巧操作任务上刷新了 SOTA，而且能泛化到没见过的物体和场景。10-20Hz 的控制频率足够应付真实机器人场景，动作轨迹也比传统扩散模型平滑得多，抖动更少。
+
+</PaperNote>
+
+## DreamVLA
+
+<PaperNote
+  title="DreamVLA"
+  arxivId="2507.04447"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DreamVLA.pdf"
+  summary= "训练时用 Dream Queries 预测世界知识，再指导动作，属于 WAM 范畴"
+  images={["/papers/DreamVLA.png"]}
+>
+
+DreamVLA 的核心想法很有意思：让机器人先「做梦」，再动手。人类做操作前通常会在脑子里预演一下——这东西会怎么动、空间位置在哪等等。它不直接 end2end 生成 action chunk，而是先用一组可学习的 Dream Queries 去预测三类世界知识：**动态区域**、**空间深度**、**语义特征**，然后把这些知识喂给动作生成模块去规划操作，属于典型的 WAM。
+
+该模型架构上的核心设计是 **Block-wise Structured Attention**，本质是一种特殊的「注意力掩码策略」。它将输入序列划分为「上下文块」和「查询块」，并对 Dream Queries 内部施加严格的 Bidirectional Masking，强制动态、空间、语义三个子块之间不发生直接的 Token-level 交互。这样做的好处非常显然，可以极大程度地避免 Feature Entanglement，迫使每个分支独立提取互补且非冗余的世界表征。
+
+![-blockattention](/papers/blockattention.png)
+
+DreamVLA 实验数据非常漂亮。真实机器人任务上 76.7% 成功率，CALVIN 上能连续完成 4.44 个指令。模拟环境更是碾压级别：LIBERO 上 97.2%，SimplerEnv-Bridge 上 71.4%，全面压过 $\pi_0$、GR00T-N1、OpenVLA 等一众 VLA 模型。
+
+但即便如此，DreamVLA 扩散模型的基底还是会带来一些明显的短板。比如说它的语义理解能力不如 Qwen2.5-VL 的自回归；同时，DreamVLA 的多步迭代推理，实时性天生就会比单步模型慢一截，真机优化还是必不可少的。
+
+</PaperNote>
+
+

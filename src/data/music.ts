@@ -129,7 +129,7 @@ export const albums: Album[] = [
   },
   {
     cover: "/covers/music-covers/kleiber_beethoven_symphony5&7.jpg",
-    slug: "bruckner-symphony-9",
+    slug: "beethoven-5&7",
     title: "Symphonies Nos.5&7",
     artist: "Ludwig van Beethoven",
     category: "classical",
@@ -147,6 +147,27 @@ export const albums: Album[] = [
     albumType: "studio",
     listenUrl:
       "https://music.163.com/#/album?id=152843763",
+  },
+  {
+    cover: "/covers/music-covers/thielemann_bruckner_symphony_No.3.jpg",
+    slug: "bruckner-symphony-3",
+    title: "Symphony No.3",
+    artist: "Anton Bruckner",
+    category: "classical",
+    subCategory: "symphonies",
+    description:
+      "A very compelling performance of the symphony…It’s a recording that everyone interested in. The composer will want to hear.",
+    details:
+      "hristian Thielemann's Bruckner Symphony No. 3 with the Vienna Philharmonic (2021) offers the 1877 version, showcasing their deep affinity for this monumental, Wagner‑dedicated work. Praised for majestic orchestral playing, it also draws criticism for sluggish pacing, yet remains a compelling document of a major interpretative partnership.",
+    recommendation:
+      "A special version.",
+    conductor: "Christian Thielemann",
+    orchestra: "Wiener Philharmoniker",
+    releaseDate: "2021",
+    catalogNumber: "19439861382",
+    albumType: "studio",
+    listenUrl:
+      "https://music.163.com/#/album?id=125705869",
   },
 
   // operas
@@ -301,6 +322,25 @@ export const albums: Album[] = [
     releaseDate: "2006",
     listenUrl: "https://www.prestomusic.com/classical/products/7944040--ravel-daphnis-et-chloe",
   },
+  {
+    cover: "/covers/music-covers/makela_stravinsky&debussy.jpg",
+    slug: "Petrushka",
+    title: "Petrushka & Prélude à l'après-midi d'un faune",
+    artist: "Stravinsky & Debussy",
+    category: "classical",
+    subCategory: "others",
+    conductor: "Klaus Mäkelä",
+    description:
+      "Klaus Mäkelä’s second album with the Orchestre de Paris from the series celebrating Ballets Russes scores. His previous two albums have achieved a plethora of 5* reviews and incredible physical and streaming success - over 16M streams and €400k revenue combined. His upcoming international concert dates and US Tour start on 14th March 2024, including Klaus' debut at Carnegie Hall on 16th March. This is Orchestre de Paris' first Carnegie Hall appearance in over 20 years. The programme includes Stravinsky's “Le sacre du printemps” and “L’Oiseau de feu”.",
+    details: 
+      "Klaus Mäkelä’s second album with the Orchestre de Paris from the series celebrating Ballets Russes scores. His previous two albums have achieved a plethora of 5* reviews and incredible physical and streaming success - over 16M streams and €400k revenue combined. His upcoming international concert dates and US Tour start on 14th March 2024, including Klaus' debut at Carnegie Hall on 16th March. This is Orchestre de Paris' first Carnegie Hall appearance in over 20 years. The programme includes Stravinsky's “Le sacre du printemps” and “L’Oiseau de feu”.",
+    recommendation:
+      "Stravinsky can be joyful to listen.",
+    orchestra: "Orchestre de Paris",
+    releaseDate: "2024",
+    listenUrl: "https://music.163.com/#/album?id=188284703",
+  },
+
   // non-classical
   {
     cover: "/covers/music-covers/transfer_steve_chou.jpg",

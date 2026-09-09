@@ -22,7 +22,7 @@ import ImageRow from "@/components/ImageRow.astro";
 
 ## 引言
 
-**VAE（Variational Autoencoder）** 是个老古董，甚至比 Transformer 还早了两年。因此，一个非常具有代表性的问题是：了解 VAE 尤其是 VAE 背后的数理逻辑，有何必要性？如果把 VAE 仅仅当作「图片生成器」，那么无论是从 fedality 还是 creativity 来说，VAE 都毫无竞争力。但倘若把 VAE 当作一种解决问题的「范式」，一个从 **Deterministic** 走向 **Probabilistic** 的临界点，那么 VAE 的数学，可以很大程度上帮助我们看懂所有现代生成模型。
+**VAE（Variational Autoencoder）** 是个老古董，甚至比 Transformer 还早了四年。因此，一个非常具有代表性的问题是：了解 VAE 尤其是 VAE 背后的数理逻辑，有何必要性？如果把 VAE 仅仅当作「图片生成器」，那么无论是从 fedality 还是 creativity 来说，VAE 都毫无竞争力。但倘若把 VAE 当作一种解决问题的「范式」，一个从 **Deterministic** 走向 **Probabilistic** 的临界点，那么 VAE 的数学，可以很大程度上帮助我们看懂所有现代生成模型。
 
 本博客将从 VAE 与 AE 的关系开篇，讲清楚 VAE 的核心思想和管线，并以此深入到 VAE 背后的数学，着重介绍「重参数化技巧」（Reparameterization Trick），最后再简要介绍 VAE 的一个变体 VQ-VAE 以及它的一些数学直觉。
 

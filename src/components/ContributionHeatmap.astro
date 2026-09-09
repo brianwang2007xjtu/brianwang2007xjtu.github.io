@@ -13,11 +13,11 @@ const { contributions, since = "2026-08-27" } = Astro.props;
 const DAY = 86400000;
 
 /**
- * Contributions are reported in units of 10 (10 lines of code = 1 contribution),
+ * Contributions are reported in units of 100 (100 lines of code = 1 contribution),
  * but the heatmap colors are computed from the raw counts so the palette stays
  * exactly as before.
  */
-const UNIT = 10;
+const UNIT = 100;
 
 /** GitHub calendar palette. Full static class strings so Tailwind's source
  *  scanner picks them up. */
@@ -221,7 +221,7 @@ const moreYears = years.slice(1);
   // GitHub-style year switching: re-render the Jan-Dec grid for the selected
   // year from the embedded contribution data.
   const DAY = 86400000;
-  const UNIT = 10;
+  const UNIT = 100;
   const MONTHS = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

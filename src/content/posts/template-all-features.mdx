@@ -10,6 +10,8 @@ description: "这是一篇模板文章，演示了本站支持的全部功能：
 
 import ResponsiveTable from "@/components/ResponsiveTable.astro";
 import ImageRow from "@/components/ImageRow.astro";
+import Algorithm from "@/components/Algorithm.astro";
+import Theorem from "@/components/Theorem.astro";
 
 > 这篇文章用于演示本博客的**全部**排版与功能。复制这份文件（如 `template-all-features.mdx`）改个名字即可作为新文章起点。页面右侧的 Table of Contents 会由 `##/###/####` 标题自动生成。
 
@@ -221,6 +223,47 @@ $$ \begin\{aligned\} \nabla \cdot \mathbf\{E\} &= \frac\{\rho\}\{\varepsilon_0\}
     <li>列表项 B</li>
   </ul>
 </details>
+
+### 算法块 (Algorithm)
+
+KaTeX 不支持 LaTeX 的 `algorithm` / `algorithmic` 环境，因此用内置的 `Algorithm` 组件来排版伪代码：`text` 里可以直接写 `$...$` 公式（自动渲染），`n` 是行号，`indent` 控制缩进，`keyword: true` 加粗关键字。
+
+<Algorithm
+  number={1}
+  title="Conditional Flow Matching Training"
+    lines={[
+    { text: "Require: data distribution $q(x_1)$, prior $p_0=\\mathcal{N}(0,I)$, neural network $v_\\theta(t,x)$" },
+    { text: "Ensure: trained $v_\\theta$" },
+    { n: 1, text: "Design a conditional probability path $p_t(x\\,|\\,x_1)$, assumed Gaussian, i.e." },
+    { formula: true, indent: 1, text: "$p_t(x\\,|\\,x_1) = \\mathcal{N}(x \\mid \\mu_t(x_1),\\, \\sigma_t^2 I)$" },
+    { n: 2, text: "Derive the conditional vector field in closed form (Theorem 3)" },
+    { formula: true, indent: 1, text: "$u_t(x\\,|\\,x_1) = \\dfrac{\\sigma_t'(x_1)}{\\sigma_t(x_1)}\\left(x - \\mu_t(x_1)\\right) + \\mu_t'(x_1)$" },
+    { n: 3, keyword: true, text: "while not converged do" },
+    { n: 4, indent: 1, text: "Sample $x_1 \\sim q(x_1)$" },
+    { n: 5, indent: 1, text: "Sample $x_0 \\sim p_0$" },
+    { n: 6, indent: 1, text: "Sample $t \\sim \\mathcal{U}[0,1]$" },
+    { n: 7, indent: 1, text: "Sample $x_t \\sim p_t(x\\,|\\,x_1)$" },
+    { n: 8, indent: 1, text: "Compute $u_t = u_t(x_t\\,|\\,x_1)$" },
+    { n: 9, indent: 1, text: "Compute the loss" },
+    { formula: true, indent: 1, text: "$\\mathcal{L} = \\|v_\\theta(t,x_t) - u_t\\|^2$" },
+    { n: 10, indent: 1, text: "Update" },
+    { formula: true, indent: 1, text: "$\\theta \\leftarrow \\theta - \\eta\\,\\nabla_\\theta \\mathcal{L}$" },
+    { n: 11, keyword: true, text: "end while" },
+    { text: "Output: $v_\\theta$" },
+  ]}
+/>
+
+### 定理框 (Theorem)
+
+论文式的定理排版：加粗的 "Theorem N." + 斜体陈述 + 高亮底色。`number` 可省略（则不显示编号），`name` 可改成 Lemma / Proposition 等。后面的行间公式继续陈述内容：
+
+<Theorem number={1}>
+  Given vector fields $u_t(x\\,|\\,x_1)$ that generate conditional probability paths $p_t(x\\,|\\,x_1)$, for any distribution $q(x_1)$, the marginal vector field $u_t$ in equation 8 generates the marginal probability path $p_t$ in equation 6, i.e., $u_t$ and $p_t$ satisfy the continuity equation (equation 26).
+</Theorem>
+
+$$
+\frac\{d\}\{dt\}p_t(x) = \int \left( \frac\{d\}\{dt\}p_t(x|x_1) \right) q(x_1)\,dx_1 = -\int \mathrm\{div\}\left( u_t(x|x_1)p_t(x|x_1) \right) q(x_1)\,dx_1 = -\mathrm\{div\}\left( \int u_t(x|x_1)p_t(x|x_1)q(x_1)\,dx_1 \right) = -\mathrm\{div\}\left( u_t(x)p_t(x) \right)
+$$
 
 > 其它可用组件：`PdfEmbed`（内嵌 PDF + 下载）、`PaperNote`（论文阅读卡片，含 Arxiv ID 与笔记下载）等，使用方法见对应源码 `src/components/`。
 

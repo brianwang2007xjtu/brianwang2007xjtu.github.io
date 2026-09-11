@@ -1,0 +1,149 @@
+---
+/**
+ * Paper-style algorithm block (the LaTeX `algorithm`/`algorithmic` packages are
+ * not supported by KaTeX, so algorithms are rendered with this component).
+ *
+ * Usage (in MDX):
+ *   <Algorithm number={1} title="Training" lines={[
+ *     { n: 1, keyword: true, text: "repeat" },
+ *     { n: 2, indent: 1, text: "$x_0 \\sim q(x_0)$" },
+ *     { n: 3, indent: 1, text: "Take gradient descent step on" },
+ *     { formula: true, indent: 1, text: "$\\nabla_\\theta \\|...\\|^2$" },
+ *     { n: 4, keyword: true, text: "until converged" },
+ *   ]} />
+ *
+ * `text` may contain `$...$` math — rendered by the article MathRenderer.
+ */
+interface AlgoLine {
+  /** Step number (rendered as "1:"); omit for continuation lines. */
+  n?: number;
+  /** Indentation level (0 = flush, 1 = loop/if body, …). */
+  indent?: number;
+  text: string;
+  /** Bold line (e.g. `repeat`, `for`, `end for`, `until`, `return`). */
+  keyword?: boolean;
+  /** Muted italic comment line. */
+  comment?: boolean;
+  /** Continuation line rendered as a centered display formula. */
+  formula?: boolean;
+}
+
+interface Props {
+  /** Algorithm number, e.g. 1 → "Algorithm 1: Training". Omit (or 0) for
+   *  an unnumbered heading "Algorithm: Training". */
+  number?: number | string;
+  title: string;
+  lines: AlgoLine[];
+}
+
+const { number, title, lines } = Astro.props;
+---
+
+<div class="algorithm not-prose">
+  <div class="algorithm-title">
+    {number ? `Algorithm ${number}: ` : "Algorithm: "}{title}
+  </div>
+  <ol class="algorithm-body">
+    {
+      lines.map(line => {
+        // Formula continuation lines render in KaTeX display style (bigger
+        // fractions/limits) when the text is a single math expression.
+        const singleMath = /^\$[^$]+\$$/.test(line.text);
+        const html =
+          line.formula && singleMath
+            ? `$$${line.text.slice(1, -1)}$$`
+            : line.text;
+        return (
+          <li
+            class:list={[
+              "algorithm-line",
+              {
+                "is-keyword": line.keyword,
+                "is-comment": line.comment,
+                "is-formula": line.formula,
+              },
+            ]}
+          >
+            <span class="algorithm-num">{line.n != null ? `${line.n}:` : ""}</span>
+            <span
+              class="algorithm-text"
+              style={`padding-inline-start: ${(line.indent ?? 0) * 1.5}rem`}
+              set:html={html}
+            />
+          </li>
+        );
+      })
+    }
+  </ol>
+</div>
+
+<style>
+  /* Booktabs-like layout: heavy rules top/bottom, thin rule under the title,
+     serif body — matching how algorithms are typeset in papers. */
+  .algorithm {
+    margin: 1.75rem 0;
+    padding: 0.4rem 0 0.5rem;
+    border-top: 1.5px solid var(--foreground);
+    border-bottom: 1.5px solid var(--foreground);
+    font-family: "Times New Roman", Times, Georgia, "Songti SC", "SimSun", serif;
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .algorithm-title {
+    margin-bottom: 0.45rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--foreground);
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  .algorithm-body {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .algorithm-line {
+    display: flex;
+    gap: 0.375rem;
+    padding-block: 0.12rem;
+  }
+
+  .algorithm-num {
+    flex: none;
+    width: 1.75rem;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The indent lives on the text so every step number stays flush left. */
+  .algorithm-text {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .algorithm-line.is-keyword .algorithm-text {
+    font-weight: 700;
+  }
+
+  .algorithm-line.is-comment .algorithm-text {
+    color: var(--muted-foreground);
+    font-style: italic;
+  }
+
+  /* Continuation formula: its own line, centred and larger. */
+  .algorithm-line.is-formula .algorithm-text {
+    padding-block: 0.25rem;
+    font-size: 1.15em;
+  }
+
+  .algorithm-line.is-formula .algorithm-text :global(.katex-display) {
+    margin: 0;
+    padding: 0;
+  }
+
+  .algorithm-text :global(.katex) {
+    font-size: 1.1em;
+  }
+</style>

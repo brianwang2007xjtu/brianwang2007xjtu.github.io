@@ -132,6 +132,7 @@
 
     /* Long KaTeX display formulas: keep them inside the article column with a
        horizontal scrollbar instead of overflowing the page (mobile-safe). */
+    /* Display formulas: centered, horizontally scrollable when too wide. */
     .katex-display {
       @apply max-w-full;
       overflow-x: auto;

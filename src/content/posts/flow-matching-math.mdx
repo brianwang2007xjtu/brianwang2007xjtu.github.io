@@ -1,0 +1,259 @@
+---
+title: "Flow Matching 的数学原理"
+author: master
+pubDatetime: 2026-09-12T00:00:00Z
+category: research
+tags:
+  - flow-matching
+  - math
+description: "可以很简单，也可以复杂的 Flow Matching ~"
+---
+
+import ImageRow from "@/components/ImageRow.astro";
+import Algorithm from "@/components/Algorithm.astro";
+import Theorem from "@/components/Theorem.astro";
+
+<figure>
+  <img src="/flow-matching/flow-matching.png" alt="flow matching" />
+  <figcaption> * 图片来源：[《Flow Matching Guide and Code》](https://arxiv.org/abs/2412.06264)</figcaption>
+</figure>
+
+> Flow Matching is compatible with a general family of Gaussian probability paths for transforming between noise and data samples, which subsumes existing diffusion paths as specific instances.
+
+<p style="text-align: right; font-style: italic;"> —— Yaron Lipman </p>
+
+## 引言
+
+在所有生成模型里，**Flow Matching** 的核心思想不算是最复杂的。它表面上仅仅是训练一个速度场、解一个 ODE。但其背后真正的问题很耐人寻味：我们到底需不需要模拟整条随机轨迹？如果只把 Flow Matching 当作更省步数的扩散模型，那它只是工程优化；可如果把它看作概率路径的重新表述，一个把 SDE 的边缘分布问题翻译成 ODE 回归问题的视角，那它带来的就不只是更快采样，而是一种统一 Diffusion、Score Matching、CNF 和最优传输的语言。
+
+Flow Matching 是一种物理学启发的模型，因此，本博客将首先给出完整的训练算法。为了理解这个算法，再从预备知识讲起，重点证明条件向量场和边缘向量场的等价关系以及 loss 函数的构造。之后，笔者会在条件概率路径已知的前提下，推导出条件向量场（GT）的具体表达式。最后，再简要谈一谈条件概率路径的一些常见选择。
+
+---
+
+## 核心算法
+
+<Algorithm
+  number = {0}
+  title="Conditional Flow Matching Training"
+    lines={[
+    { text: "Require: data distribution $q(x_1)$, prior $p_0=\\mathcal{N}(0,I)$, neural network $v_\\theta(t,x)$" },
+    { n: 1, text: "Design a conditional probability path $p_t(x\\,|\\,x_1)$, assumed Gaussian, i.e." },
+    { formula: true, indent: 1, text: "$p_t(x\\,|\\,x_1) = \\mathcal{N}(x \\mid \\mu_t(x_1),\\, \\sigma_t^2(x_1) I)$" },
+    { n: 2, text: "Derive the conditional vector field in closed form (Theorem 3)" },
+    { formula: true, indent: 1, text: "$u_t(x\\,|\\,x_1) = \\dfrac{\\sigma_t'(x_1)}{\\sigma_t(x_1)}\\left(x - \\mu_t(x_1)\\right) + \\mu_t'(x_1)$" },
+    { n: 3, keyword: true, text: "repeat" },
+    { n: 4, indent: 1, text: "Sample $x_1 \\sim q(x_1)$" },
+    { n: 5, indent: 1, text: "Sample $x_0 \\sim p_0$" },
+    { n: 6, indent: 1, text: "Sample $t \\sim \\mathcal{U}[0,1]$" },
+    { n: 7, indent: 1, text: "Sample $x_t \\sim p_t(x\\,|\\,x_1)$" },
+    { n: 8, indent: 1, text: "Compute $u_t = u_t(x\\,|\\,x_1)$" },
+    { n: 9, indent: 1, text: "Compute the loss" },
+    { formula: true, indent: 1, text: "$\\mathcal{L} = \\|v_\\theta(t,x_t) - u_t(x\\,|\\,x_1)\\|^2$" },
+    { n: 10, indent: 1, text: "Update" },
+    { formula: true, indent: 1, text: "$\\theta \\leftarrow \\theta - \\eta\\,\\nabla_\\theta \\mathcal{L}$" },
+    { n: 11, keyword: true, text: "until converge" },
+    ]}
+/>
+
+---
+
+## 一些前置知识
+
+在这一部分，笔者将温和地引入证明 flow matching 三大定理所需要的所有数学工具，理解它们需要一点点概率论和物理学的基础。首先，我们需要回顾一下随机变量函数的概率密度公式。设随机变量 $Z \sim \pi(z)$，且随机变量 $X = f(Z)$，则 $X$ 的概率密度为：
+
+$$
+  p(x) = \pi(z) \left\lvert \frac\{dz}\{dx} \right\rvert = \pi(f^\{-1}(x))\ \left\lvert (f^\{-1})\^\{\prime}(x) \right\rvert
+$$
+
+上式可以简单地用概率密度的定义推导。在这一部分，笔者还需要针对 **flow** 这个看似简单的物理概念进行一些补充说明，因为很多人在刚接触 Flow Matching 的时候，都会混淆「流」和「概率路径」的概念。一般地，向量场 $v_t(x)$ 的「流」指的是确定性映射：
+
+$$
+  \frac\{d}\{dt} \phi_t(x) = v_t(\phi_t(x)), \\: \\: \\: \\: \\: \\:\phi_0(x) = x
+$$
+
+它描述的是**单个样本点**如何随时间移动。给定初始点 $x_0$，流给出轨迹 $x_t=\phi_t(x_0)$。
+
+<figure>
+  <img src="/flow-matching/flow.png" alt="flow" />
+  <figcaption> * 图片来源：[《Flow Matching Guide and Code》](https://arxiv.org/abs/2412.06264)</figcaption>
+</figure>
+
+而「概率路径」则指的是**分布层面**随时间的演化，可以理解为一个边缘随机过程：
+
+$$
+  p_t = \left[\phi_t \right]_*p_0
+$$
+
+即初始分布 $p_0$ 被流 push forward 到时刻 $t$ 的分布。它描述的是“**一堆点**”的整体分布长什么样。除此以外，还有一个非常重要的方程需要解释，它把向量场和概率路径牢牢绑在一起：
+
+$$
+  \frac\{d}\{dt}p_t(x) + \nabla \cdot (p_t(x)v_t(x)) = 0
+$$
+
+这就是大名鼎鼎 **Continuity Equation**。对于向量场 $v_t$ 和概率路径 $p_t$，如果它们满足连续性方程，那么 $v_t$ 一定可以生成 $p_t$；反之，若已知 $v_t$ 可以生成 $p_t$，那么它们一定满足连续性方程。二者互为充分必要条件。
+
+那么，该如何理解 CE 呢？从本质上说，连续性方程是概率质量守恒定律，它保证了向量场生成的流能够正确输运概率分布；Flow Matching 训练时回归条件速度，最终学到的边缘速度自动满足这个方程，从而把先验分布变成数据分布。
+
+---
+
+## 条件向量场与边缘向量场的等价性
+
+对于 Flow Matching 的训练算法，最大的问题就是向量场的真实值 $u_t(x)$ 不易求出，从而没法计算出 loss 的梯度。细心的你可能已经发现，在之前的 DDPM 里也有类似这样的问题，也就是反向条件概率 $p(x_\{t-1}|x_t)$ 无法求出。当时，我们假设最终的目标图（无噪图）$x_0$ 已知，这样我们多了一个条件，就可以轻松求出 $p(x_\{t-1}| x_t, x_0)$，最后只要求出两个概率之间的关系即可。
+
+<figure>
+  <img src="/flow-matching/conditional.png" alt="conditional" />
+  <figcaption> * 图片来源：[《Flow Matching Guide and Code》](https://arxiv.org/abs/2412.06264)</figcaption>
+</figure>
+
+异曲同工地，我们想到可以用**条件向量场** $u_t(x|x_1)$ 代替原始目标（边缘）向量场 $u_t(x)$。这里很自然地有一个疑问，那就是：为什么可以认为预测条件向量场等价于预测原始的不带条件的向量场？**也即**，若已知 $u_t(x|x_1)$ 生成条件概率路径 $p_t(x|x_1)$，是否可以证明 $u_t(x)$ 可以生成边缘概率路径 $p_t(x)$。这个问题可以总结成下面的「定理1」并证明：
+
+<Theorem number={1}>
+  Given vector fields $u_t(x\\,|\\,x_1)$ that generate conditional probability paths $p_t(x\\,|\\,x_1)$, for any distribution $q(x_1)$, the marginal vector field $u_t$ generates the marginal probability path $p_t$, i.e., $u_t$ and $p_t$ satisfy the continuity equation.
+</Theorem>
+
+下面给出 Proof。
+
+首先用 Bayes 公式将 $u_t(x)$ 展开：
+
+$$
+  u_t(x) = \int u_t(x|x_1)p(x_1 | x) dx_1 = \int u_t(x|x_1) \frac\{p_t(x|x_1)p(x_1)}\{p_t(x)}dx_1
+$$
+
+紧接着，考虑对边缘概率路径 $p_t(x)$ 求导。由于 $p_t(x|x_1)$ 与 $u_t(x|x_1)$ 满足 Continuity Equation，所以：
+
+$$
+\begin\{aligned\}
+  \frac\{d\}\{dt\}p_t(x) &= \int \left( \frac\{d\}\{dt\}p_t(x|x_1) \right) q(x_1)dx_1 \\\\
+  &= -\int \nabla \cdot \left( u_t(x|x_1)p_t(x|x_1) \right) q(x_1)dx_1 \\\\
+  &= -\nabla \cdot \left( \int u_t(x|x_1)p_t(x|x_1)q(x_1)dx_1 \right) \\\\
+  &= -\nabla \cdot \left( u_t(x)p_t(x) \right)
+\end\{aligned\}
+$$
+
+最后一个移项，证毕。
+
+---
+
+## 损失函数
+
+普通 Flow Matching 的损失函数在开篇已有提及：
+
+$$
+  \mathcal\{L}\_\{FM}(\theta) = \mathbb\{E}\_\{t,p_t(x)} \left\lVert v_t(x)-u_t(x) \right\rVert ^2
+$$
+
+以此为基础，Conditional Flow Matching 损失函数的设计非常之简单，直接照搬，用条件速度场替换原来的边缘速度场，疑似摆烂：
+
+$$
+  \mathcal\{L}\_\{CFM}(\theta) = \mathbb\{E}\_\{t,q(x_1),p_t(x|x_1)} \left\lVert v_t(x)-u_t(x|x_1) \right\rVert ^2
+$$
+
+但是，这里要格外小心，因为必须说明两个 loss 函数的梯度处处相等，即证明以下定理，才能放心平替：
+
+<Theorem number={2}>
+  Assuming that $p_t(x) > 0$ for all $x \in \mathbb\{R}^d$ and $t \in [0,1]$,
+  then, up to a constant independent of $\theta$, $\mathcal\{L}\_\{CFM}$ and
+  $\mathcal\{L}\_\{FM}$ are equal. Hence, $\nabla_\theta \mathcal\{L}\_\{FM}(\theta)
+  = \nabla_\theta \mathcal\{L}\_\{CFM}(\theta)$.
+</Theorem>
+
+下面给出 Proof。
+
+首先，将两个 loss 的模长平方部分各展开成三项：
+
+$$
+\begin\{aligned\}
+  \left\lVert v_t(x)-u_t(x) \right\rVert ^2 &= \left\lVert v_t(x) \right\rVert ^2 - 2 \left< v_t(x),u_t(x)\right> + \left\lVert u_t(x) \right\rVert ^2 \\\\
+  \left\lVert v_t(x)-u_t(x|x_1) \right\rVert ^2 &= \left\lVert v_t(x) \right\rVert ^2 - 2 \left< v_t(x),u_t(x|x_1)\right> + \left\lVert u_t(x|x_1) \right\rVert ^2
+\end\{aligned\}
+$$
+
+由于两式的第三项均与 $\theta$ 无关，不影响梯度，不用考虑，只需要依次对比前两项即可。对于第一项：
+
+$$
+  \mathbb\{E}\_\{p_t(x)}\left\lVert v_t(x) \right\rVert ^2 = \iint \left\lVert v_t(x) \right\rVert ^2 p_t(x|x_1)q(x_1)dx_1 dx = \mathbb\{E}\_\{q(x_1),p_t(x|x_1)} \left\lVert v_t(x) \right\rVert ^2
+$$
+
+第二项稍为复杂一些：
+
+$$
+\begin\{aligned\}
+  \mathbb\{E}\_\{p_t(x)} \left< v_t(x),u_t(x) \right> &= \int \left< v_t(x), \int u_t(x|x_1)p_t(x|x_1)q(x_1)dx_1\right> dx \\\\
+  &= \iint \left< v_t(x), u_t(x|x_1) \right> p_t(x|x_1)q(x_1)dx_1dx \\\\
+  &= \mathbb\{E}\_\{q(x_1),p_t(x|x_1)} \left< v_t(x),u_t(x|x_1) \right>
+\end\{aligned\}
+$$
+
+即证 $\nabla_\theta \mathcal\{L}\_\{FM}(\theta)= \nabla_\theta \mathcal\{L}\_\{CFM}(\theta)$。
+
+---
+
+## 条件向量场的形式
+
+为了训练时可以真的计算出 loss，我们需要求出条件向量场的具体表达形式。由下面的定理给出：
+
+<Theorem number={3}>
+  Let $p\_t(x|x\_1)$ be a Gaussian probability path, and $\psi\_t$ its corresponding flow map. Then, the unique vector field that defines $\psi\_t$ has the form:
+
+$$
+u\_t(x|x\_1) = \frac\{\sigma\_t^\{\prime\}(x\_1)\}\{\sigma\_t(x\_1)\}(x - \mu\_t(x\_1)) + \mu\_t^\{\prime\}(x\_1).
+$$
+
+  Consequently, $u\_t(x|x\_1)$ generates the Gaussian path $p\_t(x|x\_1)$.
+</Theorem>
+
+其中，更具体地，条件概率路径为 $ \\mathcal\{N}(x \\mid \\mu_t(x_1),\\, \\sigma_t^2(x_1) I)$。
+
+下面给出 Proof。
+
+首先，由 flow 的定义：
+
+$$
+  \psi_t(x) = \sigma_t(x_1) \cdot x + \mu_t(x_1)
+$$
+
+紧接着，对这个 flow 关于时间 $t$ 求导，可以得到：
+
+$$
+  \frac\{d}\{dt} \psi_t(x) = \sigma_t ^\{\prime}(x_1)x + \mu_t ^\{\prime}(x_1) = u_t(\psi_t(x)|x_1)
+$$
+
+再把第一个式子移项求出的 $x = \frac\{1}\{\sigma_t(x_1)}\left(\psi_t(x)-u_t(x_1) \right)$ 代入到上式，可以得到：
+
+$$
+\frac\{\sigma\_t^\{\prime\}(x\_1)\}\{\sigma\_t(x\_1)\}(\psi_t(x) - \mu\_t(x\_1)) + \mu\_t^\{\prime\}(x\_1) = u_t(\psi_t(x)|x_1)
+$$
+
+证毕。
+
+---
+
+## 条件概率路径的常见选择
+
+Theorem 3 其实只把话说了一半：高斯路径只要给定 $\mu\_t(x\_1)$ 与 $\sigma\_t(x\_1)$，条件向量场就唯一确定了。剩下的问题还有一个，即到底该**选哪条路径？** 论文与实践中常见的三组选择是：
+
+- **Diffusion (VP)**：$\mu\_t=\alpha\_t x\_1$，$\sigma\_t=\sqrt\{1-\alpha\_t^2\}$。也就是 DDPM 一类的做法，信号按 $\alpha\_t$ 衰减、噪声补足方差；
+- **Diffusion (VE)**：$\mu\_t=x\_1$，$\sigma\_t$ 单调增大。信号原地不动、只把噪声放大，对应 score-based 模型；
+- **OT**：$\mu\_t=t x\_1$，$\sigma\_t=1-t$，即经典的 $x\_t=(1-t)x\_0+t x\_1$，轨迹是一条直线。
+
+前两者是从扩散模型那里继承来的思路，路径弯曲，采样步数自然偏多；而 线性插值（OT） 路径足够直，能用最少的步数走完，还自然而然地对应上最优传输。所以，除非有特别的理由，大家都喜欢用 OT，因为它既简单又快，而且足够优雅。因此，在博客的最后，我们给出以线性插值方法为例的 Flow Matching 整体变量结构：
+
+<figure>
+  <img src="/flow-matching/OTsys.png" alt="OTsys" />
+  <figcaption> * 图片来源：[《Flow Matching Guide and Code》](https://arxiv.org/abs/2412.06264)</figcaption>
+</figure>
+
+---
+
+## 结语
+
+行文至此，我们从连续性方程出发，走过了条件向量场与边缘向量场的等价性证明，说明了 CFM 损失函数何以能“平替”FM 损失函数，也推导出了高斯路径下条件向量场的闭式解。最终发现，Flow Matching 的魅力恰在于它的「简单」。简单的线性插值路径，简单的回归目标，却足以统一扩散模型、Score Matching 与最优传输等多条技术路线。
+
+---
+
+## Reference
+
+1. https://arxiv.org/abs/2210.02747
+2. https://arxiv.org/abs/2412.06264
+3. https://www.bilibili.com/video/BV1Wv3xeNEds/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32
+

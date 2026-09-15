@@ -4,6 +4,8 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
+import Tools from "@/components/Tools.astro";
+import SocialNetworks from "@/components/SocialNetworks.astro";
 import config from "@/config";
 
 const about = await getEntry("pages", "about");
@@ -35,16 +37,192 @@ const ZhContent = aboutZh ? (await render(aboutZh)).Content : Content;
         <h1 class="text-3xl font-medium sm:text-4xl">About</h1>
 
         <div id="article" class="app-prose mt-8 w-full max-w-none">
+          {/* 首段自我介绍：没有小标题（与 axi404 的 about 一致）。 */}
+          <div data-lang-en>
+            <p>Hi, I&#39;m Master — an undergraduate majoring in Artificial Intelligence at Xi&#39;an Jiaotong University.</p>
+            <p>I was in the 2023 cohort of the Youth Class at XJTU.</p>
+            <p>My main research interests lie in VLA / WAM / SNN.</p>
+            <p>I have plenty of hobbies.</p>
+            <p>I like Go, classical music, films, F1 and Rusty Lake.</p>
+            <p>This is my CV — feel free to download it.</p>
+            <a
+              href="/cv.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="not-prose group mt-2 inline-flex w-fit items-center gap-x-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground no-underline transition-all duration-200 hover:border-foreground/20 hover:bg-muted/80 hover:text-foreground"
+            >
+              <svg
+                class="size-5"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                set:html={`<g fill="none"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M12 2a1 1 0 0 1 .993.883L13 3v10.586l2.293-2.293a1 1 0 0 1 1.32-.083l.094.083a1 1 0 0 1 .083 1.32l-.083.094l-4 4a1 1 0 0 1-1.32.083l-.094-.083l-4-4a1 1 0 0 1 1.32-1.497l.094.083L11 13.586V3a1 1 0 0 1 1-1M5 18a1 1 0 0 1 .993.883L6 19v1a1 1 0 0 0 .883.993L7 21h10a1 1 0 0 0 .993-.883L18 20v-1a1 1 0 0 1 1.993-.117L20 19v1a3 3 0 0 1-2.824 2.995L17 23H7a3 3 0 0 1-2.995-2.824L4 20v-1a1 1 0 0 1 1-1"/></g>`}
+              />
+              <span>Download CV</span>
+            </a>
+          </div>
+
+          <div data-lang-zh>
+            <p>你好哇，我是 Master，一名西安交通大学人工智能专业的本科生。</p>
+            <p>曾就读于西安交通大学 2023 级少年班。</p>
+            <p>主要研究兴趣在 VLA / WAM / SNN 方向。</p>
+            <p>爱好有很多。</p>
+            <p>喜欢围棋、古典、电影、F1 和 Rusty Lake。</p>
+            <p>这是我的 CV，欢迎下载 ～</p>
+            <a
+              href="/cv.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="not-prose group mt-2 inline-flex w-fit items-center gap-x-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm font-medium text-muted-foreground no-underline transition-all duration-200 hover:border-foreground/20 hover:bg-muted/80 hover:text-foreground"
+            >
+              <svg
+                class="size-5"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                set:html={`<g fill="none"><path d="m12.593 23.258l-.011.002l-.071.035l-.02.004l-.014-.004l-.071-.035q-.016-.005-.024.005l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.017-.018m.265-.113l-.013.002l-.185.093l-.01.01l-.003.011l.018.43l.005.012l.008.007l.201.093q.019.005.029-.008l.004-.014l-.034-.614q-.005-.018-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.004-.011l.017-.43l-.003-.012l-.01-.01z"/><path fill="currentColor" d="M12 2a1 1 0 0 1 .993.883L13 3v10.586l2.293-2.293a1 1 0 0 1 1.32-.083l.094.083a1 1 0 0 1 .083 1.32l-.083.094l-4 4a1 1 0 0 1-1.32.083l-.094-.083l-4-4a1 1 0 0 1 1.32-1.497l.094.083L11 13.586V3a1 1 0 0 1 1-1M5 18a1 1 0 0 1 .993.883L6 19v1a1 1 0 0 0 .883.993L7 21h10a1 1 0 0 0 .993-.883L18 20v-1a1 1 0 0 1 1.993-.117L20 19v1a3 3 0 0 1-2.824 2.995L17 23H7a3 3 0 0 1-2.995-2.824L4 20v-1a1 1 0 0 1 1-1"/></g>`}
+              />
+              <span>下载 CV</span>
+            </a>
+          </div>
+
           <div data-lang-en>
             <Content />
           </div>
           <div data-lang-zh>
             <ZhContent />
           </div>
+
+          <h2 id="tools">Tools</h2>
+          <p>
+            <span data-lang-en>Here are some tools I use every day:</span>
+            <span data-lang-zh>以下是我正在使用的一些工具：</span>
+          </p>
+          <Tools />
+
+          <h2 id="social-networks">Social Networks</h2>
+          <p>
+            <span data-lang-en>You can find me on these platforms:</span>
+            <span data-lang-zh>你可以在以下平台找到我：</span>
+          </p>
+          <SocialNetworks />
+
+          <h2 id="copyright">Copyright</h2>
+          <div data-lang-en>
+            <p>
+              Unless otherwise stated, all original content and site design are
+              licensed under the
+              <a
+                href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                target="_blank"
+                rel="noopener noreferrer">CC BY-NC-SA 4.0</a
+              >
+              license. You are free to share, copy or adapt the work within the
+              license scope, as long as you give appropriate credit and <strong
+                >do not use it for commercial purposes</strong
+              >.
+            </p>
+            <p>
+              Images, icons, trademarks and other third-party materials used on
+              this site belong to their respective rights holders, whether or
+              not a © or ™ is shown. No copyright infringement is intended — if
+              you believe any content here infringes your rights, please
+              contact me and I will remove it promptly.
+            </p>
+          </div>
+          <div data-lang-zh>
+            <p>
+              除特别说明外，本站所有原创内容与页面设计均采用
+              <a
+                href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                target="_blank"
+                rel="noopener noreferrer">CC BY-NC-SA 4.0</a
+              >
+              许可协议。在协议范围内你可以自由地分享、复制或改编本站内容，只需注明出处，且<strong
+                >不得用于商业用途</strong
+              >。
+            </p>
+            <p>
+              本站使用的图片、图标、商标等第三方素材，其版权均归各自权利人所有，无论是否标注 ©
+              或 ™。本站无意侵犯任何人的版权；若你认为本站内容侵犯了你的权益，请联系我，我会尽快删除。
+            </p>
+          </div>
+
+          <h2 id="theme">Theme</h2>
+          <div data-lang-en>
+            <p>
+              This blog is built with <a
+                href="https://astro.build/"
+                target="_blank"
+                rel="noopener noreferrer">Astro</a
+              > and <a
+                href="https://tailwindcss.com/"
+                target="_blank"
+                rel="noopener noreferrer">Tailwind CSS</a
+              >, starting from the <a
+                href="https://github.com/satnaing/astro-paper"
+                target="_blank"
+                rel="noopener noreferrer">AstroPaper</a
+              > theme and heavily customized since: the layout, typography and
+              navigation are reworked following <a
+                href="https://axi404.com"
+                target="_blank"
+                rel="noopener noreferrer">axi404</a
+              >'s style; components such as Algorithm, Theorem, Tools and Social
+              Networks were written for this site; comments and page views are
+              powered by a self-hosted <a
+                href="https://waline.js.org/"
+                target="_blank"
+                rel="noopener noreferrer">Waline</a
+              >; and the site supports a Chinese/English switch, Pagefind search
+              and per-article LaTeX rendering.
+            </p>
+          </div>
+          <div data-lang-zh>
+            <p>
+              本站使用 <a
+                href="https://astro.build/"
+                target="_blank"
+                rel="noopener noreferrer">Astro</a
+              >
+              与 <a
+                href="https://tailwindcss.com/"
+                target="_blank"
+                rel="noopener noreferrer">Tailwind CSS</a
+              >
+              构建，从 <a
+                href="https://github.com/satnaing/astro-paper"
+                target="_blank"
+                rel="noopener noreferrer">AstroPaper</a
+              > 主题起步并做了大量定制：整体布局、排版与导航参考 <a
+                href="https://axi404.com"
+                target="_blank"
+                rel="noopener noreferrer">axi404</a
+              > 的风格重写；Algorithm、Theorem、Tools、Social Networks
+              等组件为本站自行编写；评论与访问量由自建的 <a
+                href="https://waline.js.org/"
+                target="_blank"
+                rel="noopener noreferrer">Waline</a
+              >
+              提供；并支持中英文切换、Pagefind 静态搜索与文章内的 LaTeX 公式渲染。
+            </p>
+          </div>
         </div>
       </div>
 
-      <TableOfContents headings={headings} />
+      <TableOfContents
+        headings={[
+          ...headings,
+          { depth: 2, slug: "tools", text: "Tools" },
+          { depth: 2, slug: "social-networks", text: "Social Networks" },
+          { depth: 2, slug: "copyright", text: "Copyright" },
+          { depth: 2, slug: "theme", text: "Theme" },
+        ]}
+      />
     </div>
   </main>
 

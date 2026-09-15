@@ -1,0 +1,191 @@
+---
+import { toolGroups, toolIcon } from "@/data/tools";
+---
+
+<div class="tools not-prose">
+  {
+    toolGroups.map(group => (
+      <div class="tools-group">
+        <div class="tools-group-title">{group.name}</div>
+        <div class="tools-grid">
+          {group.tools.map(tool => (
+            <a
+              class="tools-item"
+              href={tool.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                class="tools-icon"
+                src={toolIcon(tool)}
+                alt=""
+                width="40"
+                height="40"
+                loading="lazy"
+                data-name={tool.name}
+                data-host={(() => {
+                  try {
+                    return new URL(tool.url).hostname;
+                  } catch {
+                    return "";
+                  }
+                })()}
+              />
+              <span class="tools-meta">
+                <span class="tools-name">{tool.name}</span>
+                <span class="tools-role">{tool.role}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .tools {
+    /* `not-prose` only strips typographic styles; the surrounding `.app-prose`
+       container still fixes a (light-mode) text color, so set it explicitly to
+       keep the section readable in dark mode too. */
+    color: var(--foreground);
+    margin: 1.25rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .tools-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+  }
+
+  .tools-group-title {
+    color: var(--foreground);
+    padding-inline: 0.375rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .tools-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 0.5rem;
+    }
+  }
+
+  .tools-item {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.25rem 0.375rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    text-decoration: none;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+  .tools-item:hover {
+    border-color: var(--border);
+    background: var(--muted);
+  }
+
+  .tools-icon {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    /* Dark mode: keep a light tile so dark brand marks (e.g. GitHub) stay
+       visible instead of blending into the background. */
+    /* `.prose img` sets `margin: auto`, which would push the icon into the
+       middle of the flex row and break the alignment — reset it. */
+    margin: 0;
+    padding: 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--card);
+    object-fit: contain;
+  }
+
+  :global([data-theme="dark"]) .tools-icon {
+    background: #fff;
+  }
+
+  .tools-meta {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+
+  .tools-name {
+    overflow: hidden;
+    color: var(--foreground);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tools-role {
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Letter avatar used when no icon could be loaded. */
+  .tools-icon-letter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-foreground);
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+</style>
+
+<script>
+  // Icon fallback chain: DuckDuckGo favicon → unavatar → letter avatar, so a
+  // missing favicon never shows up as a broken image.
+  const PROVIDERS = [
+    (host: string) => `https://icons.duckduckgo.com/ip3/${host}.ico`,
+    (host: string) => `https://unavatar.io/${host}`,
+  ];
+
+  function initToolIcons() {
+    document
+      .querySelectorAll<HTMLImageElement>("img.tools-icon:not([data-fallback])")
+      .forEach(img => {
+        img.dataset.fallback = "1";
+        const host = img.dataset.host ?? "";
+        const name = img.dataset.name ?? "";
+        let step = 0;
+        img.addEventListener("error", () => {
+          step += 1;
+          if (host && step < PROVIDERS.length) {
+            img.src = PROVIDERS[step]!(host);
+            return;
+          }
+          const letter = document.createElement("span");
+          letter.className = "tools-icon tools-icon-letter";
+          letter.textContent = name.trim().charAt(0) || "?";
+          img.replaceWith(letter);
+        });
+      });
+  }
+
+  document.addEventListener("astro:page-load", initToolIcons);
+</script>

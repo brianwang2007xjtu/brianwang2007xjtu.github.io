@@ -1,0 +1,221 @@
+---
+import { socials, socialIcon } from "@/data/socials";
+
+/**
+ * Build-time fallback: Substats' `bilibili` source is currently broken (blocked
+ * by Bilibili's anti-scraping), so those counts come from Bilibili's own API at
+ * build time; everything else is fetched live in the browser. Failures are
+ * silent — the row simply falls back to the live/live-less state.
+ */
+async function buildTimeCount(source?: string, key?: string) {
+  if (source !== "bilibili" || !key) return null;
+  try {
+    const res = await fetch(
+      `https://api.bilibili.com/x/relation/stat?vmid=${encodeURIComponent(key)}`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          Referer: "https://space.bilibili.com/",
+        },
+        signal: AbortSignal.timeout(6000),
+      }
+    );
+    const json = (await res.json()) as { data?: { follower?: number } };
+    return json.data?.follower ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const fixedCounts: Record<string, number | null> = {};
+for (const social of socials) {
+  if (social.source && social.key) {
+    fixedCounts[social.key] = await buildTimeCount(social.source, social.key);
+  }
+}
+---
+
+<div class="socials">
+  {
+    socials.map(social => (
+      <a
+        class="social-item"
+        href={social.url}
+        target={social.url.startsWith("http") ? "_blank" : undefined}
+        rel="noopener noreferrer"
+        data-source={social.source}
+        data-key={social.key}
+      >
+        {social.iconSvg ? (
+          <svg
+            class="social-icon"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+            style={social.iconColor ? `color:${social.iconColor}` : undefined}
+            set:html={social.iconSvg}
+          />
+        ) : (
+          <img
+            class="social-icon"
+            src={socialIcon(social)}
+            alt=""
+            width="22"
+            height="22"
+            loading="lazy"
+          />
+        )}
+        <span class="social-name">{social.name}</span>
+        {social.source && social.key && (
+          <span class="social-count">
+            {fixedCounts[social.key!] != null ? (
+              <samp data-stats-count data-fixed>
+                {fixedCounts[social.key!]}
+              </samp>
+            ) : (
+              <samp data-stats-count>·</samp>
+            )}
+            <span class="social-label">{social.label ?? "followers"}</span>
+          </span>
+        )}
+      </a>
+    ))
+  }
+</div>
+
+{/* 这行固定用英文，不随语言切换翻译。 */}
+<p class="socials-credit">
+  Live counts powered by <a
+    href="https://github.com/spencerwooo/substats"
+    target="_blank"
+    rel="noopener noreferrer">Substats</a
+  >
+</p>
+
+<script>
+  const API_BASE = "https://api.swo.moe/stats";
+
+  async function loadSocialCounts() {
+    const nodes = document.querySelectorAll<HTMLElement>(
+      ".social-item[data-source][data-key]"
+    );
+    await Promise.all(
+      Array.from(nodes).map(async item => {
+        const out = item.querySelector<HTMLElement>("[data-stats-count]");
+        const source = item.dataset.source;
+        const key = item.dataset.key;
+        if (!out || !source || !key) return;
+        // Already resolved at build time (bilibili) — keep that value.
+        if (out.hasAttribute("data-fixed")) return;
+        try {
+          const res = await fetch(
+            `${API_BASE}/${source}/${encodeURIComponent(key)}`,
+            { signal: AbortSignal.timeout(8000) }
+          );
+          const data = (await res.json()) as {
+            failed?: boolean;
+            count?: number | string;
+          };
+          if (data.failed || data.count === undefined) throw new Error("failed");
+          out.textContent = String(data.count);
+        } catch {
+          out.textContent = "—";
+        }
+      })
+    );
+  }
+
+  document.addEventListener("astro:page-load", loadSocialCounts);
+</script>
+
+<style>
+  .socials {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.125rem;
+    margin: 1.25rem 0 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    color: var(--foreground);
+  }
+
+  @media (min-width: 640px) {
+    .socials {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.25rem 0.5rem;
+      padding: 0.75rem;
+    }
+  }
+
+  .social-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+  .social-item:hover {
+    border-color: var(--border);
+    background: var(--muted);
+  }
+
+  .social-icon {
+    flex: none;
+    /* `.prose img` sets `margin: auto`; reset it so the row stays flush left. */
+    margin: 0;
+    width: 1.375rem;
+    height: 1.375rem;
+    object-fit: contain;
+  }
+
+  svg.social-icon {
+    color: var(--foreground);
+    fill: currentColor;
+  }
+
+  .social-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--foreground);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+
+  .social-item:hover .social-name {
+    color: var(--accent);
+  }
+
+  .social-count {
+    display: flex;
+    flex: none;
+    align-items: baseline;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+  }
+
+  .social-count samp {
+    font-size: 0.8125rem;
+  }
+
+  .social-label {
+    color: var(--muted-foreground);
+  }
+
+  .socials-credit {
+    margin: 0 0 1.5rem;
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    text-align: right;
+  }
+</style>

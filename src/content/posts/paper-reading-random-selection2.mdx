@@ -1,0 +1,70 @@
+---
+title: "Paper Reading: Random Selection 2"
+author: master
+pubDatetime: 2026-09-15T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "Transformer 与生成模型的结合 📝。"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+## DiT
+
+<PaperNote
+  title="DiT"
+  arxivId="2212.09748"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DiT.pdf"
+  summary="用 Transformer 替换 U-Net"
+  images={["/papers/DiT.png"]}
+>
+
+Transformer 架构可以很好地替代诸多模型中的 Backbone，扩散模型 DM 也不是个例外。DiT 即 Diffusion Transformer，它的核心想法非常之简单：用尽可能少的 modifications 直接将 Transformer 替换初版 DDPM 中的 U-Net，作为 Contitional DM 的去噪核心。 
+
+DiT 的管线比较清晰。它在 Latent Diffusion 的框架之下，像 ViT 那样，将输入（只不过这里不是原图而是噪声）分割成若干个 patches，并且将时间步 $t$，以及条件 $y$ 的 embedding 作为 conditioning 加入模型，一起送入 **DiT Block**。最后再做 LN 并且从隐空间 Linear Projection 到原来的大小尺寸。
+
+对于最重要并且最具设计美感的 DiT Block，原论文给出了三种具体方案和一种改进方案，其中，**adaLN-Zero** 的效果最好。adaLN-Zero 不把条件当作额外 token，也不额外插入 cross-attention，而是把时间步和条件 embedding 合成一个条件向量，再用一个小 MLP 为每个 DiT Block 预测 LayerNorm 的缩放、平移和残差门控。它的关键设计在于把残差门控的最后一层初始化为零，使每个 Block 在训练初期近似恒等映射，于是模型先稳定地学，再逐步让条件信息生效。这样既保留了条件控制的表达力，又把额外计算压得很低。
+
+DiT 的主要贡献在于，它用尽可能少的改动把扩散模型的去噪骨干从 U-Net 换成了标准 Transformer，并证明这条路不仅可行，而且具备很好的 scalability：模型计算量越大，生成质量通常越好，DiT-XL/2 也在 ImageNet 256×256 上取得了当时领先的 FID。
+
+</PaperNote>
+
+## Diffusion Policy
+
+<PaperNote
+  title="Diffusion-policy"
+  arxivId="2303.04137"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/Diffusion%20Policy.pdf"
+  summary= "以 observation 为条件，通过 Denoise 从多模态动作分布中生成 action sequence"
+  images={["/papers/diffusion-policy.png"]}
+>
+
+Diffusion Policy 是 Chi 等人提出的机器人策略学习方法，核心思想简单粗暴：把机器人策略建模成「**以视觉观测为条件的动作扩散过程**」。
+
+该架构的 Noise Predictor 主要用两种选择，一种是 CNN-based，另一种是 Transformer-based。对于后者，通常采用 casual Transformer (e.g. minGPT) 作为 Denoise 网络：它把观测编码成前缀 token，把带噪动作序列切成动作 token，并在动作 token 上注入扩散时间步嵌入；观测 token 放在序列前端，动作 token 通过 causal attention 只能关注观测和它之前的动作 token，从而在并行预测整段动作噪声时仍保持时序因果性。
+
+Diffusion Policy 的实验表现非常突出。在 Push-T、Robomimic、Franka Kitchen 等 15 个任务上，它平均比行为克隆、LSTM-GMM、IBC、BET 等基线提升约 46.9%；在真实机器人上，它能在多模态演示、高精度操作和长时域任务中稳定工作，控制频率可达 10 Hz 量级，动作轨迹比传统行为克隆更平滑、抖动更少，并对未见物体和场景有一定泛化能力。
+
+</PaperNote>
+
+## $\pi_\{0.5}$
+
+<PaperNote
+  title="pi_0.5"
+  arxivId="2504.16054"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/%CF%800.5.pdf"
+  summary= "先用 VLM 预测高层 subtasks，再用 Flow Matching 预测低层连续动作"
+  images={["/papers/pi0.5.png"]}
+>
+
+**$\pi_\{0.5\}$** 相比于 $\pi_0$ 更擅长执行复杂的 prompt。它让 VLM 先根据 observation 和 prompt 预测高层 subtasks，比如“先打开抽屉，再拿杯子”，然后 Action Expert 以这个 subtask 的 token 和 observation 为条件，用 Flow Matching 生成低层 action chunk。这样既保留了 $\pi_0$ 复用 Web Data、保持高频物理控制的优点，又把语义规划和动作生成解耦，使模型能处理更长时域、更开放世界的任务。
+
+$\pi_\{0.5\}$ 的架构变化不大，延续了 $\pi_0$ 的 KV Cache 多层复用：PaliGemma 处理图像和语言时，每一层的 K、V 都被缓存下来，浅层纹理、深层语义统统保留；不同的是，VLM 还会自回归地生成高层子任务 token，这些 token 和视觉语言前缀一起，成为 Action Expert 的 Conditioning。同时，$\pi_\{0.5\}$ 通过知识隔离让 Action Expert 的训练不污染 VLM 的语义知识，保证理解 semantic 的部分始终在线。
+
+实验表现上，$\pi_\{0.5\}$ 把 $\pi_0$ 的灵巧操作能力进一步推向开放世界：它能在从未见过的厨房、房间和物体布局中执行长时域移动操作，比如清理厨房、叠衣服、开关抽屉、把物品放回原位。相比 $\pi_0$ 在叠衣服、桌面清理等任务上刷新 SOTA，$\pi_\{0.5\}$ 更强调跨本体、多环境、异构数据联合训练后的泛化能力，动作轨迹依然平滑、抖动少，控制频率也足以应付真实机器人场景。可以说，$\pi_0$ 解决的是「怎么把 VLM 和动作接起来」，$\pi_\{0.5\}$ 解决的是「**怎么在开放世界里真正干活**」。
+
+</PaperNote>
+
+

@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import WalineLoader from "@/components/WalineLoader.astro";
+import MathRenderer from "@/components/MathRenderer.astro";
 import { getRelativeLocaleUrl } from "astro:i18n";
 import { resolveDefaultOgImagePath } from "@/utils/resolveDefaultOgImagePath";
 import { getAssetPath } from "@/utils/withBase";
@@ -39,6 +40,13 @@ const rssHref = getRelativeLocaleUrl(
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    {/* KaTeX stylesheet: loaded up-front (not lazily) so rendered formulas never
+        flash unstyled while the CSS is still in flight. */}
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+    />
     <link rel="icon" type="image/svg+xml" href={getAssetPath("favicon.svg")} />
     <link rel="icon" href={getAssetPath("favicon.ico")} />
     <link rel="canonical" href={canonicalURL} />
@@ -115,6 +123,8 @@ const rssHref = getRelativeLocaleUrl(
   >
     <slot />
     <WalineLoader />
+
+    <MathRenderer />
     <script>
       import "@/scripts/theme";
     </script>

@@ -1,28 +1,63 @@
 ---
+/**
+ * Global KaTeX renderer.
+ *
+ * Included once in the Layout (not per page) on purpose: an `is:inline` script
+ * only executes on a full page load, so when this lived on the post page only,
+ * client-side (View Transitions) navigation into a post never loaded KaTeX and
+ * formulas stayed raw until a manual refresh. Here the script runs on the first
+ * full load and keeps persistent listeners + a document-level observer, so any
+ * page navigated to afterwards is rendered too. KaTeX (JS + CSS) is fetched
+ * lazily, and only on pages that actually contain math.
+ */
 ---
-
-<link
-  rel="stylesheet"
-  href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
-/>
 
 <script is:inline>
   (function () {
-    // Renders $...$ (inline) and $$...$$ (block) LaTeX in the article content
-    // using KaTeX loaded from a CDN. Skips code/pre/already-rendered nodes.
+    var KATEX_VERSION = "0.16.9";
+    var CDN = "https://cdn.jsdelivr.net/npm/katex@" + KATEX_VERSION + "/dist/";
+    var state = { loading: false, lastTry: 0, tries: 0 };
+
+    /** The stylesheet ships in the Layout <head>; this only re-adds it if a
+     *  view transition ever drops it (otherwise math paints unstyled). */
+    function ensureCss() {
+      if (document.querySelector('link[href*="katex"][rel="stylesheet"]')) return;
+      var link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = CDN + "katex.min.css";
+      document.head.appendChild(link);
+    }
+
+    function acceptText(n) {
+      if (!n.nodeValue || n.nodeValue.indexOf("$") === -1)
+        return NodeFilter.FILTER_REJECT;
+      var p = n.parentElement;
+      if (!p) return NodeFilter.FILTER_REJECT;
+      if (
+        p.closest(
+          "code, pre, script, style, .katex, textarea, [data-pagefind-ignore]"
+        )
+      )
+        return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+
+    /** Does the current DOM contain any $...$ / $$...$$ outside code blocks? */
+    function hasMath() {
+      if (!document.body) return false;
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: acceptText,
+      });
+      return walker.nextNode() !== null;
+    }
+
+    // Renders $...$ (inline) and $$...$$ (block) LaTeX using KaTeX from a CDN.
+    // Skips code/pre/already-rendered nodes, so calling it repeatedly is safe.
     function renderMath() {
       if (!window.katex) return;
       var nodes = [];
       var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
-        acceptNode: function (n) {
-          if (!n.nodeValue || n.nodeValue.indexOf("$") === -1)
-            return NodeFilter.FILTER_REJECT;
-          var p = n.parentElement;
-          if (!p) return NodeFilter.FILTER_REJECT;
-          if (p.closest("code, pre, script, style, .katex, textarea, [data-pagefind-ignore]"))
-            return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
-        },
+        acceptNode: acceptText,
       });
       while (walker.nextNode()) nodes.push(walker.currentNode);
       nodes.forEach(process);
@@ -61,19 +96,85 @@
       node.parentNode.replaceChild(frag, node);
     }
 
+    /**
+     * Loads KaTeX on demand. A navigation can abort an in-flight request
+     * without firing onload/onerror, so attempts are cooled down, reset by a
+     * watchdog and retried a bounded number of times.
+     */
+    function loadKatex() {
+      var now = Date.now();
+      if (state.loading && now - state.lastTry < 1500) return;
+      if (state.tries >= 10) return;
+      state.loading = true;
+      state.lastTry = now;
+      state.tries++;
+      ensureCss();
+      // Fetch the code first: unlike a <script src> element, a fetch is not
+      // cancelled when View Transitions swap <head>/<body>. The code is then
+      // executed as an inline script (instant, no second request).
+      fetch(CDN + "katex.min.js")
+        .then(function (res) {
+          if (!res.ok) throw new Error(String(res.status));
+          return res.text();
+        })
+        .then(function (code) {
+          var s = document.createElement("script");
+          s.setAttribute("data-katex-js", "1");
+          s.textContent = code;
+          document.head.appendChild(s);
+          state.loading = false;
+          renderMath();
+        })
+        .catch(function () {
+          state.loading = false;
+        });
+    }
+
     function ensureKatex() {
+      if (!hasMath()) return;
+      // A navigation can drop the stylesheet, so re-add it if needed.
+      ensureCss();
       if (window.katex) {
         renderMath();
         return;
       }
-      var s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js";
-      s.onload = renderMath;
-      s.onerror = function () {};
-      document.head.appendChild(s);
+      loadKatex();
     }
 
-    document.addEventListener("astro:page-load", ensureKatex);
-    ensureKatex();
+    /**
+     * All triggers funnel through this debounce: injecting during the view
+     * transition gets the request cancelled by the head/body swap, so wait for
+     * the DOM to settle first.
+     */
+    var pending = null;
+    var firstRequest = 0;
+    function requestMath() {
+      var now = Date.now();
+      if (pending === null) firstRequest = now;
+      clearTimeout(pending);
+      // Cap the total delay so a stream of mutations can never postpone the run.
+      var wait = Math.max(0, 400 - (now - firstRequest));
+      pending = setTimeout(function () {
+        pending = null;
+        ensureKatex();
+      }, wait);
+    }
+
+    // astro:page-load fires for full loads and SPA navigations; the new page's
+    // DOM and the async KaTeX load can both land late, so retry a few times.
+    function schedule() {
+      requestMath();
+      setTimeout(ensureKatex, 800);
+      setTimeout(ensureKatex, 2000);
+    }
+
+    // View Transitions swap <body>, which would detach an observer bound to it —
+    // watch documentElement instead and re-schedule on any content change.
+    var mo = new MutationObserver(requestMath);
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+
+    document.addEventListener("astro:page-load", schedule);
+    document.addEventListener("astro:after-swap", requestMath);
+    schedule();
   })();
 </script>

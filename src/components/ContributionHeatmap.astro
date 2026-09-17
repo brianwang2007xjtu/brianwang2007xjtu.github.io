@@ -42,6 +42,28 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
+const MONTHS_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** 1 -> "1st", 2 -> "2nd", 11 -> "11th" … */
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
+}
+
+/** GitHub-style hover label, e.g. "3 contributions on September 17th". */
+function tipLabel(key: string, count: number): string {
+  const [, m, d] = key.split("-").map(Number);
+  const phrase =
+    count === 0
+      ? "No contributions"
+      : `${count} contribution${count === 1 ? "" : "s"}`;
+  return `${phrase} on ${MONTHS_FULL[m - 1]} ${ordinal(d)}`;
+}
+
 function dateKey(t: number): string {
   return new Date(t).toISOString().slice(0, 10);
 }
@@ -194,9 +216,9 @@ const moreYears = years.slice(1);
           ry="2"
           data-date={c.key}
           data-level={c.level}
-        >
-          {c.inYear && <title>{`${c.count} contribution${c.count === 1 ? "" : "s"} on ${c.key}`}</title>}
-        </rect>
+          data-tip={c.inYear ? tipLabel(c.key, c.count) : undefined}
+          aria-label={c.inYear ? tipLabel(c.key, c.count) : undefined}
+        />
       ))}
     </svg>
   </div>
@@ -239,6 +261,26 @@ const moreYears = years.slice(1);
     "hover:bg-accent",
     "hover:text-accent-foreground",
   ];
+
+  const MONTHS_FULL = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
+  function ordinal(n: number): string {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
+  }
+
+  function tipLabel(key: string, count: number): string {
+    const [, m, d] = key.split("-").map(Number);
+    const phrase =
+      count === 0
+        ? "No contributions"
+        : `${count} contribution${count === 1 ? "" : "s"}`;
+    return `${phrase} on ${MONTHS_FULL[m! - 1]} ${ordinal(d!)}`;
+  }
 
   function dateKey(t: number): string {
     return new Date(t).toISOString().slice(0, 10);
@@ -304,10 +346,8 @@ const moreYears = years.slice(1);
         const count = Math.round(raw / UNIT);
         if (inYear && raw > 0) total += count;
         const level = inYear ? levelOf(raw, thresholds) : 0;
-        const title = inYear
-          ? `<title>${count} contribution${count === 1 ? "" : "s"} on ${key}</title>`
-          : "";
-        rects += `<rect class="${LEVEL_CLASS[level]}" x="${week * 16}" y="${22 + r * 16}" width="12" height="12" rx="2" ry="2" data-date="${key}" data-level="${level}">${title}</rect>`;
+        const tip = inYear ? ` data-tip="${tipLabel(key, count)}"` : "";
+        rects += `<rect class="${LEVEL_CLASS[level]}" x="${week * 16}" y="${22 + r * 16}" width="12" height="12" rx="2" ry="2" data-date="${key}" data-level="${level}"${tip}></rect>`;
       }
     }
 
@@ -356,6 +396,57 @@ const moreYears = years.slice(1);
     }
     render();
   });
+
+  // ---- GitHub-style hover tooltip for the heatmap cells ----
+  let tipEl: HTMLDivElement | null = null;
+
+  function ensureTip(): HTMLDivElement {
+    if (!tipEl) {
+      tipEl = document.createElement("div");
+      tipEl.className = "contrib-tip";
+      tipEl.setAttribute("role", "tooltip");
+      tipEl.hidden = true;
+      document.body.appendChild(tipEl);
+    }
+    return tipEl;
+  }
+
+  function hideTip() {
+    if (tipEl) tipEl.hidden = true;
+  }
+
+  function showTip(target: Element) {
+    const label = target.getAttribute("data-tip");
+    if (!label) return;
+    const el = ensureTip();
+    el.textContent = label;
+    el.hidden = false;
+    const r = target.getBoundingClientRect();
+    const half = el.offsetWidth / 2;
+    const left = Math.min(
+      Math.max(r.left + r.width / 2, half + 8),
+      window.innerWidth - half - 8
+    );
+    el.style.left = `${left}px`;
+    el.style.top = `${r.top - 6}px`;
+  }
+
+  function initHeatmapTooltip() {
+    if (document.body.dataset.contribTip === "1") return;
+    document.body.dataset.contribTip = "1";
+    document.addEventListener("mouseover", e => {
+      const cell = (e.target as Element | null)?.closest?.("rect[data-tip]");
+      if (cell) showTip(cell);
+      else hideTip();
+    });
+    document.addEventListener("mouseout", e => {
+      if ((e.target as Element | null)?.closest?.("rect[data-tip]")) hideTip();
+    });
+    window.addEventListener("scroll", hideTip, { passive: true, capture: true });
+    window.addEventListener("resize", hideTip);
+  }
+
+  document.addEventListener("astro:page-load", initHeatmapTooltip);
 </script>
 
 <style>
@@ -378,5 +469,21 @@ const moreYears = years.slice(1);
   }
   .contrib-scroll::-webkit-scrollbar-thumb:hover {
     background: color-mix(in oklab, var(--muted-foreground) 65%, transparent);
+  }
+
+  /* Tooltip is appended to <body>, so it needs a global selector. */
+  :global(.contrib-tip) {
+    position: fixed;
+    z-index: 80;
+    transform: translate(-50%, -100%);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
   }
 </style>

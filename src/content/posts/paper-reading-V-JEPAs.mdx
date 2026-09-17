@@ -1,0 +1,86 @@
+---
+title: "Paper Reading: V-JEPAs"
+author: master
+pubDatetime: 2026-09-17T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "V-JEPAs 真好玩 📝 ～"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+尽管 [JEPA](https://openreview.net/pdf?id=BZ5a1r-kVsf&utm_source=chatgpt.com) 架构被人诟病诸多，例如潜在表示是否具有足够的语义信息、模型是否能够真正学习到世界的结构与动态，以及如何避免表征坍塌等问题，但随着 V-JEPA、V-JEPA 2 等一系列工作的推进，JEPA 展现出了在大规模视觉表征学习和世界模型建模中的潜力。
+
+与此同时，JEPA 也是第一个真正引发笔者共鸣、令笔者深深着迷的技术路线。在阅读这一系列论文的过程中，笔者常常会产生「啊，我也想到了！」这样的感慨。许多看似复杂的问题，在 JEPA 的框架下却能够被一种相当自然、简洁的方式重新表述与解决。或许正是这种思想上的通顺与简洁，使得 JEPA 对笔者而言不仅仅是一种具体的模型架构，更是一种颇具启发性的研究范式：与其费力地还原世界的全部细节，不如尝试学习世界中真正值得预测的部分。
+
+本博客将简述 V-JEPA 系列，从 V-JEPA、V-JEPA 2 再到 V-JEPA 2.1，可以清晰把握 V-JEPA 路线从视觉表征学习向世界模型不断演进的过程。
+
+## V-JEPA
+
+<PaperNote
+  title="V-JEPA"
+  arxivId="2404.08471"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/V-JEPA.pdf"
+  summary="从图片到视频"
+  images={["/papers/V-JEPA.png"]}
+>
+
+V-JEPA 和[之前博客](https://brianwang2007.com/posts/paper-reading-fundamental-popular-works/)中提到的 [I-JEPA](https://arxiv.org/abs/2301.08243) 非常相似：二者都采用 JEPA（Joint Embedding Predictive Architecture）的核心思想，在潜在表示空间中进行预测，而非直接重建像素。区别在于，I-JEPA 面向静态图像进行学习，通过可见区域的表示预测图像中被遮挡区域的表示；而 V-JEPA 则将这一思想扩展到了视频，将学习对象从图像扩展到视频中的时空信息，从而使模型能够学习视频数据中的动态结构。
+
+V-JEPA 的架构非常清晰。先从视频中选取 $T$ 个连续帧，并将其展平成 $L$ 个 Tokens。同一批 Tokens 复制成两份，其中一份经过随机 dropping 送入 $x$-encoder $E_\{\theta}$，然后将输出和 positional embedding 一起 concact，送入 predictor $P_\{\phi}$；而另一份 Tokens 则作为 target，通过 $y$-encoder $E_\{\bar\{\theta}}$ 映射到潜空间，和 $P_\{\phi}$ 的输出做 $L_1$。
+
+![-2](/papers/V-JEPA-visual.png)
+
+很有意思的一点是，在 V-JEPA 的这篇论文里，作者在后半段特意加入了 visualization 的具体方法，用来直观地观察模型究竟学到了什么。作者将 predictor 输出的 latent representations 作为 conditions 送入 CDM，映射到像素空间。最终发现模型的潜在表示能够捕捉视频中的空间和语义结构：即使输入经过了 masking，模型仍然能够根据可见区域推断出被遮挡区域在潜在空间中的表示。
+
+V-JEPA 在视频表征学习上取得了较强表现：在动作分类、动作定位、运动预测等任务中均达到或超过当时的主流自监督视频模型，同时仅使用无标签视频进行预训练。更重要的是，其 latent prediction 范式证明了无需像素重建，也能学习具有较强语义与时空信息的视频表征。这也为后续进一步利用视频表征理解和预测世界动态，并最终服务于具身智能中的 action prediction 与 planning，提供了重要基础。
+
+</PaperNote>
+
+## V-JEPA 2
+
+<PaperNote
+  title="V-JEPA-2"
+  arxivId="2506.09985"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/V-JEPA-2.pdf"
+  summary= "冻结预训练的 video encoder 以训练 action-conditioned predictor，最后自回归生成动作序列，是真正的 JEPA 世界模型"
+  images={["/papers/V-JEPA-2.png"]}
+>
+
+V-JEPA 2 其实可以分为两个模型。第一个是基于 V-JEPA 的 **V-JEPA 2 video encoder**，而另一个是真正可以生成动作序列的 **V-JEPA 2-AC**。论文在开篇就着重强调了训练数据的分配和规划：用超过 1M 小时的 Internet Video 和超过 1M 张 Internet Images 预训练一个编码器；紧接着用 62 小时的机器人数据，后训练一个 Action-conditioned predictor。同时，V-JEPA 2 自身还需完成一些可以证明其视觉能力的支线任务。
+
+![-2](/papers/V-JEPA-2-archi.png)
+
+对于 V-JEPA 2 本身，也就是论文所说的 「action-free pretraining」阶段，相比于 V-JEPA 没有什么本质上的不同。前者无非是使用了更大的数据集、更长的视频帧和更高的分辨率、更多的参数以及更高级的 postional embeddin，也就是 **3D RoPE**。
+
+![-3](/papers/V-JEPA-2-loss.png)
+
+而 V-JEPA 2-AC 则冻结了预训练的 V-JEPA 2 encoder，将 robot actions 和 end-effector states 作为 conditions，训练了一个以预测下一帧观测 representation 为目标的 predictor（ViT）。值得注意的是，作者精心设计的损失函数由 teacher-forcing loss 和 rollout loss 这两部分组成，前者只用已知的 frame 去训练，而后者则将前一帧的预测结果作为下一帧 predictor 的输入，从而模拟实际部署时连续 rollout 的过程。实验表明，加入 rollout loss 可以显著提升模型的多步预测能力和下游机器人任务表现，有效缓解模型在长时间 rollout 中误差逐步累积的问题。
+
+![-4](/papers/V-JEPA-2-act.png)
+
+最后，对于 planning，作者采取了**自回归**的方式，将 V-JEPA 2-AC 的 predictor 连接使用，用 **CEM** 实现模型预测控制，生成最优动作序列：在**给定 Goal Image** 的前提下，先 encode 当前帧，再从 $\mathcal\{N}(0, I)$ 随机 sample 若干个动作，组成多个动作序列，由 predictors 预测 Goal Image 的 representation，找出最优的 $K$ 条，更新均值方差，得到新的分布。循环往复，得到收敛的序列。实际执行时，模型只执行该序列的第一个 action，随后获取新的观测并重新进行上述 planning 过程。这种 receding-horizon 的方式使模型能够根据环境的实时变化持续修正动作计划。
+
+总结一下罢，V-JEPA 2 的贡献在于证明了大规模 JEPA 预训练能够学习具有较强物理与时序理解能力的视觉表征，并进一步通过少量机器人数据将其转化为可用于预测、规划和控制的世界模型。其不足也较为明显：Action-conditioned predictor 仍依赖冻结的视觉 encoder，控制能力高度依赖有限的机器人数据；同时，基于 CEM 的在线规划计算成本较高，且主要面向短时、目标图像驱动的任务，对长时程复杂任务和开放环境的泛化能力仍有待验证。
+
+</PaperNote>
+
+## V-JEPA 2.1
+
+<PaperNote
+  title="V-JEPA-2.1"
+  arxivId="2603.14482"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/V-JEPA-2.1.pdf"
+  summary="从全局表征到 dense features"
+  images={["/papers/V-JEPA-2.1.png"]}
+>
+
+V-JEPA 2.1 的关键在于 **dense representation**。如果说 V-JEPA 2 更关注从大规模视频中学习具有世界理解能力的全局视觉表征，那么 V-JEPA 2.1 则进一步希望 latent representation 保留更加细粒度的空间与时间信息。
+
+V-JEPA 2.1 的架构与 V-JEPA 2 整体上仍然保持一致：输入的 image 或 video 首先经过 2D/3D convolutional patch embedding 转换为 tokens，再加入 3D RoPE 和 modality embedding；随后随机 mask 一部分 tokens，剩余的 visible tokens 送入 $x$-encoder。不同的是，作者不再只取 encoder 最后一层的输出，而是将**多个 intermediate layers** 的 representation 一并取出、拼接后经过 MLP 得到 multi-level feature；与此同时，另一份完整输入经过 $y$-encoder 得到对应的 target representation。之后，visible tokens 与携带时空位置信息的 learnable mask tokens 拼接后送入 predictor，由 predictor 同时输出**各层级的预测结果（各个ViT Block）**。最终，模型一方面计算 masked tokens 上的原始 L1 prediction loss，另一方面对 visible context tokens 加入一个根据与 mask 区域距离加权的 context loss，从而**让整个 feature map 都受到监督**，而不只是被 mask 的区域。
+
+值得注意的是，V-JEPA 2.1 在最开始的 patch embedding 阶段引入了 convolution。作者并未明确说明这一设计就是为了增强空间位置信息，但笔者的一个合理猜测是，CNN 更强的局部空间归纳偏置能够帮助模型在 tokenization 之前保留更加细粒度的 spatial structure，这也与 V-JEPA 2.1 强调 dense representation 的目标相契合。
+
+</PaperNote>

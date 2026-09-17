@@ -10,12 +10,15 @@
  * page navigated to afterwards is rendered too. KaTeX (JS + CSS) is fetched
  * lazily, and only on pages that actually contain math.
  */
+const KATEX_BASE = `${import.meta.env.BASE_URL.replace(/\/+$/, "")}/katex/`;
 ---
 
-<script is:inline>
+<script is:inline define:vars={{ KATEX_BASE }}>
+  // KATEX_BASE points at the self-hosted copy in /public/katex (served from our
+  // own domain — the jsdelivr CDN is often slow/unreliable, which used to delay
+  // formulas by several seconds).
   (function () {
-    var KATEX_VERSION = "0.16.9";
-    var CDN = "https://cdn.jsdelivr.net/npm/katex@" + KATEX_VERSION + "/dist/";
+    var CDN = KATEX_BASE;
     var state = { loading: false, lastTry: 0, tries: 0 };
 
     /** The stylesheet ships in the Layout <head>; this only re-adds it if a
@@ -149,6 +152,12 @@
     var pending = null;
     var firstRequest = 0;
     function requestMath() {
+      // KaTeX missing: kick the download off right away (a fetch is not affected
+      // by the view-transition swap, so there is nothing to wait for).
+      if (!window.katex) {
+        ensureKatex();
+        return;
+      }
       var now = Date.now();
       if (pending === null) firstRequest = now;
       clearTimeout(pending);

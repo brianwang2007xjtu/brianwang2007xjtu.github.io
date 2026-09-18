@@ -1,0 +1,790 @@
+---
+import {
+  iconCopy,
+  iconQrcode,
+  iconWeibo,
+  iconX,
+  iconXiaohongshu,
+} from "@/data/postIcons";
+import { signatureLetters, signatureViewBox } from "@/data/signature";
+import { walineServerURL } from "@/data/waline";
+
+interface Props {
+  title: string;
+  /** Canonical URL of the post (shown and shared). */
+  url: string;
+  /** Waline path — also the key the like counter is stored under. */
+  path: string;
+  author: string;
+  /** Already formatted, e.g. "August 28, 2026". */
+  publishedAt: string;
+}
+
+const { title, url, path, author, publishedAt } = Astro.props;
+const walineServer = walineServerURL.trim();
+
+const iconBtn =
+  "group flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:text-accent sm:size-9";
+
+const shareX = `https://x.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
+const shareWeibo = `https://service.weibo.com/share/share.php?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`;
+const xiaohongshuUrl = "https://www.xiaohongshu.com/";
+---
+
+<div
+  class="post-card not-prose"
+  data-post-url={url}
+  data-post-path={path}
+  data-waline-server={walineServer}
+>
+  <div class="post-card-main">
+    <div class="min-w-0 flex-1">
+      <div class="post-card-title">{title}</div>
+      <a class="post-card-url" href={url}>{url}</a>
+
+      <div class="post-card-meta">
+        <div class="post-card-field">
+          <span class="post-card-label">
+            <span data-lang-en>Author</span>
+            <span data-lang-zh>作者</span>
+          </span>
+          <span class="post-card-value">{author}</span>
+        </div>
+        <div class="post-card-field">
+          <span class="post-card-label">
+            <span data-lang-en>Published at</span>
+            <span data-lang-zh>发布于</span>
+          </span>
+          <span class="post-card-value">{publishedAt}</span>
+        </div>
+        <div class="post-card-field">
+          <span class="post-card-label">
+            <span data-lang-en>Copyright</span>
+            <span data-lang-zh>版权</span>
+          </span>
+          <a
+            class="post-card-license"
+            href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+            target="_blank"
+            rel="noopener noreferrer">CC BY-NC-SA 4.0</a
+          >
+        </div>
+      </div>
+
+      <div class="relative mt-3">
+        <div class="flex flex-row gap-3">
+          <button
+            type="button"
+            class="like-btn"
+            data-like
+            aria-pressed="false"
+            title="Like this post"
+            aria-label="Like this post"
+          >
+            <svg class="like-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            <span class="like-count" data-like-count>·</span>
+          </button>
+          <button
+            type="button"
+            class={iconBtn}
+            data-copy-link
+            title="Copy link"
+            aria-label="Copy link"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              set:html={iconCopy}
+            />
+          </button>
+          <button
+            type="button"
+            class={iconBtn}
+            data-qr-toggle
+            aria-expanded="false"
+            title="QR code"
+            aria-label="QR code"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              set:html={iconQrcode}
+            />
+          </button>
+          <a
+            class={iconBtn}
+            href={shareWeibo}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Share on Weibo"
+            aria-label="Share on Weibo"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              set:html={iconWeibo}
+            />
+          </a>
+          <a
+            class={iconBtn}
+            href={shareX}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Share on X"
+            aria-label="Share on X"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              set:html={iconX}
+            />
+          </a>
+          <a
+            class={iconBtn}
+            href={xiaohongshuUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-share-xhs
+            title="分享到小红书（会先复制链接）"
+            aria-label="分享到小红书"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              set:html={iconXiaohongshu}
+            />
+          </a>
+        </div>
+
+        <div
+          id="post-card-qr"
+          class="post-card-qr"
+          aria-hidden="true"
+          data-url={url}
+        >
+        </div>
+      </div>
+    </div>
+
+    <div class="post-card-mark" aria-hidden="true" data-signature>
+      <svg class="sign-word" viewBox={signatureViewBox}>
+        {signatureLetters.map(letter => (
+          <path class="sign-path sign-stroke-w" d={letter.d} />
+        ))}
+      </svg>
+    </div>
+  </div>
+</div>
+
+<style>
+  .post-card {
+    margin: 2rem 0 1rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--card);
+    color: var(--foreground);
+  }
+
+  .post-card-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .post-card-title {
+    font-weight: 500;
+    word-break: break-word;
+  }
+
+  .post-card-url {
+    display: block;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .post-card-url:hover {
+    color: var(--accent);
+  }
+
+  .post-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .post-card-field {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .post-card-label {
+    color: var(--muted-foreground);
+    font-size: 0.9375rem;
+  }
+
+  .post-card-value {
+    font-size: 0.875rem;
+  }
+
+  .post-card-license {
+    color: var(--foreground);
+    font-size: 0.875rem;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+    text-underline-offset: 2px;
+  }
+
+  .post-card-license:hover {
+    background: var(--foreground);
+    color: var(--background);
+    text-decoration: none;
+  }
+
+  /* Hand-written "Master" signature + hand-drawn ©, animated stroke by stroke. */
+  .post-card-mark {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    width: 8.5rem;
+    color: var(--muted-foreground);
+    opacity: 0.55;
+  }
+
+  .sign-word {
+    width: 100%;
+  }
+
+  .sign-path {
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Ink fills in while the stroke is being written. */
+  .sign-stroke-w {
+    fill: currentColor;
+    fill-opacity: 0;
+    stroke-width: 22;
+  }
+
+  @media (max-width: 639px) {
+    .post-card-mark {
+      display: none;
+    }
+  }
+
+  /* Like pill */
+  .like-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    background: var(--muted);
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    line-height: 1;
+    transition: color 0.2s, background-color 0.2s, transform 0.15s;
+  }
+
+  .like-btn:hover {
+    color: var(--accent);
+  }
+
+  .like-btn .like-icon {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    transition: fill 0.2s, stroke 0.2s;
+  }
+
+  .like-btn[aria-pressed="true"] {
+    color: #e0245e;
+  }
+
+  .like-btn[aria-pressed="true"] .like-icon {
+    fill: currentColor;
+  }
+
+  .like-btn.is-popping {
+    animation: like-pop 0.35s ease;
+  }
+
+  .like-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @keyframes like-pop {
+    0% {
+      transform: scale(1);
+    }
+    45% {
+      transform: scale(1.18);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .like-btn.is-popping {
+      animation: none;
+    }
+  }
+
+  /* QR popover */
+  .post-card-qr {
+    position: absolute;
+    z-index: 10;
+    margin-top: -0.5rem;
+    max-height: 0;
+    overflow: hidden;
+    /* Collapsed: no padding and no pointer events, otherwise the box overlaps
+       the action buttons above it and swallows their clicks. */
+    padding: 0;
+    pointer-events: none;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--muted);
+    opacity: 0;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .post-card-qr[data-open="true"] {
+    max-height: 11rem;
+    padding: 1rem;
+    pointer-events: auto;
+    transform: translateY(1rem);
+    opacity: 1;
+  }
+
+  .post-card-qr :global(img),
+  .post-card-qr :global(canvas) {
+    display: block;
+    margin: 0;
+    background: #fff;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .post-card-qr {
+      transition: none;
+    }
+  }
+
+  :global(.copy-toast) {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    z-index: 90;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.5rem;
+    background: var(--foreground);
+    color: var(--background);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 0.75rem);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+
+  :global(.copy-toast[data-show="true"]) {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+</style>
+
+<script>
+  // Copy link + QR popover. The QR library is self-hosted (public/qrcode.min.js)
+  // and only fetched when the QR button is used.
+  let qrLibPromise: Promise<any> | null = null;
+  function loadQrLib(): Promise<any> {
+    const w = window as any;
+    if (w.QRCode) return Promise.resolve(w.QRCode);
+    if (!qrLibPromise) {
+      qrLibPromise = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "/qrcode.min.js";
+        s.onload = () => (w.QRCode ? resolve(w.QRCode) : reject(new Error("no QRCode")));
+        s.onerror = () => reject(new Error("qr load failed"));
+        document.head.appendChild(s);
+      });
+    }
+    return qrLibPromise;
+  }
+
+  /** Copy text: async Clipboard API first, legacy execCommand as fallback. */
+  async function copyText(text: string): Promise<boolean> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      /* fall through to the legacy path */
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-1000px";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      // Deprecated API, but the most compatible fallback where the async
+      // Clipboard API is unavailable — hence the cast.
+      const ok = (document as any).execCommand("copy") as boolean;
+      ta.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Small bottom toast, e.g. "Link copied to clipboard". */
+  function showToast(message: string) {
+    let el = document.getElementById("copy-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "copy-toast";
+      el.className = "copy-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.dataset.show = "true";
+    const timer = Number(el.dataset.timer ?? 0);
+    if (timer) clearTimeout(timer);
+    el.dataset.timer = String(
+      window.setTimeout(() => {
+        el!.dataset.show = "false";
+      }, 1800)
+    );
+  }
+
+  async function initPostCard() {
+    document
+      .querySelectorAll<HTMLElement>(".post-card[data-post-url]")
+      .forEach(async card => {
+        // Idempotent: initPostCard() runs both immediately and on
+        // `astro:page-load`; without this guard the QR toggle would get a second
+        // click listener (open + close at once = "the QR never opens").
+        if (card.dataset.cardReady === "1") return;
+        card.dataset.cardReady = "1";
+
+        const url = card.dataset.postUrl ?? location.href;
+
+        // 小红书 has no web share intent: copy the link first, then let the
+        // anchor open xiaohongshu.com so the user can paste it.
+        card.querySelector("[data-share-xhs]")?.addEventListener("click", async () => {
+          const zh = document.documentElement.getAttribute("data-lang") === "zh";
+          const ok = await copyText(url);
+          showToast(
+            ok
+              ? zh
+                ? "链接已复制，去小红书粘贴分享吧"
+                : "Link copied — paste it in Xiaohongshu"
+              : zh
+                ? "复制失败，请手动复制链接"
+                : "Copy failed — please copy the link manually"
+          );
+        });
+
+        card.querySelector("[data-copy-link]")?.addEventListener("click", async e => {
+          const btn = e.currentTarget as HTMLElement;
+          const zh = document.documentElement.getAttribute("data-lang") === "zh";
+          const ok = await copyText(url);
+          if (ok) {
+            btn.classList.add("text-accent");
+            setTimeout(() => btn.classList.remove("text-accent"), 1200);
+          }
+          showToast(
+            ok
+              ? zh
+                ? "链接已复制到剪贴板"
+                : "Link copied to clipboard"
+              : zh
+                ? "复制失败，请手动复制"
+                : "Copy failed — please copy manually"
+          );
+        });
+
+        const qrBox = card.querySelector<HTMLElement>("#post-card-qr");
+        const toggle = card.querySelector<HTMLElement>("[data-qr-toggle]");
+        if (!qrBox || !toggle || qrBox.dataset.ready === "1") return;
+
+        // Build the QR up-front (hidden) so the very first click shows it
+        // instantly instead of waiting for the library to download.
+        const prepareQr = async () => {
+          try {
+            const QRCode = await loadQrLib();
+            if (qrBox.childElementCount === 0) {
+              new QRCode(qrBox, { text: url, width: 128, height: 128 });
+            }
+            qrBox.dataset.ready = "1";
+          } catch {
+            /* QR library unavailable */
+          }
+        };
+        prepareQr();
+
+        toggle.addEventListener("click", () => {
+          const open = qrBox.dataset.open === "true";
+          qrBox.dataset.open = open ? "false" : "true";
+          toggle.setAttribute("aria-expanded", open ? "false" : "true");
+        });
+      });
+  }
+
+  // Run right away (the module is deferred, so the DOM is parsed) — waiting for
+  // `astro:page-load` made clicks in the first moment do nothing.
+  initPostCard();
+  document.addEventListener("astro:page-load", initPostCard);
+
+  // ---- Like button (Waline article counter, type "reaction0") ----
+  // The button tracks a *desired* state and reconciles it with the server, so
+  // quick clicks and slow writes can never desync or swallow a click.
+  // One like per article per browser, stored under Waline's own
+  // `WALINE_REACTION` key so it stays in sync with Waline's reaction feature.
+  const REACTION_KEY = "WALINE_REACTION";
+  const LIKE_TYPE = "reaction0";
+
+  function readReactionStore(): Record<string, number> {
+    try {
+      return JSON.parse(localStorage.getItem(REACTION_KEY) ?? "{}") as Record<string, number>;
+    } catch {
+      return {};
+    }
+  }
+
+  function writeReactionStore(store: Record<string, number>) {
+    try {
+      localStorage.setItem(REACTION_KEY, JSON.stringify(store));
+    } catch {
+      /* private mode */
+    }
+  }
+
+  function initLikeButtons() {
+    document.querySelectorAll<HTMLElement>(".post-card[data-post-path]").forEach(card => {
+      if (card.dataset.likeReady === "1") return;
+      card.dataset.likeReady = "1";
+
+      const btn = card.querySelector<HTMLElement>("[data-like]");
+      const countEl = card.querySelector<HTMLElement>("[data-like-count]");
+      const path = card.dataset.postPath ?? location.pathname;
+      const server = (card.dataset.walineServer ?? "").replace(/\/+$/, "");
+      if (!btn || !countEl || !server) return;
+
+      const lang = () =>
+        document.documentElement.getAttribute("data-lang") === "zh" ? "zh-CN" : "en-US";
+
+      const store = readReactionStore();
+      let liked = store[path] === 0; // desired + shown state
+      let served = liked; // what the server believes
+      let count = 0;
+      let syncing = false;
+
+      const paint = () => {
+        btn.setAttribute("aria-pressed", liked ? "true" : "false");
+        countEl.textContent = String(count);
+      };
+      paint();
+
+      const fetchCount = async () => {
+        try {
+          const res = await fetch(
+            `${server}/api/article?path=${encodeURIComponent(path)}&type=${LIKE_TYPE}&lang=${lang()}`,
+            { signal: AbortSignal.timeout(8000) }
+          );
+          const json = (await res.json()) as { data?: Record<string, number>[] };
+          count = Number(json.data?.[0]?.[LIKE_TYPE] ?? 0);
+          paint();
+        } catch {
+          /* keep the current number */
+        }
+      };
+
+      const saveStore = () => {
+        const s2 = readReactionStore();
+        if (liked) s2[path] = 0;
+        else delete s2[path];
+        writeReactionStore(s2);
+      };
+
+      /** Push the desired state to the server until both sides agree. */
+      const sync = async () => {
+        if (syncing) return;
+        syncing = true;
+        try {
+          while (liked !== served) {
+            const action = liked ? "inc" : "desc";
+            const res = await fetch(`${server}/api/article?lang=${lang()}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ path, type: LIKE_TYPE, action }),
+              signal: AbortSignal.timeout(8000),
+            });
+            const json = (await res.json()) as {
+              errno?: number;
+              data?: Record<string, number>[];
+            };
+            if (json.errno !== 0) throw new Error(String(json.errno));
+            served = liked;
+            count = Number(json.data?.[0]?.[LIKE_TYPE] ?? count);
+            saveStore();
+            paint();
+          }
+        } catch {
+          liked = served; // roll back to the last confirmed state
+          paint();
+          showToast(
+            document.documentElement.getAttribute("data-lang") === "zh"
+              ? "操作失败，请稍后再试"
+              : "Something went wrong — please retry"
+          );
+          void fetchCount();
+        } finally {
+          syncing = false;
+        }
+      };
+
+      btn.addEventListener("click", () => {
+        liked = !liked;
+        count = Math.max(0, count + (liked ? 1 : -1));
+        paint();
+        btn.classList.remove("is-popping");
+        if (liked) {
+          void btn.offsetWidth;
+          btn.classList.add("is-popping");
+        }
+        void sync();
+      });
+
+      void fetchCount();
+    });
+  }
+
+  initLikeButtons();
+  document.addEventListener("astro:page-load", initLikeButtons);
+
+  // Signature: loops forever —
+  //   write the word → keep it 4s → erase it (undo animation) → 4s blank → again
+  // Both the write and the erase run 1.1x faster than the base timings.
+  const SIGN_SPEED = 1.1;
+  const SIGN_HOLD_MS = 4000; // word stays visible
+  const SIGN_GAP_MS = 4000; // blank pause before writing again
+
+  function initSignature() {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    document.querySelectorAll<HTMLElement>("[data-signature]").forEach(mark => {
+      if (mark.dataset.loop === "1") return;
+      mark.dataset.loop = "1";
+
+      const paths = Array.from(mark.querySelectorAll<SVGPathElement>(".sign-word path"));
+      if (paths.length === 0) return;
+
+      if (reduce) {
+        paths.forEach(p => {
+          p.style.fillOpacity = "1";
+        });
+        return;
+      }
+
+      const lens = paths.map(p => p.getTotalLength());
+      const durs = lens.map(len => Math.min(850, Math.max(200, len / 2.5)) / SIGN_SPEED);
+      // start delay of letter i when writing (letters overlap slightly)
+      const startAt = (i: number) =>
+        durs.slice(0, i).reduce((acc, d) => acc + d * 0.8, 0);
+
+      const write = () => {
+        paths.forEach((p, i) => {
+          p.style.transition = "none";
+          p.style.strokeDasharray = `${lens[i]}`;
+          p.style.strokeDashoffset = `${lens[i]}`;
+          p.style.fillOpacity = "0";
+        });
+        void mark.offsetWidth; // flush, then animate
+        let total = 0;
+        paths.forEach((p, i) => {
+          const d = durs[i]!;
+          const delay = startAt(i);
+          total = Math.max(total, delay + d);
+          p.style.transition = `stroke-dashoffset ${d}ms ease-in-out ${delay}ms, fill-opacity ${d * 0.5}ms ease ${delay + d * 0.5}ms`;
+          p.style.strokeDashoffset = "0";
+          p.style.fillOpacity = "1";
+        });
+        return total;
+      };
+
+      const erase = () => {
+        let total = 0;
+        paths.forEach((p, i) => {
+          const d = durs[i]!;
+          const delay = startAt(paths.length - 1 - i); // undo in reverse order
+          total = Math.max(total, delay + d);
+          p.style.transition = `stroke-dashoffset ${d}ms ease-in-out ${delay}ms, fill-opacity ${d * 0.5}ms ease ${delay}ms`;
+          p.style.strokeDashoffset = `${lens[i]}`;
+          p.style.fillOpacity = "0";
+        });
+        return total;
+      };
+
+      const cycle = () => {
+        if (!mark.isConnected) return;
+        const writeMs = write();
+        window.setTimeout(() => {
+          if (!mark.isConnected) return;
+          const eraseMs = erase();
+          window.setTimeout(cycle, eraseMs + SIGN_GAP_MS);
+        }, writeMs + SIGN_HOLD_MS);
+      };
+
+      // Only start once the card itself scrolls into view, then wait 1s.
+      const card = mark.closest(".post-card") ?? mark;
+      const io = new IntersectionObserver(
+        entries => {
+          entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            io.disconnect();
+            window.setTimeout(cycle, 1000);
+          });
+        },
+        { threshold: 0.35 }
+      );
+      io.observe(card);
+    });
+  }
+
+  document.addEventListener("astro:page-load", initSignature);
+</script>

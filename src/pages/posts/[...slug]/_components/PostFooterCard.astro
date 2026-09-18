@@ -292,9 +292,21 @@ const xiaohongshuUrl = "https://www.xiaohongshu.com/";
     stroke-width: 22;
   }
 
+  /* Small screens: put the signature on its own row under the buttons instead
+     of hiding it (it used to be a decorative watermark, now it is the animated
+     feature itself). */
   @media (max-width: 639px) {
+    .post-card-main {
+      flex-direction: column;
+      /* Must be `stretch` here: with `flex-start` the column items size to their
+         max-content width and push the card past the viewport. */
+      align-items: stretch;
+    }
+
     .post-card-mark {
-      display: none;
+      align-self: flex-end;
+      width: 7.5rem;
+      margin-top: 0.25rem;
     }
   }
 

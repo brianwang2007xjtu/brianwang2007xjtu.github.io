@@ -7,6 +7,7 @@ import IconMoon from "@/assets/icons/IconMoon.svg";
 import IconX from "@/assets/icons/IconX.svg";
 import { stripBase, stripLocale } from "@/utils/withBase";
 import config from "@/config";
+import { blogCategories } from "@/data/categories";
 
 interface Props {
   /** Narrow container, matching the home page layout. */
@@ -53,11 +54,12 @@ const lifeHref = lifeLinks[0]!.href;
 
 const lifeActive = lifeLinks.some(l => isActive(l.href));
 
-const blogLinks = [
-  { label: "Research", href: getRelativeLocaleUrl(locale, "blog/research") },
-  { label: "Daily Life", href: getRelativeLocaleUrl(locale, "blog/daily") },
-  { label: "Others", href: getRelativeLocaleUrl(locale, "blog/others") },
-];
+// Derived from the shared category list so the dropdown order/labels always
+// match the /blog/<category> pages.
+const blogLinks = blogCategories.map(cat => ({
+  label: cat.label,
+  href: getRelativeLocaleUrl(locale, `blog/${cat.slug}`),
+}));
 const blogHref = blogLinks[0]!.href;
 const blogActive = blogLinks.some(l => isActive(l.href));
 

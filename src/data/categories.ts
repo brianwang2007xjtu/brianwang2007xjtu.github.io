@@ -11,6 +11,11 @@ export const blogCategories: BlogCategory[] = [
     description: "AI research, paper readings and technical deep-dives.",
   },
   {
+    slug: "course",
+    label: "Course",
+    description: "Course notes and lecture summaries.",
+  },
+  {
     slug: "daily",
     label: "Daily Life",
     description: "Notes and thoughts from everyday life.",

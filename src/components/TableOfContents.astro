@@ -31,16 +31,17 @@ const minDepth = tocHeadings.length
           {
             tocHeadings.map(h => (
               <li>
-                <div
-                  class="relative"
-                  style={`margin-inline-start: ${(h.depth - minDepth) * 0.875}rem`}
-                >
+                {/* The progress bar must sit on the SAME vertical line for every
+                    heading level (like axi404), so the indent lives on the link
+                    text only — not on this wrapper. */}
+                <div class="relative">
                   <span
                     class="toc-line absolute top-[5%] w-[2px] rounded transition-colors duration-300 [&.highlight-bg]:bg-accent [&.readed]:bg-border"
                   ></span>
                   <a
                     href={`#${h.slug}`}
-                    class="toc-link line-clamp-2 ms-2 flex-1 px-3 py-1 text-sm text-foreground/75 transition-all hover:text-foreground [&.highlight]:font-medium [&.highlight]:text-accent [&.readed]:text-muted-foreground/60 [&.highlight-bg-translucent]:rounded-md [&.highlight-bg-translucent]:bg-muted"
+                    style={`margin-inline-start: ${0.5 + (h.depth - minDepth) * 0.875}rem`}
+                    class="toc-link line-clamp-2 flex-1 px-3 py-1 text-sm text-foreground/75 transition-all hover:text-foreground [&.highlight]:font-medium [&.highlight]:text-accent [&.readed]:text-muted-foreground/60 [&.highlight-bg-translucent]:rounded-md [&.highlight-bg-translucent]:bg-muted"
                   >
                     {h.text}
                   </a>

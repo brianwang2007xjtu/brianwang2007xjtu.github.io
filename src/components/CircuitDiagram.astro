@@ -7,10 +7,10 @@
  *   <CircuitDiagram type="fixed-bias" />
  *   <CircuitDiagram type="divider-bias" caption="分压式偏置共射电路" />
  *
- * Types: fixed-bias | divider-bias | load-line | small-signal
+ * Types: fixed-bias | divider-bias
  */
 interface Props {
-  type: "fixed-bias" | "divider-bias" | "load-line" | "small-signal";
+  type: "fixed-bias" | "divider-bias";
   caption?: string;
 }
 
@@ -19,8 +19,6 @@ const { type, caption } = Astro.props;
 const CAPTIONS: Record<Props["type"], string> = {
   "fixed-bias": "共射放大电路直流通路（单电源）：R_b 提供基极偏置，R_c 为集电极负载",
   "divider-bias": "分压式偏置共射放大电路",
-  "load-line": "输出特性、直流负载线与静态工作点 Q",
-  "small-signal": "晶体管微变等效电路",
 };
 const label = caption ?? CAPTIONS[type];
 ---
@@ -149,82 +147,6 @@ const label = caption ?? CAPTIONS[type];
       )
     }
 
-    <!-- ===== 直流负载线与 Q 点 ===== -->
-    {
-      type === "load-line" && (
-        <g>
-          {/* axes */}
-          <line x1="52" y1="204" x2="300" y2="204" class="axis" />
-          <line x1="52" y1="204" x2="52" y2="34" class="axis" />
-          <polygon points="300,204 291,199.5 291,208.5" class="axis-fill" />
-          <polygon points="52,34 47.5,43 56.5,43" class="axis-fill" />
-          <text x="303" y="220" class="lbl">u<tspan class="sub">CE</tspan></text>
-          <text x="46" y="30" class="lbl end">i<tspan class="sub">C</tspan></text>
-
-          {/* output characteristics (the middle one passes exactly through Q) */}
-          <path d="M52 204 C 92 172, 122 140, 160 127.5 C 205 115, 250 113, 300 112" class="curve" />
-          <path d="M52 204 C 86 186, 116 168, 160 158 C 210 150, 250 148, 300 147" class="curve" />
-          <path d="M52 204 C 84 198, 114 190, 160 184 C 212 178, 250 176, 300 175" class="curve" />
-          <text x="304" y="110" class="lbl">I<tspan class="sub">B3</tspan></text>
-          <text x="304" y="145" class="lbl">I<tspan class="sub">B2</tspan></text>
-          <text x="304" y="173" class="lbl">I<tspan class="sub">B1</tspan></text>
-
-          {/* DC load line: from (0, Vcc/Rc) on the y-axis to (Vcc, 0) on the x-axis */}
-          <line x1="52" y1="60" x2="276" y2="204" class="loadline" />
-          <circle cx="52" cy="60" r="3" class="node" />
-          <text x="60" y="56" class="lbl">V<tspan class="sub">CC</tspan>/R<tspan class="sub">c</tspan></text>
-          <circle cx="276" cy="204" r="3" class="node" />
-          <text x="264" y="220" class="lbl">V<tspan class="sub">CC</tspan></text>
-          <text x="196" y="96" class="lbl">直流负载线</text>
-          <line x1="215" y1="100" x2="190" y2="146" class="leader" />
-
-          {/* projections first, marker on top */}
-          <line x1="160" y1="127.5" x2="160" y2="204" class="dash" />
-          <line x1="160" y1="127.5" x2="52" y2="127.5" class="dash" />
-          <text x="160" y="220" class="lbl mid">U<tspan class="sub">CEQ</tspan></text>
-          <text x="46" y="131" class="lbl end">I<tspan class="sub">CQ</tspan></text>
-          <circle cx="160" cy="127.5" r="4.5" class="qdot" />
-          <text x="170" y="122" class="q-lbl">Q</text>
-        </g>
-      )
-    }
-
-    <!-- ===== 微变等效电路 ===== -->
-    {
-      type === "small-signal" && (
-        <g>
-          {/* input port: b (top-left) → r_be → emitter rail */}
-          <circle cx="96" cy="86" r="2.8" class="node" />
-          <text x="84" y="82" class="lbl end">b</text>
-          <line x1="96" y1="86" x2="96" y2="112" />
-          <rect x="87" y="112" width="18" height="46" rx="3" class="part" />
-          <line x1="96" y1="158" x2="96" y2="192" />
-          <text x="80" y="140" class="lbl end">r<tspan class="sub">be</tspan></text>
-          <line x1="40" y1="86" x2="82" y2="86" class="cur" marker-end="url(#ar)" />
-          <text x="46" y="78" class="cur-lbl">i<tspan class="sub">b</tspan></text>
-
-          {/* emitter rail (common to both ports) */}
-          <line x1="96" y1="192" x2="250" y2="192" />
-          <circle cx="96" cy="192" r="2.8" class="node" />
-          <text x="84" y="206" class="lbl end">e</text>
-
-          {/* output port: c (top-right) → dependent current source → emitter rail */}
-          <circle cx="250" cy="86" r="2.8" class="node" />
-          <text x="262" y="82" class="lbl">c</text>
-          <line x1="250" y1="86" x2="250" y2="112" />
-          <line x1="250" y1="112" x2="265" y2="134" />
-          <line x1="265" y1="134" x2="250" y2="156" />
-          <line x1="250" y1="156" x2="235" y2="134" />
-          <line x1="235" y1="134" x2="250" y2="112" />
-          <line x1="250" y1="134" x2="250" y2="152" class="csrc" marker-end="url(#ar)" />
-          <line x1="250" y1="156" x2="250" y2="192" />
-          <text x="272" y="138" class="lbl">βi<tspan class="sub">b</tspan></text>
-          <line x1="250" y1="86" x2="250" y2="74" class="cur" marker-end="url(#ar)" />
-          <text x="256" y="72" class="cur-lbl">i<tspan class="sub">c</tspan></text>
-        </g>
-      )
-    }
-
     <defs>
       <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
         <path d="M 0 0 L 10 5 L 0 10 z" class="arrow-head" />
@@ -301,44 +223,12 @@ const label = caption ?? CAPTIONS[type];
     fill: var(--accent);
   }
 
-  .circuit :global(.qdot) {
-    fill: var(--accent);
-    stroke: var(--background);
-    stroke-width: 1.5;
-  }
 
-  .circuit :global(.q-lbl) {
-    fill: var(--accent);
-    font-size: 13px;
-    font-weight: 600;
-  }
 
-  .circuit :global(.csrc) {
-    stroke: var(--foreground);
-    stroke-width: 1.6;
-    fill: none;
-  }
 
-  .circuit :global(.axis) {
-    stroke: var(--foreground);
-    stroke-width: 1.8;
-  }
 
-  .circuit :global(.axis-fill) {
-    fill: var(--foreground);
-    stroke: none;
-  }
 
-  .circuit :global(.curve) {
-    fill: none;
-    stroke: var(--muted-foreground);
-    stroke-width: 1.3;
-  }
 
-  .circuit :global(.loadline) {
-    stroke: var(--accent);
-    stroke-width: 1.8;
-  }
 
   .circuit :global(.gnd) {
     stroke: var(--foreground);

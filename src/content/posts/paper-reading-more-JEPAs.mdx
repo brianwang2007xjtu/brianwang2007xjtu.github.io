@@ -1,0 +1,143 @@
+---
+title: "Paper Reading: More JEPAs"
+author: master
+pubDatetime: 2026-09-21T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "更多的 JEPAs 📝 ～"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+本博客可以视作 JEPA 主线论文阅读的完结。
+
+从 I-JEPA 到 V-JEPA，再到 VL-JEPA 和 LeWorldModel，笔者在这短短的一个多星期里，被 JEPA 的魅力所深深吸引，深感玄妙无穷，内心深处仿佛一直有个声音：不管现在的模型表现如何，JEPA 都很有可能是具身无比正确的方向。此时此刻，笔者脑海里已经有一个不成形的 JEPA（暂且称之为 **HV-JEPA**）构想渴望实现，于是乎在此用 LeCun 的一句话作为勉励：
+
+> I think that's the future.
+
+<p style="text-align: right; font-style: italic;"> —— Yann LeCun </p>
+
+博客的最后，笔者还将给出 JEPA 系列的 paper list ～
+
+## LeJEPA
+
+<PaperNote
+  title="LeJEPA"
+  arxivId="2511.08544"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/LeJEPA.pdf"
+  summary="用 SIGReg 代替「奇技淫巧」"
+  images={["/papers/LeJEPA.png"]}
+>
+
+LeJEPA 由 LeCun 团队在 2025 提出，它并没有提出一个全新的 JEPA 架构，但却解决了一个令所有 JEPA 都头疼不已的问题：**Representation Collapse**，即「**表示坍塌**」。对于 JEPA 而言，模型的目标是让预测得到的 latent representation 与目标 representation 尽可能接近。问题在于，一个极端但“完美”的解是让所有输入都映射到同一个向量，这样就什么都没有学到。因此，JEPA 必须在「预测准确」和「表示不坍塌」之间找到微妙的平衡。
+
+LeJEPA 从这样一个问题入手：好的 representation 应该服从什么分布呢？经过一系列的推导，作者证明了无论是对于 **Linear Probing** 还是 **Nonlinear Probing**，**各向同性的高斯 Isotropic Gaussian**都是最优解。换句话说，一个理想的 representation 不应该挤压在某个狭小区域，也不应该偏向某些特定方向，而应该尽可能**均匀地**分布在整个 latent space 中。
+
+为添加此约束到 loss，LeJEPA 提出了 **SIGReg（Sketched Isotropic Gaussian Regularization）**。它并不直接计算高维 latent distribution 与 $\mathcal\{N}(0,I)$ 之间的 KL Divergence，而是通过随机投影将高维分布「sketch」到多个一维空间，再比较这些一维投影与标准高斯分布之间的差异，从而以较低的计算成本约束整个 latent space 的分布。
+
+总结一下，LeJEPA 的论文很复杂，但是核心思想很简单。它并没有重新设计 JEPA，而是试图从理论上回答 JEPA 最底层的一个问题：**为什么好的 latent representation 应该长什么样，以及我们能否用一个简单的数学约束直接保证它**。
+
+</PaperNote>
+
+## ACT-JEPA
+
+<PaperNote
+  title="ACT-JEPA"
+  arxivId="2501.14622"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/ACT-JEPA.pdf"
+  summary= "联合训练 action 和 latent observation ，同时学会「做动作」和「环境动态」"
+  images={["/papers/ACT-JEPA.png"]}
+>
+
+ACT-JEPA 结合了 SSL 和 IL，是一种极为简洁的 end2end 训练的世界模型，它通过从同一个 encoded latent 学习 action chunk 预测和 observation sequence 预测，并且联合优化，让模型同时学会了对预测动作和预测世界动态均有帮助的 latent。
+
+来谈几点细节。在训练阶段，ACT-JEPA 的状态预测器 $P_\phi$ 有别于以往的 JEPA predictor，并没有将 $s_x$ 和 **mask token** 直接 concact 起来，再用自注意力；而是用**交叉注意力**一步到位，把 $s_x$ 作为 condition。除此之外，ACT-JEPA 的 Decoder $D_\tau$ 是主要创新点之一，和 Predictor 使用不同的掩码，并且用专家数据作为监督。在推理阶段，模型只使用 encoder 和 decoder 来生成 action chunk。还有一点很有意思：包括 ACT-JEPA 在内的诸多最新工作，多数采用了 **EMA** 等启发式正则化方法，而没有用之前所提到的 SIGReg。
+
+实验结果表明，ACT-JEPA 在多个机器人操作任务上相比传统行为克隆方法取得了更好的表现，说明联合学习动作预测与未来 latent 表征能够提升策略的泛化与任务成功率。不过，其实验主要集中于有限的机器人操作场景，对复杂环境、长时序任务以及大规模多任务场景的验证仍然不足；此外，联合训练带来的额外计算开销也需要进一步评估。
+
+</PaperNote>
+
+## C-JEPA
+
+<PaperNote
+  title="C-JEPA"
+  arxivId="2602.11389"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/C-JEPA.pdf"
+  summary="通过 object-level masking 引入 latent intervention，让世界模型真正学习对象之间的交互关系"
+  images={["/papers/C-JEPA.png"]}
+>
+
+C-JEPA 即 **Causal-JEPA**，它试图解决一个很有意思的问题：一个能预测未来的 world model，并不一定真正理解了对象之间的**因果关系**。传统 JEPA 通常在 patch-level latent 上进行预测，模型很容易依赖某个物体自身的运动模式，而不去理解「这个物体为什么会这样运动」。C-JEPA 则更进一步，把 JEPA 从 image patch 扩展到了 **object-centric** 的 representation，让模型直接在对象级 latent 上理解建模世界动态。
+
+具体来说，C-JEPA 首先使用 **Slot Attention** 一类的 **object-centric encoder**，把每一帧图像表示成固定数量的 attention slots，每个 slot 对应一个实体。这里的 slot 数量 $N$ 是人为设定的超参数。随后，模型会随机选取一些对象，将它们在历史时间段中的 latent mask 掉，只保留最早时刻的一个 **identity anchor**。之所以需要这个 anchor，是因为 slot representation 对排列对象具有 **permutation equivariance**，即模型不能依赖第几个 slot 来判断「这是哪个物体」，因此必须保留最少的身份信息来维持实体的一致性。
+
+![-2](/papers/C-JEPA2.png)
+
+实验主要集中在 CLEVRER 和机器人 Push-T 两类任务上，表现都还不错。但是，C-JEPA 仍有一些明显局限：首先，它依赖预训练好的 object-centric encoder，encoder 本身并没有和 predictor 进行完全的 **end2end** 联合学习；其次，固定数量的 slots、identity anchor 以及 mask 策略都带有较强的先验设计。
+
+</PaperNote>
+
+## VL-JEPA
+
+<PaperNote
+  title="VL-JEPA"
+  arxivId="2512.10942"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/VL-JEPA.pdf"
+  summary="非生成式、非自回归式的 VLM"
+  images={["/papers/VL-JEPA.png"]}
+>
+
+VL-JEPA 实际上是个 VLM，用来学习视觉在文本 condition 下的表征。它最大卖点是 **non-generative** 和 **non-autoregressive**：传统 VLM 是根据视觉输入逐 token 生成文本，而 VL-JEPA 则直接在 latent space 中预测目标文本的 embedding，从而绕开繁琐的 token-level 的生成。
+
+VL-JEPA 的架构非常简单，训练时只需要让 Predictor 生成的 $\hat S_Y$ 和 Y-Encoder 表示的 $S_Y$ 接近，而不需要真的把答案一个 token 一个 token 地生成出来；只有在推理阶段需要展示文本时，才调用轻量级的 Y-Decoder 将 embedding 转回文本。
+
+本篇工作的主要贡献不在于缩小 VLM，而在于把 VLM 的学习目标从「生成正确的文字」转向「**预测正确的语义表示**」，底层还是 JEPA 式的。
+
+</PaperNote>
+
+## ThinkJEPA
+
+<PaperNote
+  title="ThinkJEPA"
+  arxivId="2603.22281"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/ThinkJEPA.pdf"
+  summary="用 HPRE 混合 VLM 的稀疏表征和 JEPA，赋予模型长短期综合理解"
+  images={["/papers/ThinkJEPA.png"]}
+>
+
+ThinkJEPA 试图解决 V-JEPA 类世界模型的一个问题：JEPA 擅长建模局部、细粒度的物理动态，却很难**利用长时间范围的信息理解更高层次的语义**。因此，它引入一个 **VLM-Thinker**，与 JEPA 形成双时间尺度的感知路径。
+
+ThinkJEPA 提出了 hierarchical pyramid representation extraction，从 VLM 的多个不同深度提取 representation，而不是只使用最后一层。具体来说，作者将不同层的 visual tokens 和 hidden states 聚合、投影，再通过 FiLM 逐层调制 JEPA predictor。
+
+实验主要在 EgoDex 和 EgoExo4D 的手部操作轨迹预测任务上进行，结果表明融合 VLM guidance 后，轨迹预测和长时域 rollout 均优于单独的 V-JEPA predictor 和 VLM-only baseline。
+
+</PaperNote>
+
+---
+
+## JEPAs' List
+
+| 论文 | 主要贡献 |
+| --- | --- |
+| [I-JEPA](https://arxiv.org/abs/2301.08243) | 提出 Joint-Embedding Predictive Architecture，在**表征空间做预测**而非重建像素，开创自监督的"预测"范式 |
+| [LeWorldModel](https://arxiv.org/abs/2603.19312) | LeCun 团队的 Stable End-to-End JEPA，从像素端到端学习可预测的世界模型 |
+| [V-JEPA](https://arxiv.org/abs/2404.08471) | 把 JEPA 推广到视频，在表征空间预测被 mask 的未来块，学习时序视觉表征 |
+| [V-JEPA 2](https://arxiv.org/abs/2506.09985) | 大规模自监督视频模型，同时支持理解、预测与规划 |
+| [V-JEPA 2.1](https://arxiv.org/abs/2603.14482) | 解锁视频自监督学习中的 dense features |
+| [LeJEPA](https://arxiv.org/abs/2511.08544) | 用 SIGReg（各向同性高斯正则）从理论上根治 JEPA 的表示坍塌 |
+| [ACT-JEPA](https://arxiv.org/abs/2501.14622) | 联合学习 action 与 latent observation，端到端世界模型做模仿学习 |
+| [C-JEPA](https://arxiv.org/abs/2602.11389) | 对象级 masking + 潜变量干预，让世界模型真正建模对象间的因果交互 |
+| [VL-JEPA](https://arxiv.org/abs/2512.10942) | 非生成、非自回归的 VLM，在表征空间预测文本语义 |
+| [ThinkJEPA](https://arxiv.org/abs/2603.22281) | 用 HPRE 混合 VLM 稀疏表征与 JEPA，赋予模型长短期综合理解 |
+| [MC-JEPA](https://arxiv.org/abs/2307.12698) | 同时学习 motion 与 content 特征，为 VQA / 物理推理提供世界模型 |
+| [Graph-JEPA](https://arxiv.org/abs/2309.16014) | 把 JEPA 推广到图数据，学习图级表征 |
+| [A-JEPA](https://arxiv.org/abs/2311.15830) | 把 JEPA 从视觉扩展到音频，用预测性表征理解语音与声学 |
+| [Video Representation Learning with JEPA](https://arxiv.org/abs/2412.10925) | 系统研究视频 JEPA 的表征学习设计选择 |
+| [Drive-JEPA](https://arxiv.org/abs/2601.22032) | 视频 JEPA + 多模态轨迹蒸馏，做端到端自动驾驶 |
+| [BiJEPA](https://arxiv.org/abs/2603.00049) | 双向预测的 JEPA，学习对称表征 |
+| [Social-JEPA](https://arxiv.org/abs/2603.02263) | 发现独立训练的世界模型之间涌现出几何同构 |
+| [Sub-JEPA](https://arxiv.org/abs/2605.09241) | 子空间高斯正则，稳定端到端世界模型的训练 |
+| [UWM-JEPA](https://arxiv.org/abs/2605.25313) | 在信念空间做预测的世界模型 |
+| [Gaussian-JEPA](https://arxiv.org/abs/2608.15651) | 用 JEPA 学习 3D Gaussian Splats 的表征 |

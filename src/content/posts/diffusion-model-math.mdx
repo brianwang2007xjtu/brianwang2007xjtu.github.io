@@ -13,7 +13,7 @@ import ImageRow from "@/components/ImageRow.astro";
 
 <figure>
   <img src="/diffusion-model/ddpm.png" alt="diffusion-process" />
-  <figcaption> * 图片来源：[《Denoising Diffusion Probablistic Models》](/papers/DDPM.pdf)</figcaption>
+  <figcaption> * 图片来源：[《Denoising Diffusion Probablistic Models》](https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DDPM.pdf)</figcaption>
 </figure>
 
 > The sculpture is already complete within the marble block before I start my work. It is already there, I just have to chsiel away the superfluous material. 
@@ -105,7 +105,7 @@ $$
   \log p\_\{\theta}(\bm\{x\}\_0) \geq \mathbb\{E}\_\{q(\bm\{x\}\_\{1:T}|\bm\{x\}\_0)} \left[ \log \frac\{p\_\{\theta}(\bm\{x\}\_\{0:T})}\{q(\bm\{x\}\_\{1:T}|\bm\{x\}\_0)} \right]
 $$
 
-上式的右侧是 DDPM 中的 **ELBO（证据下界）**，最大化目标函数的问题可以转化为最大化 **ELBO** 的问题。再经过一系列的复杂变形（详见：[《Denoising Diffusion Probablistic Models》](/papers/DDPM.pdf)），可以将 **ELBO** 化成如下形式：
+上式的右侧是 DDPM 中的 **ELBO（证据下界）**，最大化目标函数的问题可以转化为最大化 **ELBO** 的问题。再经过一系列的复杂变形（详见：[《Denoising Diffusion Probablistic Models》](https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DDPM.pdf)），可以将 **ELBO** 化成如下形式：
 
 $$
 \begin\{aligned\}
@@ -181,7 +181,7 @@ $$
 ---
 
 ## 训练与推理
-**[DDPM](/papers/DDPM.pdf)** 的论文里给出了 Training 和 Sampling 的算法：
+**[DDPM](https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DDPM.pdf)** 的论文里给出了 Training 和 Sampling 的算法：
 
 <img src="/diffusion-model/diffusion-ago.png" alt="diffusion-process" />
 
@@ -201,7 +201,7 @@ $$
 
 当然，推导的终点并非理解的终点。DDPM 的优雅之处，不仅在于它给出了可复现的训练算法，更在于它为后续的加速采样、条件生成乃至跨模态扩散打开了大门。读懂公式只是第一步，亲手跑通代码、调整噪声调度、观察中间隐变量的变化，才是真正让理论活过来的时刻。
 
-希望这篇笼统的梳理能为你省去一些翻找资料的时间。当然，若是时间充足，Master 还是推荐读者自行研读[原文](/papers/DDPM.pdf) ~
+希望这篇笼统的梳理能为你省去一些翻找资料的时间。当然，若是时间充足，Master 还是推荐读者自行研读[原文](https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DDPM.pdf) ~
 
 ---
 

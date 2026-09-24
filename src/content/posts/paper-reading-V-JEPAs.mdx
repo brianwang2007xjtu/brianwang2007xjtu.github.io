@@ -27,7 +27,7 @@ import PaperNote from "@/components/PaperNote.astro";
   images={["/papers/V-JEPA.png"]}
 >
 
-V-JEPA 和[之前博客](https://brianwang2007.com/posts/paper-reading-fundamental-popular-works/)中提到的 [I-JEPA](https://arxiv.org/abs/2301.08243) 非常相似：二者都采用 JEPA（Joint Embedding Predictive Architecture）的核心思想，在潜在表示空间中进行预测，而非直接重建像素。区别在于，I-JEPA 面向静态图像进行学习，通过可见区域的表示预测图像中被遮挡区域的表示；而 V-JEPA 则将这一思想扩展到了视频，将学习对象从图像扩展到视频中的时空信息，从而使模型能够学习视频数据中的动态结构。
+V-JEPA 和[之前博客](/posts/paper-reading-fundamental-popular-works/)中提到的 [I-JEPA](https://arxiv.org/abs/2301.08243) 非常相似：二者都采用 JEPA（Joint Embedding Predictive Architecture）的核心思想，在潜在表示空间中进行预测，而非直接重建像素。区别在于，I-JEPA 面向静态图像进行学习，通过可见区域的表示预测图像中被遮挡区域的表示；而 V-JEPA 则将这一思想扩展到了视频，将学习对象从图像扩展到视频中的时空信息，从而使模型能够学习视频数据中的动态结构。
 
 V-JEPA 的架构非常清晰。先从视频中选取 $T$ 个连续帧，并将其展平成 $L$ 个 Tokens。同一批 Tokens 复制成两份，其中一份经过随机 dropping 送入 $x$-encoder $E_\{\theta}$，然后将输出和 positional embedding 一起 concact，送入 predictor $P_\{\phi}$；而另一份 Tokens 则作为 target，通过 $y$-encoder $E_\{\bar\{\theta}}$ 映射到潜空间，和 $P_\{\phi}$ 的输出做 $L_1$。
 

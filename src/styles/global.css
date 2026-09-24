@@ -34,6 +34,16 @@ html[data-lang="zh"] [data-lang-en] {
     cursor: pointer;
   }
 
+  /* Keep underlines unbroken: the browser default (`skip-ink: auto`) cuts the
+     line where descenders such as y, g, p, q and j cross it. */
+  a,
+  u,
+  ins,
+  abbr[title] {
+    text-decoration-skip-ink: none;
+    -webkit-text-decoration-skip: none;
+  }
+
   html {
     scroll-padding-top: 6rem;
   }

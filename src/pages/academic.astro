@@ -1,91 +1,764 @@
 ---
+import { getCollection } from "astro:content";
 import Layout from "@/layouts/Layout.astro";
-import Header from "@/components/Header.astro";
-import Footer from "@/components/Footer.astro";
+import { getPostUrl } from "@/utils/getPostPaths";
+import { postFilter } from "@/utils/postFilter";
 import config from "@/config";
 
-const researchInterests = [
-  "Brain-Computer Interface",
-  "Machine Learning",
-  "Neural Signal Processing",
-  "Neuro-robotics",
+const contact = [
+  { label: "Email", href: "mailto:1952684458@qq.com" },
+  { label: "GitHub", href: "https://github.com/brianwang2007xjtu" },
+  { label: "Blog", href: "/" },
+  { label: "CV", href: "/cv.pdf" },
 ];
+
+const news = [
+  {
+    date: "2026.08",
+    text: "Summer exchange at Lady Margaret Hall, University of Oxford.",
+  },
+  {
+    date: "2025.09",
+    text: "Entered Xi’an Jiaotong University as an undergraduate in Artificial Intelligence.",
+  },
+  {
+    date: "2023.09",
+    text: "Joined the XJTU Youth Class Preparatory Program (少年班).",
+  },
+];
+
+const education = [
+  {
+    period: "2025.09 – 2029.06",
+    icon: "/icons/xjtu-mark.png",
+    school: "Xi’an Jiaotong University",
+    dept: "Institute of Artificial Intelligence and Robotics (IAIR)",
+    degree: "B.S. in Artificial Intelligence",
+    extra: "GPA 4.15 / 4.30 · Rank 1 / 82",
+    href: "http://www.aiar.xjtu.edu.cn/",
+  },
+  {
+    period: "2026.07 – 2026.08",
+    icon: "/icons/lmh-mark.png",
+    school: "University of Oxford · ",
+    schoolNw: "Lady Margaret Hall",
+    dept: "Summer exchange programme",
+    degree: "Exchange Student in Artificial Intelligence",
+    extra:
+      "Machine learning and the frontiers of AI: transformers, multimodal models, contrastive and generative models, VLA",
+    href: "https://www.lmh.ox.ac.uk/",
+  },
+  {
+    period: "2023.09 – 2025.06",
+    icon: "/icons/xjtu-mark.png",
+    school: "Xi’an Jiaotong University · Youth Class (少年班)",
+    dept: "Preparatory programme for the gifted",
+    degree: "Early admission to university",
+    extra: "GPA 4.05 / 4.30 · Rank 2 / 196",
+    href: "https://baike.baidu.com/item/%E8%A5%BF%E5%AE%89%E4%BA%A4%E9%80%9A%E5%A4%A7%E5%AD%A6%E5%B0%91%E5%B9%B4%E7%8F%AD/58501505",
+  },
+];
+
+const scholarships = [
+  {
+    year: "2025",
+    level: "Third-Class Scholarship",
+    detail: "Xi’an Jiaotong University",
+  },
+];
+
+const competitions = [
+  {
+    year: "2026",
+    level: "National Bronze Award",
+    detail: "28th “FLTRP·ETIC Cup” National English Debating Competition",
+  },
+  {
+    year: "2025",
+    level: "National Second Prize",
+    detail: "30th China Daily “21st Century Cup” English Speaking Competition",
+  },
+  {
+    year: "2025",
+    level: "Second Prize",
+    detail: "National English Competition for College Students",
+  },
+  {
+    year: "2025",
+    level: "Provincial Second Prize",
+    detail: "National College Mathematical Modeling Contest",
+  },
+  {
+    year: "2024",
+    level: "Third Place",
+    detail: "XJTU Freshman Cup Go Tournament",
+  },
+];
+
+// Selected Writings: five picks — the first paper note, the three mathematical
+// foundations posts, and the V-JEPA paper-reading.
+const writingOrder = [
+  "paper-reading-fundamental-popular-works",
+  "diffusion-model-math",
+  "flow-matching-math",
+  "vae-math",
+  "paper-reading-v-jepas",
+];
+
+const allPosts = await getCollection("posts", postFilter);
+const normalize = (id: string) =>
+  id.replace(/\.(md|mdx)$/, "").replace(/\//g, "-").toLowerCase();
+
+const readings = writingOrder
+  .map(slug => allPosts.find(post => normalize(post.id) === slug))
+  .filter((post): post is NonNullable<typeof post> => Boolean(post))
+  .sort(
+    (a, b) =>
+      new Date(b.data.pubDatetime).getTime() -
+      new Date(a.data.pubDatetime).getTime()
+  )
+  .map(post => ({
+    title: post.data.title,
+    desc: post.data.description,
+    href: getPostUrl(post.id, post.filePath, config.site.lang),
+    date: new Date(post.data.pubDatetime)
+      .toISOString()
+      .slice(0, 7)
+      .replace("-", "."),
+  }));
 ---
 
-<Layout title={`Academic | ${config.site.title}`}>
-  <Header />
+<Layout
+  title={`Academic | ${config.site.title}`}
+  description="Feiran Wang — education, awards and writing."
+>
+  <main id="main-content" class="academic">
+    <div class="academic-wrap">
+      <a class="back" href="/">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M19 12H5"></path>
+          <path d="m12 19-7-7 7-7"></path>
+        </svg>
+        Back
+      </a>
 
-  <main id="main-content" class="app-layout-wide py-8">
-    <header class="mb-8">
-      <h1 class="text-3xl font-medium sm:text-4xl">Academic</h1>
-      <p class="mt-2 text-muted-foreground">
-        My education and research interests.
-      </p>
-    </header>
+      <!-- ===================== Header ===================== -->
+      <header class="profile">
+        <img
+          class="avatar"
+          src="/photo-avatar.jpg"
+          alt="Feiran Wang"
+          width="132"
+          height="132"
+        />
+        <div class="profile-body">
+          <h1>Feiran Wang</h1>
+          <p class="tagline">
+            🎓 Undergraduate Student in AI at Xi’an Jiaotong University
+          </p>
+          <div class="contact">
+            {
+              contact.map(item => (
+                <a
+                  class="chip"
+                  href={item.href}
+                  target={item.href.startsWith("http") ? "_blank" : undefined}
+                  rel="noopener noreferrer"
+                >
+                  {item.label}
+                </a>
+              ))
+            }
+          </div>
+        </div>
+      </header>
 
-    <section class="mb-10">
-      <h2 class="mb-4 text-xl font-semibold tracking-wide">Education</h2>
-      <div class="flex flex-col gap-3">
-        <a
+      <p class="bio">
+        I am an undergraduate at the <a
           href="http://www.aiar.xjtu.edu.cn/"
           target="_blank"
-          rel="noopener noreferrer"
-          class="group rounded-2xl border border-border bg-background p-5 transition-colors hover:bg-muted"
-        >
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <div class="font-medium transition-colors group-hover:text-accent">
-                Xi&#39;an Jiaotong University
-              </div>
-              <div class="mt-1 text-sm text-muted-foreground">
-                Sophomore · Artificial Intelligence
-              </div>
-            </div>
-            <span class="text-sm whitespace-nowrap text-muted-foreground">
-              Sep 2025 – Now
-            </span>
-          </div>
-        </a>
-        <a
-          href="https://baike.baidu.com/item/%E8%A5%BF%E5%AE%89%E4%BA%A4%E9%80%9A%E5%A4%A7%E5%AD%A6%E5%B0%91%E5%B9%B4%E7%8F%AD/58501505"
+          rel="noopener noreferrer">Institute of Artificial Intelligence and
+          Robotics (IAIR), Xi’an Jiaotong University</a
+        >, majoring in Artificial Intelligence. I entered university early through
+        the <strong>Youth Class</strong> programme, and I spent the summer
+        of 2026 on exchange at <a
+          href="https://www.lmh.ox.ac.uk/"
           target="_blank"
-          rel="noopener noreferrer"
-          class="group rounded-2xl border border-border bg-background p-5 transition-colors hover:bg-muted"
-        >
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <div class="font-medium transition-colors group-hover:text-accent">
-                Xi&#39;an Jiaotong University · 少年班
-              </div>
-              <div class="mt-1 text-sm text-muted-foreground">
-                Special Class for the Gifted
-              </div>
-            </div>
-            <span class="text-sm whitespace-nowrap text-muted-foreground">
-              Sep 2023 – Jun 2025
-            </span>
-          </div>
-        </a>
-      </div>
-    </section>
+          rel="noopener noreferrer">Lady Margaret Hall, Oxford</a
+        >. My interests are <strong>JEPA-style world models</strong>, world action
+        models, spiking neural networks and spatial intelligence — I keep my
+        reading notes on <a href="/posts/">this blog</a>.
+      </p>
 
-    <section>
-      <h2 class="mb-4 text-xl font-semibold tracking-wide">
-        Research Interests
-      </h2>
-      <div class="grid gap-3 sm:grid-cols-2">
-        {
-          researchInterests.map(interest => (
-            <div
-              class="rounded-xl border border-border/60 bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 px-4 py-3 text-sm font-medium text-muted-foreground backdrop-blur-sm"
-            >
-              {interest}
-            </div>
-          ))
-        }
-      </div>
-    </section>
+      <!-- ===================== News ===================== -->
+      <section class="sec">
+        <h2>News</h2>
+        <ul class="list">
+          {
+            news.map(item => (
+              <li class="item">
+                <span class="date">{item.date}</span>
+                <span class="text">{item.text}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <!-- ===================== Education ===================== -->
+      <section class="sec">
+        <h2>Education</h2>
+        <ul class="list">
+          {
+            education.map(item => (
+              <li class="edu">
+                <span class="date edu-date">{item.period}</span>
+                <span class="edu-body">
+                  <span class="edu-head">
+                    <img
+                      class="edu-icon"
+                      src={item.icon}
+                      alt=""
+                      width="40"
+                      height="40"
+                      loading="lazy"
+                    />
+                    <a
+                      class="edu-school"
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {item.school}
+                      {item.schoolNw && <span class="nw">{item.schoolNw}</span>}
+                    </a>
+                  </span>
+                  <span class="edu-dept">{item.dept}</span>
+                  <span class="edu-degree">{item.degree}</span>
+                  <span class="edu-extra">{item.extra}</span>
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <!-- ===================== Selected writings ===================== -->
+      <section class="sec">
+        <h2>
+          Selected Writings
+          <a class="sec-more" href="/posts/">all posts →</a>
+        </h2>
+        <ul class="list">
+          {
+            readings.map(item => (
+              <li class="item">
+                <span class="date">{item.date}</span>
+                <span class="text">
+                  <a class="row-link" href={item.href}>
+                    {item.title}
+                  </a>
+                  <span class="row-desc">{item.desc}</span>
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <!-- ===================== Scholarships ===================== -->
+      <section class="sec">
+        <h2>Scholarships</h2>
+        <ul class="list">
+          {
+            scholarships.map(item => (
+              <li class="item honor">
+                <span class="text">
+                  <span class="bullet" aria-hidden="true">
+                    •
+                  </span>
+                  <strong class="award-level">{item.level}</strong>
+                  <span class="award-detail">{item.detail}</span>
+                </span>
+                <span class="date">{item.year}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <!-- ===================== Competition awards ===================== -->
+      <section class="sec">
+        <h2>Competition Awards</h2>
+        <ul class="list">
+          {
+            competitions.map(item => (
+              <li class="item honor">
+                <span class="text">
+                  <span class="bullet" aria-hidden="true">
+                    •
+                  </span>
+                  <strong class="award-level">{item.level}</strong>
+                  <span class="award-detail">{item.detail}</span>
+                </span>
+                <span class="date">{item.year}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <p class="colophon">
+        © Feiran Wang · Last updated Sep. 2026 ·
+        <a class="nw" href="/cv.pdf">Full CV (PDF)</a>
+      </p>
+    </div>
   </main>
-
-  <Footer />
 </Layout>
+
+<style>
+  /* ============================================================
+     Academic page — a quiet, serif, hairline-ruled homepage.
+     No navigation bar: only a back button at the top-left.
+     ============================================================ */
+  .academic {
+    --serif: Georgia, "Times New Roman", "Songti SC", "SimSun", serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    /* Link colour: the accent is a little too light on the light background,
+       so it is deepened there and kept as-is (pale) in dark mode. */
+    --link: color-mix(in oklab, var(--accent) 70%, var(--foreground));
+    padding: 2.25rem 0 1.5rem;
+  }
+
+  html[data-theme="dark"] .academic {
+    --link: var(--accent);
+  }
+
+  .academic-wrap {
+    max-width: 50rem;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  /* ---- back button ---- */
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid color-mix(in oklab, var(--foreground) 20%, transparent);
+    border-radius: 9999px;
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    text-decoration: none;
+    transition:
+      color 0.18s ease,
+      border-color 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .back:hover {
+    border-color: color-mix(in oklab, var(--accent) 50%, transparent);
+    color: var(--link);
+    transform: translateX(-2px);
+  }
+
+  .back svg {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  /* ---- header ---- */
+  .profile {
+    display: flex;
+    align-items: center; /* the photo sits centred against the text block, far right */
+    gap: 1.75rem;
+    margin-top: 2.25rem;
+  }
+
+  .avatar {
+    order: 2;
+    flex: none;
+    margin-left: auto;
+    width: 8.25rem;
+    height: 8.25rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    object-fit: cover;
+    object-position: center 45%;
+    background: var(--muted);
+  }
+
+  .profile-body {
+    order: 1;
+    min-width: 0;
+  }
+
+  .profile h1 {
+    font-family: var(--serif);
+    font-size: 2.4rem;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .tagline {
+    margin-top: 0.5rem;
+    font-family: var(--serif);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+    text-wrap: balance;
+  }
+
+  .contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 1rem;
+  }
+
+  .chip {
+    padding: 0.25rem 0.7rem;
+    border: 1px solid color-mix(in oklab, var(--foreground) 20%, transparent);
+    border-radius: 9999px;
+    color: var(--muted-foreground);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    transition:
+      color 0.18s ease,
+      border-color 0.18s ease,
+      background-color 0.18s ease;
+  }
+
+  .chip:hover {
+    border-color: color-mix(in oklab, var(--accent) 50%, transparent);
+    background: color-mix(in oklab, var(--accent) 8%, transparent);
+    color: var(--link);
+  }
+
+  /* ---- intro paragraph ---- */
+  .bio {
+    margin-top: 2rem;
+    font-family: var(--serif);
+    font-size: 1.0313rem;
+    line-height: 1.85;
+    color: var(--muted-foreground);
+    text-wrap: pretty;
+  }
+
+  .bio strong {
+    color: var(--foreground);
+    font-weight: 600;
+  }
+
+  /* ---- sections ---- */
+  .sec {
+    margin-top: 2.75rem;
+  }
+
+  .sec h2 {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 600;
+  }
+
+  .sec-more {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    color: var(--link);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .sec-more {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--link) 35%, transparent);
+    text-underline-offset: 3px;
+  }
+
+  .sec-more:hover {
+    text-decoration-color: var(--link);
+  }
+
+  /* ---- hairline lists (no side padding: rules line up with the
+     section rule above them) ---- */
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+    font-size: 0.9688rem;
+    line-height: 1.65;
+  }
+
+  .date {
+    flex: none;
+    width: 7.75rem;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    line-height: 1.75;
+    color: var(--muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .text {
+    min-width: 0;
+  }
+
+  /* keep short names / labels on one line */
+  .nw {
+    white-space: nowrap;
+  }
+
+  /* ---- education ---- */
+  .edu {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  }
+
+  .edu-date {
+    padding-top: 0.5rem;
+  }
+
+  .edu-head {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  /* the mark sits inline before the school name; the lines under it line up
+     with the name, not with the mark */
+  .edu-dept,
+  .edu-degree,
+  .edu-extra {
+    padding-left: 2.8rem;
+  }
+
+  .edu-icon {
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0.12rem;
+    border: 1px solid rgb(0 0 0 / 0.16);
+    border-radius: 0.65rem;
+    object-fit: contain;
+    /* one consistent light plate for every institution mark */
+    background: #fbfbfc;
+  }
+
+  html[data-theme="dark"] .edu-icon {
+    background: #e9eaee;
+  }
+
+  .edu-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 0.12rem;
+  }
+
+  .edu-school {
+    font-family: var(--serif);
+    font-size: 1.0938rem;
+    font-weight: 600;
+    color: var(--foreground);
+    text-decoration: none;
+  }
+
+  .edu-school:hover {
+    color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .edu-dept {
+    font-size: 0.9063rem;
+    color: var(--muted-foreground);
+  }
+
+  .edu-degree {
+    font-size: 0.9375rem;
+    color: var(--foreground);
+  }
+
+  .edu-extra {
+    margin-top: 0.2rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--muted-foreground);
+    text-wrap: pretty;
+  }
+
+  /* ---- writings ---- */
+  .row-link {
+    font-family: var(--serif);
+    font-size: 1rem;
+    color: var(--link);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--link) 30%, transparent);
+    text-underline-offset: 3px;
+  }
+
+  .row-link:hover {
+    text-decoration-color: var(--link);
+  }
+
+  .row-desc {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+  }
+
+  /* ---- awards ---- */
+  .honor {
+    justify-content: space-between;
+    gap: 1.25rem;
+  }
+
+  .honor .date {
+    width: auto;
+    text-align: right;
+  }
+
+  .bullet {
+    margin-right: 0.4rem;
+    color: var(--link);
+  }
+
+  /* award rows: the level carries the weight, the competition name is a
+     quieter, smaller tail so the whole row still fits on one line */
+  .award-level {
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .award-detail {
+    margin-left: 0.45rem;
+    font-size: 0.8438rem;
+    color: color-mix(in oklab, var(--muted-foreground) 82%, transparent);
+  }
+
+  .award-detail::before {
+    content: "·";
+    margin-right: 0.45rem;
+    color: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  }
+
+  /* ---- links ---- */
+  .bio a,
+  .colophon a {
+    color: var(--link);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--link) 35%, transparent);
+    text-underline-offset: 3px;
+  }
+
+  .bio a:hover,
+  .colophon a:hover {
+    text-decoration-color: var(--link);
+  }
+
+  /* ---- colophon ---- */
+  .colophon {
+    margin-top: 2.5rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+
+  /* ---- responsive ---- */
+  @media (max-width: 640px) {
+    .academic-wrap {
+      padding: 0 1.15rem;
+    }
+
+    .profile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.1rem;
+    }
+
+    .avatar {
+      order: 1;
+      width: 6.5rem;
+      height: 6.5rem;
+    }
+
+    .profile-body {
+      order: 2;
+    }
+
+    .profile h1 {
+      font-size: 2rem;
+    }
+
+    /* News / writings stack the date above the text; award rows keep the
+       year on the same line as the award. */
+    .item:not(.honor) {
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .edu {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .edu-date {
+      width: auto;
+      padding-top: 0;
+    }
+
+    .date,
+    .honor .date {
+      width: auto;
+      text-align: left;
+    }
+
+    .edu-date {
+      padding-top: 0.35rem;
+    }
+
+    .edu-body {
+      flex: 1 1 12rem;
+    }
+  }
+</style>

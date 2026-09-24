@@ -20,7 +20,7 @@ import PaperNote from "@/components/PaperNote.astro";
 <PaperNote
   title="DDPM"
   arxivId="2006.11239"
-  noteUrl="/papers/DDPM.pdf"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DDPM.pdf"
   summary="Diffusion Model 奠基之作"
   images={["/diffusion-model/ddpm.png"]}
 >
@@ -29,7 +29,7 @@ DDPM 即 Denoising Diffusion Probabilistic Models，是一篇来自 UC Berkeley 
 
 DDPM 相比 这篇论文，最大的进步在于**将理论成功转化为实用的高性能图像生成器**。早期论文虽定义了加噪与去噪的马尔可夫链框架，但仅能在MNIST等小数据集上生成模糊样本，实用性有限；而DDPM做了两项关键革新：一是将训练目标从“预测去噪后的图像”重定义为“**预测每一步添加的噪声（$\mathbf\{\epsilon}$-prediction）**”，极大简化了学习难度并提升了训练稳定性；二是结合了U-Net结构和自注意力机制，并精心设计了方差调度与采样加速方案。
 
-除此之外，DDPM 极简的数学推导，为之后的 Diffusion Models 做了铺垫，使得后续的论文将创新的重心转移到了工业实现上（更多细节请见本站另一篇 blog：[《Diffusion Model 的数学原理》](https://brianwang2007.com/posts/diffusion-model-math/)）。
+除此之外，DDPM 极简的数学推导，为之后的 Diffusion Models 做了铺垫，使得后续的论文将创新的重心转移到了工业实现上（更多细节请见本站另一篇 blog：[《Diffusion Model 的数学原理》](/posts/diffusion-model-math/)）。
 
 </PaperNote>
 
@@ -38,7 +38,7 @@ DDPM 相比 这篇论文，最大的进步在于**将理论成功转化为实用
 <PaperNote
   title="Stable-Diffusion"
   arxivId="2112.10752"
-  noteUrl="/papers/Stable-Diffusion.pdf"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/Stable%20Diffusion.pdf"
   summary= "U-Net 遇上 cross-attention，在 latent space 中碰撞出 efficient 的火花"
   images={["/papers/stable-diffusion.png"]}
 >
@@ -58,7 +58,7 @@ Stable Diffusion 的“学名”应该叫 **LDM（Latent Diffusion Model）**，
 <PaperNote
   title="DALLE2"
   arxivId="2204.06125"
-  noteUrl="/papers/DALL·E-2.pdf"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DALL%C2%B7E-2.pdf"
   summary="用预训练的 CLIP 训练 prior 和 decoder"
   images={["/papers/DALL·E-2.png"]}
 >

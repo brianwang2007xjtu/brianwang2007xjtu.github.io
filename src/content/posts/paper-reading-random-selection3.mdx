@@ -1,0 +1,64 @@
+---
+title: "Paper Reading: Random Selection 3"
+author: master
+pubDatetime: 2026-09-24T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "WAM 和空间智能初步 📝。"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+## UniPi
+
+<PaperNote
+  title="Unipi"
+  arxivId="2302.00111"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/UniPi.pdf"
+  summary="视频生成即动作 planning"
+  images={["/papers/Unipi.png"]}
+>
+
+UniPi 是 WAM 领域的一篇奠基性工作。它的核心思想非常直接，与其让模型直接从当前图像预测下一步动作，不如让模型先回答一个 high level 的问题：「如果要完成这个任务，接下来应该发生什么？」具体一点来说，UniPi 将当前的 observation 和语言任务输入到一个文本条件的视觉扩散模型，生成一段关于未来行为的 vision trajectory，再通过 IDM 将生成的视觉状态转化为机器人控制动作。这样一来，**vision** 就成为了**连接感知、规划动作的中间表示**。
+
+具体实现方面，模型首先在较低时间分辨率下生成粗粒度的未来轨迹，再通过 **temporal super-resolution** 逐步细化，从而形成一种天然的**层次化**规划过程。最后，再用 **task-specific inverse dynamics** 把视觉轨迹转换成环境相关的低层动作，使得通用的视频规划器和具体机器人的控制接口得到解耦。
+
+从更大的视角来看，UniPi 真正重要的贡献是提出了一个「**video as a universal interface for decision making**」 的范式。这种设计使模型能够利用互联网规模的视频数据进行预训练，并进一步实现对未见过的语言组合、多任务环境以及真实机器人场景的泛化。
+
+</PaperNote>
+
+## DreamZero
+
+<PaperNote
+  title="DreamZero"
+  arxivId="2602.15922"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/DreamZero.pdf"
+  summary= "联合预测未来视频与机器人动作"
+  images={["/papers/DreamZero.png"]}
+>
+
+DreamZero 是 NVIDIA GEAR Lab 于 2026 年提出的 WAM 架构。它试图解决传统 VLA 模型在具身智能中的一个核心问题：模型虽然能够理解语言和视觉语义，但面对训练中没有见过的任务、环境以及物理运动时，泛化能力仍然有限。DreamZero 基于预训练的**视频扩散模型 Wan2.1-I2V-14B**，在给定当前视觉观测和语言指令后，联合预测未来视频与机器人动作，从而把视频中蕴含的物理变化规律直接作为**策略学习的先验**。
+
+本工作与 UniPi 的关键区别在于 WM 究竟发挥了什么作用。DreamZero 把视频预测学习潜在物理规律的过程与策略学习融合，直接构建一个同时生成未来视频和动作的 WAM。
+
+这样的设计也使 DreamZero 可以从大量异构、非重复的机器人数据中学习，并利用其他机器人甚至人类的视频示范获得跨 embodiment 的知识迁移。论文结果表明，仅使用其他机器人或人类的 10–20 分钟视频数据即可提升未见任务表现，并能够通过约 30 分钟的新机器人 play data 完成 embodiment adaptation。
+</PaperNote>
+
+## NeRF
+
+<PaperNote
+  title="NeRF"
+  arxivId="2003.08934"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/NeRF.pdf"
+  summary= "先用 VLM 预测高层 subtasks，再用 Flow Matching 预测低层连续动作"
+  images={["/papers/NeRF.png"]}
+>
+
+NeRF 是一篇很老但很重要的工作，它对近些天爆火的「空间智能」具有很深远的影响。NeRF 的架构非常简单，只是两级 MLP 的叠加组合。因此，这篇工作真正的重要之处在于，提出了一种全新的三维场景表示方式：不再直接存储或预测离散的三维结构，而是用一个神经网络隐式地表示整个连续三维空间。有了隐式的三维表示之后，NeRF 再通过 **volume rendering** 将三维信息重新投影到二维图像上。训练时只需要不断让渲染出来的图像 $\hat\{\mathbf C}$ 接近真实图像即可。因此，NeRF 实际上是在做一件非常有意思的事情：**仅仅通过多张二维图片，反向学习出一个能够解释这些图片的连续三维场景**。
+
+在 NeRF 之后的一众工作（如 3D Gaussian Splatting 等）本质上都在不断探索这个问题：究竟应该如何从视觉观测中学习一个适合机器理解和交互的**三维世界模型**。
+</PaperNote>
+
+

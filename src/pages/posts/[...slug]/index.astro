@@ -21,6 +21,8 @@ import BackToTopButton from "./_components/BackToTopButton.astro";
 import AdjacentPostNav from "./_components/AdjacentPostNav.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import Comments from "@/components/Comments.astro";
+import PrivatePost from "./_components/PrivatePost.astro";
+import { getPrivatePassword, isPrivatePost } from "@/utils/privatePost";
 import { walineServerURL } from "@/data/waline";
 import config from "@/config";
 
@@ -91,6 +93,18 @@ const {
 
 
 const { Content, headings } = await render(post);
+
+// Private posts ship as ciphertext only. The body is rendered inside an inert
+// <template>, which the `private-posts` integration encrypts after the build
+// (see src/integrations/privatePosts.ts) — so the plain text never lands in
+// dist, and the password never lands in the repo.
+const privateLocked = isPrivatePost(post);
+const privatePassword = privateLocked ? getPrivatePassword(post) : null;
+const privatePasswordReady = privatePassword !== null;
+// In `astro dev` the build-time encryption step never runs, so the page hands
+// the password to the lock component to encrypt the body in the browser. The
+// attribute is only rendered in dev — a production build never contains it.
+const privateDevKey = import.meta.env.DEV ? privatePassword : null;
 
 let ogImageUrl: string | undefined;
 
@@ -174,7 +188,25 @@ const ogImage = ogImageUrl
             },
           ]}
         >
-          <Content />
+          {
+            privateLocked ? (
+              <>
+                <PrivatePost
+                  payload={null}
+                  missing={!privatePasswordReady}
+                  path={postPath}
+                  devKey={privateDevKey}
+                />
+                {privatePasswordReady && (
+                  <template data-private-source>
+                    <Content />
+                  </template>
+                )}
+              </>
+            ) : (
+              <Content />
+            )
+          }
         </article>
 
         <hr class="my-8 border-dashed" />
@@ -204,7 +236,7 @@ const ogImage = ogImageUrl
         <Comments />
       </div>
 
-      <TableOfContents headings={headings} />
+      {!privateLocked && <TableOfContents headings={headings} />}
     </div>
   </main>
   <Footer />

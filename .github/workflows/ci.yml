@@ -43,4 +43,9 @@ jobs:
         run: pnpm run format:check
 
       - name: "🚀 Build the project"
+        env:
+          # Optional: add this repository secret so CI builds can encrypt
+          # private posts (see .env.example). Without it, private posts still
+          # build — locked, with no body.
+          PRIVATE_POST_PASSWORD: ${{ secrets.PRIVATE_POST_PASSWORD }}
         run: pnpm run build

@@ -12,11 +12,13 @@ import {
 } from "@shikijs/transformers";
 import { transformerFileName } from "./src/utils/transformers/fileName";
 import config from "./astro-paper.config";
+import privatePosts from "./src/integrations/privatePosts";
 
 export default defineConfig({
   site: config.site.url,
   integrations: [
     mdx(),
+    privatePosts(),
     sitemap({
       filter: page =>
         config.features?.showArchives !== false || !page.endsWith("/archives/"),

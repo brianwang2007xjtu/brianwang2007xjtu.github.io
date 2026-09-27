@@ -1,0 +1,370 @@
+---
+interface Props {
+  /** Encrypted payload produced at build time (see `@/utils/privatePost`). */
+  payload: string | null;
+  /** True when the post is private but no password is configured. */
+  missing?: boolean;
+  /** The post path, used as the per-post session cache key. */
+  path: string;
+  /** Dev only: lets `astro dev` encrypt the body in the browser. */
+  devKey?: string | null;
+}
+
+const { payload, missing = false, path, devKey = null } = Astro.props;
+---
+
+<div
+  class="private-gate"
+  data-private-gate
+  data-path={path}
+  data-dev-key={devKey ?? undefined}
+>
+  {
+    !missing ? (
+      <>
+        <form class="pg-card" data-pagefind-ignore data-private-form novalidate>
+          <span class="pg-lock" aria-hidden="true">
+            🔒
+          </span>
+          <h2 class="pg-title">这是一篇私密文章</h2>
+          <p class="pg-hint">请输入 6 位数字密码查看内容</p>
+          <div class="pg-row">
+            <input
+              class="pg-input"
+              data-private-input
+              type="password"
+              inputmode="numeric"
+              autocomplete="off"
+              maxlength="6"
+              placeholder="••••••"
+              aria-label="6 位数字密码"
+            />
+            <button class="pg-btn" type="submit">
+              解锁
+            </button>
+          </div>
+          <p class="pg-msg" data-private-msg role="status" aria-live="polite" />
+        </form>
+
+        <article
+          class="app-prose private-content max-w-none"
+          data-private-content
+          hidden
+        />
+
+        {payload && (
+          <script
+            type="application/json"
+            data-private-payload
+            set:html={payload}
+          />
+        )}
+      </>
+    ) : (
+      <p class="pg-missing" data-pagefind-ignore>
+        🔒 这是一篇私密文章：还没有配置密码。请在 .env 中按
+        PRIVATE_POST_PASSWORD_文件名大写 添加这一篇的密码后重新构建。
+      </p>
+    )
+  }
+</div>
+
+<script is:inline data-astro-rerun>
+  async function initPrivateGate() {
+    const gate = document.querySelector("[data-private-gate]");
+    if (!gate || gate.dataset.pgReady === "1") return;
+    gate.dataset.pgReady = "1";
+
+    // The payload script is injected right after the component by the build
+    // step, so it is looked up on the document rather than inside the gate.
+    let payloadEl = document.querySelector("[data-private-payload]");
+    const form = gate.querySelector("[data-private-form]");
+    const input = gate.querySelector("[data-private-input]");
+    const msg = gate.querySelector("[data-private-msg]");
+    const content = gate.querySelector("[data-private-content]");
+    if (!form || !input || !content) return;
+
+    const toB64 = bytes =>
+      btoa(String.fromCharCode(...new Uint8Array(bytes)));
+
+    /**
+     * `astro dev` has no build step to encrypt the body, so encrypt the
+     * template it rendered right here in the browser (dev only: the key is
+     * passed as a data attribute and never exists in a production build).
+     */
+    async function encryptFromTemplate() {
+      const key = gate.dataset.devKey;
+      const template = document.querySelector("template[data-private-source]");
+      if (!key || !template) return false;
+      const enc = new TextEncoder();
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const material = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(key),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+      const aes = await crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt, iterations: 210000, hash: "SHA-256" },
+        material,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt"]
+      );
+      const sealed = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        aes,
+        enc.encode(template.innerHTML)
+      );
+      const body = new Uint8Array(sealed);
+      const json = JSON.stringify({
+        v: 1,
+        it: 210000,
+        salt: toB64(salt),
+        iv: toB64(iv),
+        tag: toB64(body.slice(-16)),
+        ct: toB64(body.slice(0, -16)),
+      });
+      const script = document.createElement("script");
+      script.type = "application/json";
+      script.setAttribute("data-private-payload", "");
+      script.textContent = json;
+      document.body.appendChild(script);
+      template.remove();
+      payloadEl = script;
+      return true;
+    }
+
+    if (!payloadEl || !(payloadEl.textContent || "").trim()) {
+      await encryptFromTemplate();
+    }
+    if (!payloadEl || !(payloadEl.textContent || "").trim()) {
+      if (form.parentElement) {
+        form.outerHTML =
+          '<p class="pg-missing">🔒 私密文章：正文没有被加密（构建时缺少这一篇的密码配置）。</p>';
+      }
+      return;
+    }
+
+    const payload = JSON.parse(payloadEl.textContent || "{}");
+    const cacheKey = "private:" + (gate.dataset.path || location.pathname);
+
+    const fromB64 = s =>
+      Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+    function fail(text) {
+      if (msg) {
+        msg.textContent = text;
+        msg.dataset.state = "error";
+      }
+      delete form.dataset.busy;
+      input.focus();
+      input.select();
+    }
+
+    async function decrypt(password) {
+      const enc = new TextEncoder();
+      const material = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+      const key = await crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: fromB64(payload.salt),
+          iterations: payload.it,
+          hash: "SHA-256",
+        },
+        material,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"]
+      );
+      const plain = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: fromB64(payload.iv), tagLength: 128 },
+        key,
+        new Uint8Array([...fromB64(payload.ct), ...fromB64(payload.tag)])
+      );
+      return new TextDecoder().decode(plain);
+    }
+
+    // Heading anchor links, the same touch the post page adds on load.
+    function decorateHeadings() {
+      content.querySelectorAll("h2, h3, h4, h5, h6").forEach(heading => {
+        if (!heading.id) return;
+        heading.classList.add("group");
+        if (heading.querySelector("a.heading-link")) return;
+        const link = document.createElement("a");
+        link.className =
+          "heading-link ms-2 no-underline opacity-75 md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100";
+        link.href = "#" + heading.id;
+        const span = document.createElement("span");
+        span.setAttribute("aria-hidden", "true");
+        span.innerText = "#";
+        link.appendChild(span);
+        heading.appendChild(link);
+      });
+    }
+
+    function show(html) {
+      content.innerHTML = html;
+      content.hidden = false;
+      form.remove();
+      decorateHeadings();
+      // KaTeX re-renders through its MutationObserver on <html>; nudge it too.
+      window.dispatchEvent(new CustomEvent("private-post-unlocked"));
+    }
+
+    async function tryUnlock(password, { silent } = {}) {
+      if (!/^\d{6}$/.test(password)) {
+        if (!silent) fail("请输入 6 位数字");
+        return false;
+      }
+      form.dataset.busy = "1";
+      if (msg && !silent) msg.textContent = "正在解锁…";
+      try {
+        const html = await decrypt(password);
+        sessionStorage.setItem(cacheKey, password);
+        show(html);
+        return true;
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+        if (!silent) fail("密码不对，再试一次");
+        return false;
+      }
+    }
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      tryUnlock(input.value.trim(), { silent: false });
+    });
+
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/\D/g, "").slice(0, 6);
+      if (msg) msg.textContent = "";
+    });
+
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) tryUnlock(cached, { silent: true });
+    else input.focus();
+  }
+
+  // The encrypted payload is injected after this component in the document, so
+  // wait until the whole page has been parsed before looking for it.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPrivateGate, {
+      once: true,
+    });
+  } else {
+    initPrivateGate();
+  }
+</script>
+
+<style>
+  .private-gate {
+    margin: 2rem 0 1rem;
+  }
+
+  .pg-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 26rem;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    border: 1px dashed color-mix(in oklab, var(--foreground) 22%, transparent);
+    border-radius: 1rem;
+    background: color-mix(in oklab, var(--muted) 45%, transparent);
+    text-align: center;
+  }
+
+  .pg-lock {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+
+  .pg-title {
+    margin: 0.2rem 0 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .pg-hint {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+  }
+
+  .pg-row {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 17rem;
+    margin-top: 0.85rem;
+  }
+
+  .pg-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid color-mix(in oklab, var(--foreground) 22%, transparent);
+    border-radius: 0.5rem;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 1rem;
+    letter-spacing: 0.35em;
+    text-align: center;
+  }
+
+  .pg-input:focus-visible {
+    border-color: var(--accent);
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+  }
+
+  .pg-btn {
+    flex: none;
+    padding: 0.45rem 0.95rem;
+    border: 1px solid color-mix(in oklab, var(--foreground) 22%, transparent);
+    border-radius: 0.5rem;
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 0.9rem;
+  }
+
+  .pg-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .pg-card[data-busy] .pg-btn {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .pg-msg {
+    min-height: 1.1rem;
+    margin: 0.35rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+  }
+
+  .pg-msg[data-state="error"] {
+    color: #c2410c;
+  }
+
+  .pg-missing {
+    padding: 1.5rem;
+    border: 1px dashed color-mix(in oklab, var(--foreground) 22%, transparent);
+    border-radius: 1rem;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+</style>

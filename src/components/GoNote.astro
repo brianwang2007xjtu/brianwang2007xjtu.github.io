@@ -1,0 +1,42 @@
+---
+/**
+ * 变化图下面的讲解文字：黑楷体，比正文略小。
+ *
+ *   <GoGrid columns={2}> … </GoGrid>
+ *   <GoNote label="图七">黑 1 紧贴更积极，白 2、4 势所必然……</GoNote>
+ *
+ * 想在文字里空格（MDX 会把行首/行尾的普通空格吃掉）：
+ *   1. 直接打全角空格：　（U+3000，最省事，古书排法）
+ *   2. 半角空格写成表达式：图七{" "}黑 1 …
+ *   3. 用 HTML 实体：&nbsp; / &emsp;
+ *   4. 用 label 属性：<GoNote label="图七">…</GoNote>（自动补一个空格）
+ */
+interface Props {
+  /** 图号之类的前缀，例如「图七」，会自动与正文隔开一个空格。 */
+  label?: string;
+}
+
+const { label } = Astro.props;
+---
+
+<p class="go-note-text">
+  {label && <span class="go-note-label">{label}</span>}<slot />
+</p>
+
+<style>
+  /* 图号与正文之间留一个空格（用 margin，不依赖空白字符） */
+  .go-note-label {
+    margin-right: 0.55em;
+  }
+
+  .go-note-text {
+    margin: 0.9rem 0 0;
+    font-family: "Kaiti SC", "STKaiti", "KaiTi", "Songti SC", "SimSun", serif;
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.95;
+    text-indent: 2em;
+    text-align: justify;
+    color: var(--foreground);
+  }
+</style>

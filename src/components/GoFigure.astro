@@ -1,0 +1,829 @@
+---
+import { boardState, loadGame } from "@/data/goGames";
+
+interface Props {
+  /** Game id, i.e. the SGF file name in `public/go/` without extension. */
+  game: string;
+  /** Show the position after this move number (default: the whole game). */
+  upTo?: number;
+  /**
+   * First move of this figure's numbering window — set it to the move where
+   * the previous figure stopped, e.g. the previous figure ended at 120, this
+   * one covers 121-160, so pass `from={121}`. Stones played before `from` are
+   * drawn without numbers (they were already numbered in an earlier figure).
+   */
+  from?: number;
+  /**
+   * `"relative"` (default) labels the window with the numbers you pick via
+   * `startAt` — a figure covering moves 201-210 can read 1-10, or 11-20, or
+   * anything else. `"absolute"` keeps the real move numbers.
+   */
+  numbering?: "relative" | "absolute";
+  /**
+   * Label of the first numbered move in this figure (default 1), so a figure
+   * that starts mid-game can be labelled freely: `from={210} startAt={11}`
+   * prints 11, 12, 13 … on the stones of moves 210, 211, 212 …
+   */
+  startAt?: number;
+  /**
+   * 变化图: hypothetical moves that never happened in the game, played from
+   * this figure's position — `"Q4, P4, O5"` (Go coordinates, or SGF like
+   * `"pd"`), usually no more than ~10 moves. Colours alternate from the player
+   * to move; write `"B:Q4"` / `"W:Q4"` to force one. The variation stones are
+   * numbered 1, 2, 3 … and drawn with a dashed ring.
+   */
+  variation?: string;
+  /** Colour of the first variation move (`"B"` or `"W"`); default: whose turn. */
+  variationFirst?: "B" | "W";
+  /** Label of the first variation move (default 1). */
+  variationStartAt?: number;
+  /**
+   * Letters placed on empty points, magazine style: `"J4:A,O5:B"`.
+   * Used for the points an engine recommends.
+   */
+  marks?: string;
+  /** A played move to flag, e.g. the blunder of the figure: `"Q9"`. */
+  flag?: string;
+  /** Figure caption, e.g. `黑21 的疑问手`. */
+  caption?: string;
+  /** Figure number label, e.g. `图一`. */
+  label?: string;
+  /**
+   * 左侧竖排小框（《围棋天地》那种）：四个字左右的标题，给了才显示。
+   * 变化图不用给。
+   */
+  panelTitle?: string;
+  /** 框里竖排的解说（从右往左、从上往下排）。 */
+  panelText?: string;
+  /** 框里显示的手数范围，默认按 from/upTo/编号方式自动生成。 */
+  panelRange?: string;
+  /**
+   * 小框最下面再加一行结果，例如「白中盘胜」（黑体、居中）。
+   * 一般只在最后一谱写。
+   */
+  panelResult?: string;
+  /** Draw A–T / 1–19 coordinates around the board. */
+  coordinates?: boolean;
+  /** Board size (a full 19×19 board by default). */
+  size?: number;
+  /**
+   * Show the stones captured during this figure under the board (提子).
+   * `"auto"` (default) shows the strip only when something was captured,
+   * `false` always hides it.
+   */
+  captures?: boolean | "auto";
+  /**
+   * How the numbers in that list are written:
+   *   `"figure"` (default) — always this figure's own numbering. A stone that
+   *      was numbered in an earlier figure has no number here, so it is listed
+   *      as a bare stone: `● = R12`. This keeps the list free of clashes with
+   *      the numbers printed on the board.
+   *   `"absolute"` — the real move number of the stone (星阵 report style).
+   */
+  captureNumbering?: "figure" | "absolute";
+}
+
+const {
+  game,
+  upTo,
+  from = 1,
+  numbering = "relative",
+  startAt = 1,
+  variation = "",
+  variationFirst,
+  variationStartAt = 1,
+  marks = "",
+  flag,
+  caption,
+  label,
+  coordinates = true,
+  size = 19,
+  panelTitle,
+  panelText,
+  panelRange,
+  panelResult,
+  captures: showCaptures = "auto",
+  captureNumbering = "figure",
+} = Astro.props;
+
+const record = loadGame(game);
+const total = record.moves.length;
+const shown = Math.min(upTo ?? total, total);
+
+// The first move that gets a number in this figure (1-based).
+const firstNumbered = Math.max(1, Math.min(Math.round(from), shown + 1));
+const labelFor = (moveNumber: number) =>
+  numbering === "absolute"
+    ? moveNumber
+    : moveNumber - firstNumbered + Math.round(startAt);
+
+const variationMoves = variation
+  .split(/[,\n]/)
+  .map(entry => entry.trim())
+  .filter(Boolean);
+
+// Replay the game (captures included) and then the variation, if any.
+const {
+  points,
+  captures: allCaptures,
+  placements,
+} = boardState({
+  size,
+  mainMoves: record.moves.slice(0, shown),
+  variation: variationMoves,
+  variationStartAt: Math.round(variationStartAt),
+  labelMain: moveNumber =>
+    moveNumber >= firstNumbered ? labelFor(moveNumber) : undefined,
+  nextColor:
+    variationFirst === undefined
+      ? undefined
+      : variationFirst.toUpperCase() === "B"
+        ? 1
+        : 2,
+});
+
+const COLUMNS = "ABCDEFGHJKLMNOPQRST";
+const starPoints = new Set(
+  [3, 9, 15].flatMap(y => [3, 9, 15].map(x => `${x},${y}`))
+);
+
+// 提子：only the captures that happened in this figure's window (the moves it
+// numbers, plus any variation moves) — earlier figures already showed theirs.
+const figureCaptures = allCaptures.filter(
+  capture =>
+    capture.variationNumber !== undefined ||
+    (capture.moveNumber !== undefined && capture.moveNumber >= firstNumbered)
+);
+
+/**
+ * 一个点上前后可能落过好几颗子。规则：
+ *
+ *   1. 盘上画**最开始**的那一颗（读者在这个点上最早见到的子）；
+ *   2. 后面又落在同一个点上的子，写在棋盘左下角：`85 = F17`。
+ *
+ * 另外，本谱里被提掉的子本谱仍然画在盘上（前面谱里就有的不带手数，
+ * 本谱自己下的连手数一起画），到下一谱才不再出现。
+ */
+const markedPoints = new Map<string, (typeof points)[number]>();
+const legendEntries: { coordinate: string; color: number; number?: number }[] = [];
+
+for (const [coordinate, history] of Object.entries(placements)) {
+  const mainLine = history.filter(entry => entry.variation === undefined);
+  if (mainLine.length === 0) continue;
+
+  // last stone that was already standing there when this figure starts
+  const standingAtStart = mainLine
+    .filter(
+      entry =>
+        entry.moveNumber < firstNumbered &&
+        (entry.capturedAt === undefined || entry.capturedAt >= firstNumbered)
+    )
+    .pop();
+  const inWindow = mainLine.filter(entry => entry.moveNumber >= firstNumbered);
+  const first = standingAtStart ?? inWindow[0];
+  if (!first) continue;
+
+  const later = mainLine.filter(entry => entry.moveNumber > first.moveNumber);
+  const capturedInWindow =
+    first.capturedAt !== undefined && first.capturedAt >= firstNumbered;
+  if (!capturedInWindow && later.length === 0) continue;
+
+  const [cx, cy] = [
+    COLUMNS.indexOf(coordinate[0]),
+    size - Number(coordinate.slice(1)),
+  ];
+  markedPoints.set(coordinate, {
+    x: cx,
+    y: cy,
+    color: first.color,
+    label:
+      first.moveNumber >= firstNumbered ? (first.label ?? first.moveNumber) : undefined,
+    variation: undefined as boolean | undefined,
+  });
+
+  for (const entry of later) {
+    legendEntries.push({
+      coordinate,
+      color: entry.color,
+      number:
+        captureNumbering === "absolute"
+          ? entry.moveNumber
+          : (entry.label ?? entry.moveNumber),
+    });
+  }
+}
+
+const renderedPoints = [
+  // 这些点上盘面显示的是「最早的那颗子」，新下的子改写在左下角
+  ...points.filter(point => !markedPoints.has(`${COLUMNS[point.x]}${size - point.y}`)),
+  ...markedPoints.values(),
+];
+
+const stones = renderedPoints.map(point => `${point.x},${point.y}`);
+
+const captureList = legendEntries.sort(
+  (a, b) =>
+    (a.number ?? Number.MAX_SAFE_INTEGER) -
+      (b.number ?? Number.MAX_SAFE_INTEGER) ||
+    a.coordinate.localeCompare(b.coordinate)
+);
+
+const hasCaptures =
+  showCaptures !== false &&
+  (showCaptures === true || captureList.length > 0);
+
+// 左上角小框里显示的手数。
+// 第一行给**实际手数**（第四谱 114—179）；如果这一谱重新编过号，
+// 空一行后居中写出盘上标的编号（14—79）。
+const realRange = `${firstNumbered}—${shown}`;
+const lastLabel = shown - firstNumbered + Math.round(startAt);
+const labelRange =
+  numbering === "absolute" ? null : `${Math.round(startAt)}—${lastLabel}`;
+const panelHeading = [label, panelRange ?? realRange]
+  .filter(Boolean)
+  .join(" ");
+const panelHint =
+  !panelRange && labelRange && labelRange !== realRange
+    ? `（${labelRange}）`
+    : null;
+
+// 竖排时把「26」这类两位数合成一格：Chrome 不支持 `digits 2`，
+// 只能自己把两位数包起来用 `text-combine-upright: all`。
+const escapeHtml = (text: string) =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+const panelHtml = panelText
+  ? escapeHtml(panelText).replace(
+      /(?<!\d)(\d{2})(?!\d)/g,
+      '<span class="go-panel-num">$1</span>'
+    )
+  : null;
+
+// The grid runs from `pad` to `pad + size - 1` (size lines ⇒ size - 1 cells),
+// so the viewBox must be that span plus one padding on each side — otherwise
+// the right/bottom margin ends up one cell wider than the left/top one.
+const pad = 1;
+const span = size - 1 + pad * 2;
+
+const placed = new Set(stones);
+
+const markList = marks
+  .split(",")
+  .map(entry => entry.trim())
+  .filter(Boolean)
+  .map(entry => {
+    const [coord, letter] = entry.split(":").map(part => part.trim());
+    return { coord, letter: letter ?? "" };
+  })
+  .filter(mark => /^[A-T]\d{1,2}$/i.test(mark.coord));
+
+function markToPoint(coord: string) {
+  const column = COLUMNS.indexOf(coord[0].toUpperCase());
+  const row = Number(coord.slice(1));
+  return { x: column, y: size - row };
+}
+
+const flagPoint = flag ? markToPoint(flag) : null;
+
+---
+
+<figure class:list={["go-figure", { "has-panel": Boolean(panelTitle) }]}>
+  <div class="go-figure-row">
+  {
+    panelTitle && (
+      <div class="go-panel">
+        <div class="go-panel-head">
+          <span class="go-panel-title">{panelTitle}</span>
+          <span class="go-panel-range">{panelHeading}</span>
+          {panelHint && <span class="go-panel-hint">{panelHint}</span>}
+          {panelResult && (
+            <span class="go-panel-result">{panelResult}</span>
+          )}
+        </div>
+        {panelHtml && (
+          <div class="go-panel-text" set:html={panelHtml} />
+        )}
+      </div>
+    )
+  }
+
+  <div class="go-figure-board">
+  <svg
+    class="go-board"
+    width="480"
+    height="480"
+    viewBox={`0 0 ${span} ${span}`}
+    role="img"
+    aria-label={caption ? `${label ?? ""} ${caption}` : "Go board"}
+  >
+    <!-- board -->
+    <rect x="0" y="0" width={span} height={span} class="go-board-bg" rx="0.35" />
+
+    <!-- grid -->
+    {
+      Array.from({ length: size }, (_, i) => (
+        <g>
+          <line
+            x1={pad}
+            y1={pad + i}
+            x2={pad + size - 1}
+            y2={pad + i}
+            class="go-line"
+          />
+          <line
+            x1={pad + i}
+            y1={pad}
+            x2={pad + i}
+            y2={pad + size - 1}
+            class="go-line"
+          />
+        </g>
+      ))
+    }
+
+    <!-- star points -->
+    {
+      [...starPoints].map(key => {
+        const [x, y] = key.split(",").map(Number);
+        return (
+          <circle cx={pad + x} cy={pad + y} r="0.115" class="go-star" />
+        );
+      })
+    }
+
+    <!-- coordinates -->
+    {
+      coordinates && (
+        <g class="go-coords">
+          {Array.from({ length: size }, (_, i) => (
+            <>
+              <text x={pad + i} y={pad - 0.38} text-anchor="middle">
+                {COLUMNS[i]}
+              </text>
+              <text x={pad + i} y={pad + size - 1 + 0.62} text-anchor="middle">
+                {COLUMNS[i]}
+              </text>
+              <text
+                x={pad - 0.4}
+                y={pad + i + 0.16}
+                text-anchor="end"
+              >
+                {size - i}
+              </text>
+              <text
+                x={pad + size - 1 + 0.4}
+                y={pad + i + 0.16}
+                text-anchor="start"
+              >
+                {size - i}
+              </text>
+            </>
+          ))}
+        </g>
+      )
+    }
+
+    <!-- stones (captures already applied) -->
+    {
+      renderedPoints.map(point => {
+        const number = point.label;
+        return (
+          <g
+            class:list={[
+              "go-stone",
+              point.color === 1 ? "go-stone-black" : "go-stone-white",
+              { "go-stone-variation": point.variation },
+            ]}
+          >
+            <circle cx={pad + point.x} cy={pad + point.y} r="0.47" />
+            {number !== undefined && (
+              <text
+                x={pad + point.x}
+                y={pad + point.y + 0.145}
+                text-anchor="middle"
+                textLength={number > 9 ? 0.52 : 0.27}
+                lengthAdjust="spacingAndGlyphs"
+                class="go-number"
+              >
+                {number}
+              </text>
+            )}
+          </g>
+        );
+      })
+    }
+
+    <!-- engine suggestions: hollow ring + letter, so it still reads as an
+         empty point rather than a stone -->
+    {
+      markList
+        .filter(mark => !placed.has(`${markToPoint(mark.coord).x},${markToPoint(mark.coord).y}`))
+        .map(mark => {
+          const { x, y } = markToPoint(mark.coord);
+          return (
+            <g class="go-mark">
+              <circle cx={pad + x} cy={pad + y} r="0.36" />
+              <text
+                x={pad + x}
+                y={pad + y + 0.19}
+                text-anchor="middle"
+                textLength="0.3"
+                lengthAdjust="spacingAndGlyphs"
+              >
+                {mark.letter}
+              </text>
+            </g>
+          );
+        })
+    }
+
+    <!-- the move that was actually played: a small triangle in the diagonal
+         gap, so the move number on the stone stays readable -->
+    {
+      flagPoint && (
+        <polygon
+          class="go-flag"
+          points={[
+            `${pad + flagPoint.x + 0.27},${pad + flagPoint.y + 0.27}`,
+            `${pad + flagPoint.x + 0.52},${pad + flagPoint.y + 0.23}`,
+            `${pad + flagPoint.x + 0.23},${pad + flagPoint.y + 0.52}`,
+          ].join(" ")}
+        />
+      )
+    }
+  </svg>
+  </div>
+  </div>
+
+  <div class="go-figure-foot">
+  {
+    hasCaptures && (
+      <div class="go-capture-list">
+        {captureList.map(capture => (
+          <span class="go-capture-item">
+            <span
+              class:list={[
+                "go-capture-stone",
+                capture.color === 1 ? "is-black" : "is-white",
+                {
+                  "is-three-digit":
+                    capture.number !== undefined &&
+                    String(capture.number).length > 2,
+                  "is-blank": capture.number === undefined,
+                },
+              ]}
+            >
+              {capture.number}
+            </span>
+            <span class="go-capture-eq">=</span>
+            <span class="go-capture-coord">{capture.coordinate}</span>
+          </span>
+        ))}
+      </div>
+    )
+  }
+
+  {
+    ((label && !panelTitle) || caption?.trim()) && (
+      <figcaption>
+        {label && !panelTitle && <span class="go-figure-label">{label}</span>}
+        {caption}
+      </figcaption>
+    )
+  }
+  </div>
+</figure>
+
+<style>
+  .go-figure {
+    margin: 1.75rem 0;
+    text-align: center;
+  }
+
+  /* 左侧竖排小框（谱名 + 手数 + 竖排解说） */
+  .go-figure-row {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .go-figure.has-panel {
+    /* 图注/提子清单要和棋盘对齐，于是按框宽缩进 */
+    --go-panel-offset: calc(7.25rem + 0.5rem);
+  }
+
+  /* 框比棋盘略矮一点，并与棋盘垂直居中 */
+  .go-figure.has-panel > .go-figure-row > .go-panel {
+    margin-block: 0.85rem;
+  }
+
+  .go-figure-board {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+
+  .go-figure-foot {
+    padding-inline-start: var(--go-panel-offset, 0);
+    text-align: center;
+  }
+
+
+
+  .go-panel {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    width: 7.25rem;
+    padding: 0.6rem 0.55rem;
+    border: 1px solid color-mix(in oklab, var(--foreground) 45%, transparent);
+  }
+
+  .go-panel-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid
+      color-mix(in oklab, var(--foreground) 25%, transparent);
+    text-align: center;
+  }
+
+  .go-panel-title {
+    font-family: "Songti SC", "STSong", "SimSun", "Noto Serif SC", serif;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    line-height: 1.35;
+    color: var(--foreground);
+  }
+
+  .go-panel-range {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    color: var(--muted-foreground);
+  }
+
+  /* 对局结果，例如「白中盘胜」：黑体、加粗、居中 */
+  .go-panel-result {
+    display: block;
+    margin-top: 0.35rem;
+    font-family:
+      "PingFang SC", "Heiti SC", "Hiragino Sans GB", "Microsoft YaHei",
+      system-ui, sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    text-align: center;
+    color: var(--foreground);
+  }
+
+  /* 换行后居中写出盘上的编号（14—79），间距收紧一点 */
+  .go-panel-hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--muted-foreground);
+  }
+
+  /* 中国古书式排版：竖排、从右往左、从上往下。
+     flex-basis 0 + overflow hidden，让文字的高度由左边框（= 棋盘高度）决定，
+     于是它会自动折成若干竖列，而不会把整个框撑得很长。 */
+  .go-panel-text {
+    flex: 1 1 0;
+    height: 0;
+    margin-top: 0.55rem;
+    min-height: 0;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    align-self: center;
+    font-family: "Songti SC", "STSong", "SimSun", "Noto Serif SC", serif;
+    font-size: 0.9375rem;
+    line-height: 1.85;
+    letter-spacing: 0.1em;
+    color: var(--foreground);
+    text-align: start;
+    overflow: hidden;
+  }
+
+  /* 竖排里的两位数（26）合成一格。注意：这段 HTML 是 set:html 注入的，
+     拿不到 Astro 的作用域属性，所以必须用 :global。 */
+  :global(.go-panel-num) {
+    text-combine-upright: all;
+    letter-spacing: 0;
+  }
+
+  /* 手机上：整个框改成横版，放到棋盘上方 */
+  @media (max-width: 640px) {
+    .go-figure.has-panel {
+      --go-panel-offset: 0;
+    }
+
+    .go-figure-row {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .go-figure.has-panel > .go-figure-row > .go-panel {
+      margin-block: 0;
+    }
+
+    .go-panel {
+      width: auto;
+      margin-block: 0;
+      padding: 0.55rem 0.7rem;
+    }
+
+    .go-panel-head {
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      text-align: left;
+    }
+
+    .go-panel-text {
+      writing-mode: horizontal-tb;
+      text-orientation: mixed;
+      text-combine-upright: none;
+      letter-spacing: normal;
+      flex: 0 0 auto;
+      height: auto;
+      max-height: none;
+      overflow: visible;
+      text-align: justify;
+    }
+  }
+
+  .go-board {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 30rem;
+    margin: 0 auto;
+    border: 1px solid color-mix(in oklab, var(--go-line) 35%, transparent);
+    border-radius: 0.4rem;
+  }
+
+  .go-board-bg {
+    fill: var(--go-board);
+  }
+
+  .go-line {
+    stroke: var(--go-line);
+    stroke-width: 0.035;
+  }
+
+  .go-star {
+    fill: var(--go-line);
+  }
+
+  .go-stone text,
+  .go-mark text {
+    paint-order: stroke;
+  }
+
+  /* 变化图：假想的着法用虚线圈标出，和实战的子区分开 */
+  .go-coords text {
+    fill: color-mix(in oklab, var(--go-line) 82%, transparent);
+    font-size: 0.42px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .go-stone-black circle {
+    fill: var(--go-black);
+    stroke: var(--go-black-stroke);
+    stroke-width: 0.03;
+  }
+
+  .go-stone-white circle {
+    fill: var(--go-white);
+    stroke: var(--go-white-stroke);
+    stroke-width: 0.03;
+  }
+
+  .go-stone text {
+    font-size: 0.4px;
+    font-weight: 600;
+    font-family:
+      "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  }
+
+  .go-stone-black .go-number {
+    fill: var(--go-white);
+  }
+
+  .go-stone-white .go-number {
+    fill: var(--go-black);
+  }
+
+  .go-mark circle {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 0.055;
+    stroke-dasharray: 0.16 0.1;
+  }
+
+  .go-mark text {
+    fill: var(--accent);
+    font-size: 0.46px;
+    font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .go-flag {
+    fill: none;
+    stroke: #c2410c;
+    stroke-width: 0.06;
+    stroke-linejoin: round;
+  }
+
+  /* 提子：棋盘左下角的「手数 = 坐标」列表（被提掉的子不在盘上，
+     用它原来站的位置和手数说明清楚） */
+  .go-capture-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, max-content));
+    gap: 0.3rem 0.5rem;
+    max-width: 30rem;
+    margin: 0.6rem auto 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    text-align: left;
+  }
+
+  .go-capture-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  /* the move number is drawn inside a small stone of the colour that was
+     captured, so the list reads like a legend of the diagram */
+  .go-capture-stone {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 9999px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .go-capture-stone.is-three-digit {
+    font-size: 0.4375rem;
+    letter-spacing: -0.04em;
+  }
+
+  /* a stone that carries no number in this figure (it was numbered in an
+     earlier one) is drawn as a plain stone */
+  .go-capture-stone.is-blank {
+    font-size: 0;
+  }
+
+  .go-capture-stone.is-black {
+    border: 1px solid var(--go-black-stroke);
+    background: var(--go-black);
+    color: var(--go-white);
+  }
+
+  .go-capture-stone.is-white {
+    border: 1px solid var(--go-white-stroke);
+    background: var(--go-white);
+    color: var(--go-black);
+  }
+
+  .go-capture-eq {
+    color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  }
+
+  figcaption {
+    max-width: 30rem;
+    margin-inline: auto;
+    margin-top: 0.7rem;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+
+  .go-figure-label {
+    margin-right: 0.4rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+</style>

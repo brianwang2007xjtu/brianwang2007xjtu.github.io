@@ -1,0 +1,134 @@
+---
+/**
+ * Lays out several 棋谱/变化图 in a row.
+ *
+ *   <GoGrid columns={1}> … </GoGrid>   一张一行（整幅）
+ *   <GoGrid columns={2}> … </GoGrid>   两张一行
+ *   <GoGrid columns={3}> … </GoGrid>   三张一行
+ *   <GoGrid columns={4}> … </GoGrid>   四宫格（2×2）
+ *
+ * Narrow screens fall back to fewer columns automatically, and in the 3/4-up
+ * layouts the board coordinates are hidden (the boards get too small for them).
+ */
+interface Props {
+  /** Figures per row: 1, 2, 3 or 4 (4 = 2×2 grid). */
+  columns?: 1 | 2 | 3 | 4;
+  /** Hide the A–T / 1–19 labels on the boards inside this grid. */
+  hideCoordinates?: boolean;
+}
+
+const { columns = 2, hideCoordinates } = Astro.props;
+const hideCoords = hideCoordinates ?? columns >= 3;
+---
+
+<div
+  class:list={[
+    "go-grid",
+    `go-grid-${columns}`,
+    { "go-grid-no-coords": hideCoords },
+  ]}
+>
+  <slot />
+</div>
+
+<style>
+  .go-grid {
+    --go-cols: 2;
+    --go-gap: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    /* 一行里的图不足时（例如 3 栏只放 2 张）整体居中 */
+    justify-content: center;
+    align-items: flex-start;
+    gap: 1.5rem var(--go-gap);
+    margin: 1.9rem 0;
+  }
+
+  .go-grid-1 {
+    --go-cols: 1;
+  }
+
+  .go-grid-2 {
+    --go-cols: 2;
+  }
+
+  .go-grid-3 {
+    --go-cols: 3;
+  }
+
+  /* 四宫格 */
+  .go-grid-4 {
+    --go-cols: 2;
+  }
+
+  /* 一行里的图比声明的栏数少时，自动加宽到实际张数（2 张就按两栏排） */
+  @media (min-width: 701px) {
+
+    .go-grid-2:not(:has(> :nth-child(2))) {
+      --go-cols: 1;
+    }
+
+    .go-grid-3:not(:has(> :nth-child(2))) {
+      --go-cols: 1;
+    }
+
+    /* 声明 3 栏但只有 2 张：按两栏排，尺寸和两栏一致 */
+    .go-grid-3:not(:has(> :nth-child(3))) {
+      --go-cols: 2;
+    }
+  }
+
+  /* 每一张占 1/cols 宽，最后一行不满也居中 */
+  .go-grid :global(figure.go-figure) {
+    flex: 0 1
+      calc((100% - (var(--go-cols) - 1) * var(--go-gap)) / var(--go-cols));
+    min-width: 0;
+    margin: 0;
+  }
+
+  .go-grid :global(figcaption) {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .go-grid :global(.go-board) {
+    max-width: 100%;
+  }
+
+  .go-grid-no-coords :global(.go-coords) {
+    display: none;
+  }
+
+  /* 多栏排列时棋盘很小，左侧竖排解说框放不下，直接不显示 */
+  .go-grid-2 :global(.go-panel),
+  .go-grid-3 :global(.go-panel),
+  .go-grid-4 :global(.go-panel) {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .go-grid-3,
+    .go-grid-4 {
+      --go-cols: 2;
+    }
+  }
+
+  @media (max-width: 700px) {
+    .go-grid-2,
+    .go-grid-3,
+    .go-grid-4 {
+      --go-cols: 1;
+      gap: 1.75rem;
+    }
+
+    .go-grid :global(figure.go-figure) {
+      flex-basis: 100%;
+    }
+
+    .go-grid :global(.go-board) {
+      max-width: 22rem;
+      margin: 0 auto;
+    }
+  }
+</style>

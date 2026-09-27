@@ -1,0 +1,171 @@
+/* ============================================================
+   《围棋天地》式棋局讲解排版
+   Used by Go commentary posts: serif body, indented paragraphs,
+   figure captions, engine-data boxes.
+   ============================================================ */
+
+.go-article {
+  font-family: "Songti SC", "STSong", "SimSun", "Noto Serif SC", Georgia, serif;
+  font-size: 1.0625rem;
+  line-height: 2.05;
+  color: var(--foreground);
+  text-align: justify;
+}
+
+.go-article p {
+  margin: 0.55rem 0;
+  text-indent: 2em;
+}
+
+/* 编者按 / 导读 */
+.go-article .go-lede {
+  margin: 1.4rem 0 1.6rem;
+  padding: 0.15rem 0 0.15rem 1rem;
+  border-left: 3px solid color-mix(in oklab, var(--accent) 45%, transparent);
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "Songti SC", serif;
+  font-size: 1.0313rem;
+  line-height: 1.95;
+  color: var(--muted-foreground);
+  text-indent: 0;
+}
+
+/* 对局信息：不要框、左定格，像《围棋天地》那样一行一条 */
+.go-article .go-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  margin: 1.15rem 0 1.7rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 1rem;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.go-article .go-meta span {
+  display: block;
+}
+
+/* ● 黑 / ○ 白 */
+.go-article .go-meta .go-stone-mark {
+  display: inline-block;
+  width: 0.72em;
+  height: 0.72em;
+  margin-right: 0.5em;
+  border-radius: 9999px;
+  vertical-align: 0.02em;
+}
+
+.go-article .go-meta .go-stone-mark.is-black {
+  background: var(--go-black);
+}
+
+.go-article .go-meta .go-stone-mark.is-white {
+  border: 1px solid var(--go-white-stroke);
+  background: var(--go-white);
+}
+
+.go-article .go-meta b {
+  margin-right: 0.35em;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* 小标题：一、二、三 */
+.go-article h2 {
+  margin: 2.4rem 0 0.9rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 1.3125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-indent: 0;
+}
+
+.go-article h3 {
+  margin: 1.8rem 0 0.6rem;
+  font-family: inherit;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  text-indent: 0;
+}
+
+/* 手数与坐标：西文等宽，读起来像棋谱 */
+.go-article strong {
+  font-weight: 600;
+}
+
+/* 引擎数据框 */
+.go-article .go-note {
+  margin: 1.6rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px dashed color-mix(in oklab, var(--foreground) 22%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--muted) 35%, transparent);
+  font-size: 0.9375rem;
+  line-height: 1.85;
+}
+
+.go-article .go-note p {
+  text-indent: 0;
+  margin: 0.25rem 0;
+}
+
+.go-article .go-note-title {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+}
+
+/* 数据表 */
+.go-article table {
+  width: 100%;
+  margin: 1.4rem 0;
+  border-collapse: collapse;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  font-variant-numeric: tabular-nums;
+}
+
+.go-article thead th {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.go-article tbody td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid
+    color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+.go-article tbody tr:hover {
+  background: color-mix(in oklab, var(--muted) 55%, transparent);
+}
+
+/* 图注由 GoFigure 组件负责，这里只保证不与正文缩进冲突 */
+.go-article figure,
+.go-article figcaption {
+  text-indent: 0;
+}
+
+@media (max-width: 640px) {
+  .go-article {
+    font-size: 1rem;
+    line-height: 1.95;
+  }
+
+  .go-article table {
+    font-size: 0.75rem;
+  }
+}

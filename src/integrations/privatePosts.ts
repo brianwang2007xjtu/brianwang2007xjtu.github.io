@@ -2,7 +2,7 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { encryptForClient } from "../utils/privateCrypto";
-import { privateEnvSuffix } from "../utils/privatePost";
+import { privateEnvSuffix, privatePasswordKeys } from "../utils/privatePost";
 
 const SOURCE_ATTR = "data-private-source";
 const SOURCE_RE = /<template[^>]*data-private-source[^>]*>([\s\S]*?)<\/template>/;
@@ -43,7 +43,9 @@ async function readPasswords(root: string): Promise<Record<string, string>> {
   }
 
   for (const [key, value] of Object.entries(process.env)) {
-    if (key.startsWith("PRIVATE_POST_PASSWORD_") && value) out[key] = value;
+    if (key.toUpperCase().startsWith("PRIVATE_POST_PASSWORD_") && value) {
+      out[key] = value;
+    }
   }
 
   return out;
@@ -85,8 +87,20 @@ export default function privatePosts() {
         const root = fileURLToPath(dir);
         const env = await readPasswords(process.cwd());
         // One password per post — there is no shared/global password.
-        const passwordFor = (slug: string) =>
-          (env[`PRIVATE_POST_PASSWORD_${privateEnvSuffix(slug)}`] ?? "").trim();
+        const passwordFor = (slug: string) => {
+          const wanted = `PRIVATE_POST_PASSWORD_${privateEnvSuffix(slug)}`;
+          const hit = Object.keys(env).find(
+            key => key.toUpperCase() === wanted.toUpperCase()
+          );
+          return hit ? (env[hit] ?? "").trim() : "";
+        };
+
+        const visible = privatePasswordKeys();
+        logger.info(
+          visible.length > 0
+            ? `private-post password variables found: ${visible.join(", ")}`
+            : "no PRIVATE_POST_PASSWORD_* variable is visible to this build"
+        );
 
         let locked = 0;
         let missing = 0;

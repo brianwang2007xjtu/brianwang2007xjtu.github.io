@@ -17,9 +17,35 @@ export const PRIVATE_TAG = "private";
 
 type Env = Record<string, string | undefined>;
 
-function readEnv(key: string): string | undefined {
+function envSources(): Env[] {
   const viteEnv = (import.meta as unknown as { env?: Env }).env ?? {};
-  return viteEnv[key] ?? (globalThis.process?.env as Env | undefined)?.[key];
+  const nodeEnv = (globalThis.process?.env as Env | undefined) ?? {};
+  return [viteEnv, nodeEnv];
+}
+
+/** Case-insensitive lookup — `PRIVATE_POST_PASSWORD_blank` also works. */
+function readEnv(key: string): string | undefined {
+  const wanted = key.toUpperCase();
+  for (const source of envSources()) {
+    const exact = source[key];
+    if (exact !== undefined) return exact;
+    const found = Object.keys(source).find(k => k.toUpperCase() === wanted);
+    if (found) return source[found];
+  }
+  return undefined;
+}
+
+/** Names of all configured private-post password variables (no values). */
+export function privatePasswordKeys(): string[] {
+  const keys = new Set<string>();
+  for (const source of envSources()) {
+    for (const key of Object.keys(source)) {
+      if (key.toUpperCase().startsWith("PRIVATE_POST_PASSWORD_")) {
+        keys.add(key);
+      }
+    }
+  }
+  return [...keys].sort();
 }
 
 /** `posts/nested/My Post.mdx` -> `MY_POST` (used to build per-post env keys). */

@@ -22,7 +22,12 @@ import AdjacentPostNav from "./_components/AdjacentPostNav.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import Comments from "@/components/Comments.astro";
 import PrivatePost from "./_components/PrivatePost.astro";
-import { getPrivatePassword, isPrivatePost } from "@/utils/privatePost";
+import {
+  getPrivatePassword,
+  isPrivatePost,
+  privatePasswordKeys,
+  privateEnvSuffix,
+} from "@/utils/privatePost";
 import { walineServerURL } from "@/data/waline";
 import config from "@/config";
 
@@ -101,6 +106,14 @@ const { Content, headings } = await render(post);
 const privateLocked = isPrivatePost(post);
 const privatePassword = privateLocked ? getPrivatePassword(post) : null;
 const privatePasswordReady = privatePassword !== null;
+if (privateLocked && !privatePasswordReady) {
+  console.warn(
+    `[private-post] "${post.id}" needs PRIVATE_POST_PASSWORD_${privateEnvSuffix(post.id)}; ` +
+      `visible variables: ${
+        privatePasswordKeys().join(", ") || "(none)"
+      }`
+  );
+}
 // In `astro dev` the build-time encryption step never runs, so the page hands
 // the password to the lock component to encrypt the body in the browser. The
 // attribute is only rendered in dev — a production build never contains it.

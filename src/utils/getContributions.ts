@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import type { CollectionEntry } from "astro:content";
 import { countWords } from "./getBlogStats";
+import { dayKey } from "./siteTime";
 
 type Post = CollectionEntry<"posts">;
 
@@ -10,7 +11,8 @@ export type ContributionMap = Record<string, number>;
 export type Level = 0 | 1 | 2 | 3 | 4;
 
 function dateKey(t: number): string {
-  return new Date(t).toISOString().slice(0, 10);
+  // 按北京时间算「哪一天」，否则北京时间凌晨提交的会被算到前一天
+  return dayKey(t);
 }
 
 /**
@@ -33,7 +35,8 @@ function getGitContributions(): ContributionMap | null {
     const out = execSync(
       [
         "git log",
-        '--date=short',
+        // format-local 用下面 TZ 指定的时区（北京时间）输出日期
+        "--date=format-local:%Y-%m-%d",
         '--pretty=format:"%ad"',
         "--numstat",
         "-- .",
@@ -46,6 +49,8 @@ function getGitContributions(): ContributionMap | null {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
         maxBuffer: 16 * 1024 * 1024,
+        // 让 git 按北京时间给出提交日期
+        env: { ...process.env, TZ: "Asia/Shanghai" },
       }
     );
     const map: ContributionMap = {};

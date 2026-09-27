@@ -1,5 +1,6 @@
 import type { CollectionEntry } from "astro:content";
 import config from "@/config";
+import { dayKey, daysBetweenKeys } from "./siteTime";
 
 type Post = CollectionEntry<"posts">;
 
@@ -54,18 +55,9 @@ export function getLastUpdated(posts: Post[]): Date | null {
  * Days the site has been online counted from `since` (launch day = day 1),
  * e.g. 2026-08-27 -> 1, 2026-08-28 -> 2, ...
  */
-export function getDaysOnline(since: Date, now: Date = new Date()): number {
-  const start = Date.UTC(
-    since.getUTCFullYear(),
-    since.getUTCMonth(),
-    since.getUTCDate()
-  );
-  const today = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate()
-  );
-  return Math.max(1, Math.floor((today - start) / DAY) + 1);
+export function getDaysOnline(since: Date): number {
+  // 按北京时间的「今天」和起始日算天数
+  return Math.max(1, daysBetweenKeys(dayKey(since), dayKey()) + 1);
 }
 
 /** Format a date like axi404: "Aug 31, 2026". */

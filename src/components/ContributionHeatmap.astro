@@ -1,4 +1,5 @@
 ---
+import config from "@/config";
 import { getLevelFn, type ContributionMap, type Level } from "@/utils/getContributions";
 
 interface Props {
@@ -65,14 +66,24 @@ function tipLabel(key: string, count: number): string {
 }
 
 function dateKey(t: number): string {
-  return new Date(t).toISOString().slice(0, 10);
+  // 按站点时区（北京时间）取日期
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: config.site.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(t));
 }
 
 const [cutY, cutM, cutD] = since.split("-").map(Number);
 const cutoff = Date.UTC(cutY, cutM - 1, cutD);
 
-const now = new Date();
-const currentYear = now.getUTCFullYear();
+const currentYear = Number(
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: config.site.timezone,
+    year: "numeric",
+  }).format(new Date())
+);
 
 // Years available (newest first); the current year is always included.
 const years = [
@@ -160,7 +171,13 @@ const primaryYears = years.slice(0, 1);
 const moreYears = years.slice(1);
 ---
 
-<div id="contrib-year-picker" class="flex flex-wrap items-center justify-end gap-1.5" data-cutoff={since} data-current-year={currentYear}>
+<div
+  id="contrib-year-picker"
+  class="flex flex-wrap items-center justify-end gap-1.5"
+  data-cutoff={since}
+  data-current-year={currentYear}
+  data-timezone={config.site.timezone}
+>
   {
     primaryYears.map(y => (
       <button
@@ -242,6 +259,9 @@ const moreYears = years.slice(1);
 <script>
   // GitHub-style year switching: re-render the Jan-Dec grid for the selected
   // year from the embedded contribution data.
+  const TIME_ZONE =
+    document.getElementById("contrib-year-picker")?.dataset.timezone ??
+    "Asia/Shanghai";
   const DAY = 86400000;
   const UNIT = 100;
   const MONTHS = [
@@ -283,7 +303,13 @@ const moreYears = years.slice(1);
   }
 
   function dateKey(t: number): string {
-    return new Date(t).toISOString().slice(0, 10);
+    // 和服务器一致：按站点时区（北京时间）取日期
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(t));
   }
 
   function levelOf(n: number, thresholds: number[]): number {

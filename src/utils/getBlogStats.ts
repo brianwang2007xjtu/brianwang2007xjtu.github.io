@@ -1,4 +1,5 @@
 import type { CollectionEntry } from "astro:content";
+import config from "@/config";
 
 type Post = CollectionEntry<"posts">;
 
@@ -73,7 +74,7 @@ export function formatStatsDate(d: Date): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-    timeZone: "UTC",
+    timeZone: config.site.timezone,
   });
 }
 

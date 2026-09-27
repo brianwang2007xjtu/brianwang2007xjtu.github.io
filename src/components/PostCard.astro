@@ -17,10 +17,12 @@ const url = getPostUrl(id, filePath, locale);
 const viewPath = url;
 const viewsEnabled = walineServerURL.trim() !== "";
 
+// 列表里的日期也要按站点时区（Asia/Shanghai）显示，否则跨零点时会和文章页差一天
 const date = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "2-digit",
   year: "numeric",
+  timeZone: config.site.timezone,
 }).format(pubDatetime);
 
 // CJK-aware word count (each Chinese char counts as one "word", Latin words

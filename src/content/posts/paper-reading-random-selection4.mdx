@@ -1,0 +1,80 @@
+---
+title: "Paper Reading: Random Selection 4"
+author: master
+pubDatetime: 2026-09-29T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+  - wam 
+  - lapa
+description: "继续分享 WAM 和 LAPA 📝。"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+## JEPA-WAM
+
+<PaperNote
+  title="JEPA-WAM"
+  arxivId="2608.09381"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/JEPA-WAM.pdf"
+  summary="用 LLM 替换 DiT，再用 Action Expert 规划动作序列"
+  images={["/papers/JEPA-WAM.png"]}
+>
+
+JEPA-WAM 是一篇今年很有创意的新作，它用 **Qwen2.5 代替传统的 DiT** 作为 Predictor，在将视觉信息与语言指令统一编码的同时，还能够利用 LLM 中已经学习到的丰富语义与世界知识来辅助动作决策。在此基础上，JEPA-WAM 进一步引入 JEPA 的思想，让模型不再局限于从当前 observation 直接预测 action，而是同时预测未来状态的 latent representation，从而显式地学习环境在动作作用下如何发生变化。
+
+在架构上，JEPA-WAM 可以清晰划分成 **V-JEPA Encoder、LLM Predictor、Action Expert** 三大块。首先，当前 observation 会经过冻结的 V-JEPA Encoder，得到保留空间结构的视觉 latent，再通过 Visual Projector 映射到 LLM 的输入空间，并与任务的语言指令以及一组 Action Placeholder 一起送入 Qwen2.5-0.5B。
+
+![](/papers/JEPA-WAM2.png)
+
+LLM 作为**共享的 Predictor**，同时承担两项任务：一方面利用视觉 token 的 hidden states，通过一个轻量的 MLP 预测当前与未来 observation 的 joint latent target，并通过 **JEPA loss** 学习世界状态的变化；另一方面从 **Action Placeholder** 中提取 action representation，并将其交给**独立的 DiT Action Expert**，通过 flow matching 生成连续的 action chunk。
+
+JEPA-WAM 在 **LIBERO-Plus** 上取得 **79.2%** 的平均成功率，在无需大规模机器人策略预训练的方法中表现突出；将 JEPA 目标进一步加入预训练的 **$\pi_{0.5}$** 后，成功率提升至 **86.3%**。
+
+</PaperNote>
+
+## LAPA
+
+<PaperNote
+  title="LAPA"
+  arxivId="2410.11758"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/LAPA.pdf"
+  summary= "从无动作标签的视频中学习离散 Latent Action，再将其映射到真实机器人动作"
+  images={["/papers/LAPA.png"]}
+>
+
+LAPA，即 **Latent Action Pretraining from Videos**，是一篇非常有代表性的工作，它试图解决 VLA 难以获取带 action label 的数据的问题，将视角转移到 Web 上广泛存在的海量人类操作视频。
+
+整个 LAPA 可以分成 Latent Action Quantization 和 Latent Pretraining 两个阶段。首先，作者利用基于 **VQ-VAE** 的 **LAQ**，从连续视频帧之间的视觉变化中提取**离散 latent action**。直观来说，它并不关心机器人关节到底移动了多少，而是试图学习一个能够描述「**这一帧到下一帧发生了什么变化**」的离散编码。最终每个 latent action 由一组 **codebook token** 表示，在官方实现中对应一个 **$8^4$** 的离散 latent action space。
+
+获得 latent action 之后，第二阶段就可以把**普通视频真正用于 VLA 预训练**。模型输入当前图像和语言指令，输出由 LAQ 产生的 latent action token，因此原本需要真实机器人 action supervision 的 VLA，现在只需要视频与语言就可以进行训练。
+
+LAPA 最重要的意义可能并不是它具体采用了哪一种 VLM，而是它提出了一个很重要的思路：机器人学习**未必需要直接学习真实 action，可以先学习一个跨 embodiment 的 latent action space**。这使得原本只能使用昂贵机器人轨迹的数据形式，开始能够扩展到互联网视频，也为后续利用 latent action 以及视频预训练 VLA 的工作提供了一个很自然的起点。
+
+</PaperNote>
+
+## LeWAM
+
+<PaperNote
+  title="NeRF"
+  arxivId="2609.27455"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/LeWAM.pdf"
+  summary= "用 JEPA latent 替代 VDM，并通过 DemoDPO 从离线示范中进一步优化动作策略"
+  images={["/papers/LeWAM.png"]}
+>
+
+LeWAM，即 **L**atent **e**volving **W**orld **A**ction **M**odel，是一篇看似平淡，实则也没那么创新的工作。不过，它仍然是 2026 年 WAM 中很具代表性的工作。LeWAM 的思路很简单，先是提出了传统 VDM-based WAM 不可逾越的局限性，再理论证明 **I-JEPA** 相较于 VAE，更适合直接用于动作生成。
+
+LeWAM 的架构同样非常清晰。首先，当前 observation 经过**冻结的 I-JEPA-H/14**，得到视觉 embedding；由于不同层的 representation 包含的信息并不完全相同，作者提出 **AdaFuse**，学习融合 I-JEPA 的多层特征。随后，当前 visual embedding、带噪 action token、示范 action token 以及多个 **Future Query** 被组织成统一的 token sequence，并送入**同一个 Predictor**。通过精心设计的 structured attention mask，模型既能够根据当前状态预测 action，又能够在给定 action prefix 的条件下预测对应时间点的 future JEPA embedding，同时避免未来信息泄漏。
+
+![](/papers/LeWAM2.png)
+
+不过作者发现，即使 Behavioral Cloning 已经能够让模型生成与 demonstration 很接近的 action，**小幅度的 action 偏差仍然可能导致机器人最终失败**。因此 LeWAM 在此基础上进一步提出 **DemoDPO**。它不需要重新与环境交互，也不需要人工给不同轨迹标注 reward，而是直接从已有 demonstration 中构造 preference。
+
+实验发现，在加入 DemoDPO 后，模型效果相比仅进行 imitation learning 的版本进一步获得**明显提升**。整个模型只有 **0.4B** 可训练参数，并在真实双臂机器人任务中进行了验证。
+
+</PaperNote>
+
+

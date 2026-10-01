@@ -22,6 +22,20 @@ export const commonLinks: FriendLink[] = [
     url: "https://blog.leosrealms.top",
     rss: "https://blog.leosrealms.top/rss.xml",
   },
+  {
+    name: "Danny's Blog",
+    desc: "Cogito, ergo sum.",
+    url: "https://dannyshi.pages.dev/",
+    avatar: "https://dannyshi.pages.dev/head.jpg",
+    rss: "https://dannyshi.pages.dev/rss.xml",
+  },
+  {
+    name: "時雨のBlog",
+    desc: "今天也要开心",
+    url: "https://cat-not-found-github-io.vercel.app/",
+    avatar: "https://cat-not-found-github-io.vercel.app/img/texas.png",
+    rss: "https://cat-not-found.github.io/atom.xml",
+  },
 ];
 
 /** 申请友链时展示的本站信息（点击即可复制）。 */

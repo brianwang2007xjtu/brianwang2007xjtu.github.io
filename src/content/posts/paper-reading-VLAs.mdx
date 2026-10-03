@@ -1,0 +1,72 @@
+---
+title: "Paper Reading: Recent VLAs"
+author: master
+pubDatetime: 2026-10-04T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+description: "最近的一些 VLA 工作 📝 ～"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+随着 **VLA** 模型的发展，机器人已经逐渐具备了从视觉与语言直接生成动作的能力。然而，一个始终存在的问题是：「VLA是否真的理解一个**动态变化**的世界？」这也正是近年来 **WM**、**WAM** 以及 **JEPA-style predictive representation** 重新受到关注的原因。与直接在像素空间生成未来视频不同，越来越多的工作开始尝试在 latent space 中描述世界的变化。
+
+因此，一个进一步的问题是：「能否让 VLA 不仅理解当前世界，还能够在 **latent space** 中想象动作之后的世界？」围绕这一问题，**JEPA-VLA**、**LaWAM** 与 **GWM-VLA** 展现了三种颇具代表性的探索方向。**JEPA-VLA** 首先从 VLA 的视觉表征出发，尝试将 V-JEPA 2 所学习的 predictive embedding 引入现有 VLA；**LaWAM** 则更进一步，将 world modeling 与 latent action 结合起来，不再生成昂贵的未来视频，而是在视觉 latent space 中预测未来的 latent visual subgoal，再将这一预测用于动作生成；**GWM-VLA** 则将问题推进到多视角与三维几何场景，利用 geometry-aware representation 建模不同视角之间的空间关系。
+
+## JEPA-VLA
+
+<PaperNote
+  title="JEPA-VLA"
+  arxivId="2602.11832"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/JEPA-VLA.pdf"
+  summary="简简单单换个 encoder"
+  images={["/papers/JEPA-VLA.png"]}
+>
+
+JEPA-VLA 的方法创新不大，它没有重新设计 VLA 的 action expert，也没有真正训练一个新的 world model，而是把冻结的 **V-JEPA 2** 的 encoder 直接接到已有 VLA 上，再通过简单的 **fusion mechanism** 把 predictive embedding 注入 VLA。因此，本工作是一个偏向于实验效果对比的 「**simple yet effective approach**」。
+
+模型保留原有 VLA 的 **action model**，同时使用冻结的 **V-JEPA 2 encoder** 从最近的视频帧中提取 predictive embedding，再将其注入 VLA。论文设计了两种 fusion：对于从头训练的 VLA，直接将 V-JEPA 2 embedding 投影后与原 token 拼接；对于已有大规模机器人数据预训练的 VLA，则采用类似 **Flamingo** 的 **gated cross-attention**，让原 VLA token 主动选择性地读取 JEPA 表征。
+
+实验结果说明，这种看似简单的表示替换确实有效。在 **LIBERO** 上，加入 V-JEPA 2 后平均成功率由 61.65% 提升至 **69.05%**，其中 Spatial 和 Long 分别提升 **11.0** 和 **15.2** 个百分点；在更强调分布外泛化的 **LIBERO-Plus** 上，总体成功率也由 18.9% 提升至 **25.6%**。
+
+</PaperNote>
+
+## LaWAM
+
+<PaperNote
+  title="LaWAM"
+  arxivId="2606.15768"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/LaWAM.pdf"
+  summary= "两阶段训练，用 LaWM 辅助生成 subgoal"
+  images={["/papers/LaWAM.png"]}
+>
+
+LaWAM 相比 JEPA-VLA 有更加明确的方法创新。它首先提出了 **LaWM**，让模型显式预测执行某个 **latent action** 后的未来视觉状态。更重要的是，它没有采用传统 WAM 的未来视频生成，而是直接在预训练视觉特征空间中预测 **latent visual subgoal**，从而避免像素级冗余。
+
+LaWAM 采用两阶段训练。Stage 1 首先在冻结的视觉 encoder 特征空间中，通过 **IDM** 从当前与未来观测中推断连续 latent action，再利用对应的 **forward decoder** 预测未来；训练完成后保留该 forward decoder，作为 **LaWM**。
+
+Stage 2 则让 VLA 根据当前观测和语言指令预测 latent action，并通过 **latent-action distillation** 学习 Stage 1 的 latent action，使其能够驱动 LaWM 产生未来 **latent subgoal**；随后的 Action Expert 并无创新。
+
+实验结果表明，显式的 latent subgoal 确实能够提升 VLA 的动作性能。LaWAM 在 **LIBERO** 上取得 **98.6%** 的平均成功率，在 **RoboTwin** 上达到 **91.22%**；真实机器人实验同样取得较高成功率。
+
+</PaperNote>
+
+## GWM-VLA
+
+<PaperNote
+  title="GWMVLA"
+  arxivId="2608.07619"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/GWM-VLA.pdf"
+  summary="从全局表征到 dense features"
+  images={["/papers/GWM-VLA.png"]}
+>
+
+GWM-VLA 的核心创新在于将 latent world modeling 与 multi-view 结合起来。相比 VLA-JEPA 对不同视角分别编码后再进行拼接，GWM-VLA 使用冻结的 **VGGT-Ω** 联合编码同一时刻的多视角观测，使 latent state 显式包含跨视角的几何关系。
+
+GWM-VLA 首先利用 **VGGT-Ω** 将多视角图像编码为具有几何信息的 latent representation，再通过 LWM 根据当前状态和 **latent action** 预测未来 **target view** 的 patch tokens。与此同时，**shared latent action** 同时作为 World Model 和 Action Head 的条件，使动作预测与未来状态预测能够联合训练。
+
+实验结果表明，几何感知的 latent world modeling 对鲁棒性提升尤其明显。GWM-VLA 在 **LIBERO** 上取得 **97.1%** 的平均成功率，在 **LIBERO-Plus** 上达到 **76.9%**，相比 robot-only VLA-JEPA 分别提升 **1.0** 和 **14.0** 个百分点；真实机器人实验同样表现出较好的空间泛化能力。值得注意的是，其最大的提升主要出现在视觉噪声、背景、相机视角和语言变化等分布偏移场景。
+
+</PaperNote>

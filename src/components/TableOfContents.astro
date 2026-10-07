@@ -22,7 +22,7 @@ const minDepth = tocHeadings.length
       <nav
         id="toc"
         aria-label="Table of contents"
-        class="h-full overflow-y-auto pe-1"
+        class="h-full overflow-y-auto overscroll-contain pe-1 scroll-pt-2"
       >
         <h2 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Table of Contents
@@ -82,6 +82,33 @@ const minDepth = tocHeadings.length
     }));
 
     const state: Record<string, { inView: boolean; progress: number }> = {};
+    /** 上一次自动滚动到的目录项，避免每帧都滚 */
+    let lastAutoScrolled: HTMLAnchorElement | null = null;
+
+    /**
+     * 标题很多时，目录本身是可滚动的；让当前读到的这一节始终留在可视区域里
+     * （只滚动目录自己的容器，不带动整个页面）。
+     */
+    function keepActiveVisible() {
+      const active = links.find(link => state[link.slug]?.inView)?.element;
+      if (!active || active === lastAutoScrolled) return;
+      lastAutoScrolled = active;
+
+      const tocRect = toc!.getBoundingClientRect();
+      const linkRect = active.getBoundingClientRect();
+      // 目标位置：让当前项落在目录可视区中间偏上的位置
+      const linkTop = linkRect.top - tocRect.top + toc!.scrollTop;
+      const target = Math.max(
+        0,
+        linkTop - Math.max(24, (toc!.clientHeight - linkRect.height) / 2.6)
+      );
+      if (Math.abs(target - toc!.scrollTop) < 4) return;
+      try {
+        toc!.scrollTo({ top: target, behavior: "smooth" });
+      } catch (e) {
+        toc!.scrollTop = target;
+      }
+    }
 
     function update() {
       const vh = window.innerHeight;
@@ -114,6 +141,8 @@ const minDepth = tocHeadings.length
           link.line.style.height = `${p.progress * 90}%`;
         }
       });
+
+      keepActiveVisible();
     }
 
     links.forEach(link => {

@@ -14,6 +14,8 @@ export const commonLinks: FriendLink[] = [
     name: "Axi's Blog",
     desc: "一只可爱小猫",
     url: "https://axi404.com",
+    // 用主页那张头像（不是站点图标）
+    avatar: "https://axi404.com/avatar/avatar.png",
     rss: "https://axi404.com/rss.xml",
   },
   {
@@ -35,6 +37,12 @@ export const commonLinks: FriendLink[] = [
     url: "https://cat-not-found-github-io.vercel.app/",
     avatar: "https://cat-not-found-github-io.vercel.app/img/texas.png",
     rss: "https://cat-not-found.github.io/atom.xml",
+  },
+  {
+    name: "assassinlike's blog",
+    desc: "Yihe Zang",
+    url: "https://www.assassinlike.top/",
+    avatar: "https://www.assassinlike.top/figs/bg.jpg",
   },
 ];
 

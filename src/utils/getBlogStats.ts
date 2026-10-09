@@ -4,8 +4,6 @@ import { dayKey, daysBetweenKeys } from "./siteTime";
 
 type Post = CollectionEntry<"posts">;
 
-const DAY = 86400000;
-
 /** Strip frontmatter, code blocks and markup noise from raw markdown/MDX source. */
 function cleanText(src: string): string {
   return src

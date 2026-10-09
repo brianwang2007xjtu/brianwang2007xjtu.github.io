@@ -1,0 +1,105 @@
+---
+title: "Paper Reading: Random Selection 5"
+author: master
+pubDatetime: 2026-10-09T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+  - wam
+  - jepa 
+  - vggt
+description: "最近的一些 WAM 以及 VGGT 考古 📝 ～"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+## Fast-WAM
+
+<PaperNote
+  title="Fast-WAM"
+  arxivId="2603.16666"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/FAST-WAM.pdf"
+  summary="推理时只过一次 DiT"
+  images={["/papers/Fast-WAM.png"]}
+>
+
+Fast-WAM 是一篇很有启发性的 WAM 工作，它提出了一个关键问题：「World Action Model 是否真的需要在推理时显式生成未来视频？」 传统 WAM 通常采用 Imagine-then-Execute 范式，先通过视频生成模型预测未来，再根据预测结果生成动作，带来了额外的推理开销。Fast-WAM 则将训练阶段的世界建模与推理阶段的未来想象解耦，在保留视频预测监督的同时，推理时**直接利用当前观测生成动作**。
+
+在架构上，Fast-WAM 采用了 MoT，由 Video DiT 和 Action Expert DiT 组成，通过**共享注意力机制**进行协同训练。训练时，Video DiT 通过 Flow Matching 学习未来视频的生成，Action Expert 则学习动作序列的生成；同时，模型利用 **Structured Attention Mask** 限制动作 Token 访问未来视频 Token，避免动作预测依赖显式生成的未来。推理时，Fast-WAM 移除未来视频生成分支，**Video DiT 仅需进行一次前向计算**，提取当前观测的世界表征，再由 Action Expert 生成动作序列，从而省去未来视频的多步去噪开销。
+
+Fast-WAM 在 RoboTwin 2.0 和 LIBERO 上分别取得 91.8% 和 97.6% 的平均成功率，接近需要显式生成未来视频的变体。因此，很好地说明了：**世界建模的价值可能主要在于训练出更好的动态表征，而不一定需要在每次动作决策时显式生成未来**。
+
+</PaperNote>
+
+## Copper-Policy
+
+<PaperNote
+  title="Copper-Policy"
+  arxivId="2609.32779"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/Copper-Policy.pdf"
+  summary= "FasT-WAM++，引入可学习 Compactor，进行紧凑世界表征预测"
+  images={["/papers/Copper-Policy.png"]}
+>
+
+Copper-Policy 是一篇在 Fast-WAM 基础上进一步探索世界表征学习的工作。Fast-WAM 证明了，即使推理时不再显式生成未来视频，训练阶段的视频协同学习仍然能够提升动作策略的性能。这引出了一个更深入的问题：「**WAM 究竟需要预测什么，才能学到真正有利于动作决策的世界表征？**」相比直接预测未来视频的高维 latent，Copper-Policy 选择预测紧凑的、以**任务意图为条件**的未来观测表征，不再要求模型重建详细的视频内容，从而降低训练成本。
+
+Copper-Policy 的架构较为复杂，主要包含 **World Compactor、Future Expert 和 Action Expert**。首先，在线 Compactor（也就是可学习的 encoder）将当前观测压缩为紧凑的世界表征，而通过 EMA 更新的 Target Compactor 则提供未来观测的 latent target。Future Expert 通过 **Temporal Joint-Embedding Prediction** 预测未来的紧凑表征，并与动作解码任务联合训练。与此同时，Action Expert 还可以通过独立的视觉通路获取当前帧的**细粒度空间信息**，并结合机器人状态生成动作。
+
+</PaperNote>
+
+## VLA-JEPA
+
+<PaperNote
+  title="VLA-JEPA"
+  arxivId="2602.10098"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/VLA-JEPA.pdf"
+  summary= "用 JEPA 预训练 VLA"
+  images={["/papers/VLA-JEPA.png"]}
+>
+
+VLA-JEPA 是一篇非常不错的工作，比之前读过的 JEPA-VLA 的 novelty 要强上不少。本篇工作将 **JEPA 引入 VLA 预训练**。现有的 latent action 方法通常从相邻视频帧的像素变化中提取动作表征，容易学习到背景变化、相机运动等与机器人控制无关的信息，甚至通过未来帧泄漏走捷径。VLA-JEPA 则提出 **Leakage-free State Prediction**：使用冻结的 V-JEPA 2 Encoder 提取未来观测的 latent state 作为监督目标，让 VLM 仅根据当前观测和语言指令生成 latent action，再通过 World Model 预测未来状态。这样，模型学习的是**能够解释环境状态转移的动态表征**，而不是简单压缩像素差异。
+
+实验中，VLA-JEPA 在 **LIBERO** 上取得 **97.2%** 的平均成功率，在 **LIBERO-Plus** 上取得 **79.5%**，体现了较强的扰动鲁棒性；在 SimplerEnv 中，其 Google Robot 和 WidowX Robot 的平均成功率分别达到 **65.2%** 和 **57.3%**。真实机器人实验还展示了重复抓取能力，即首次抓取失败后能够重新尝试。
+
+</PaperNote>
+
+## VGGT
+
+<PaperNote
+  title="VGGT"
+  arxivId="2503.11651"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/VGGT.pdf"
+  summary= "用一个前馈 Transformer 一次性预测多视角图像的 3D 几何"
+  images={["/papers/VGGT.png"]}
+>
+
+VGGT（Visual Geometry Grounded Transformer）是 **CVPR 2025 Best Paper**，核心目标是让模型从一张或多张图像中，**直接推断场景的 3D 几何结构**。它不需要针对每个场景单独进行迭代优化，就能从多视角图像中建立一致的三维空间理解。
+
+架构上，VGGT 采用基于 **DINO v2 特征提取器的 Transformer**，并创造性地提出了 **Alternating Attention**：交替执行帧内 Self-Attention 和跨视角 Global Self-Attention，让模型既能理解单张图像的局部结构，又能融合不同视角之间的几何信息。
+
+![](/papers/VGGT2.png)
+
+实验方面，在输入 10 张图像、使用单张 H100 GPU 的相机位姿估计测试中，VGGT 的前馈版本在 RealEstate10K 和 CO3Dv2 上分别取得 **85.3 和 88.2 的 AUC@30**，推理时间约为 **0.2 秒**；加入 Bundle Adjustment 后，成绩进一步提升至 **93.5 和 91.8**，耗时约 1.8 秒。VGGT 可以为具身智能提供有价值的几何感知基础，但本身并不建模机器人动作引起的环境动态。
+
+</PaperNote>
+
+## VGGT-Ω
+
+<PaperNote
+  title="VGGT-Ω"
+  arxivId="2605.15195"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/VGGT-%CE%A9.pdf"
+  summary= "用 Register Attention 高效聚合场景信息"
+  images={["/papers/VGGT-Ω.png"]}
+>
+
+VGGT-Ω 是 VGGT 的后续工作，进一步探索了一个关键问题：「**前馈式 3D 重建模型能否像语言模型一样，通过扩大模型和数据规模持续提升性能？**」原版 VGGT 已经能够通过一次前向计算，从多视角图像中预测相机参数、深度图和三维几何信息，但高分辨率卷积解码头和跨视角全局注意力带来了较高的训练开销。VGGT-Ω 不只是继续堆大模型，而是从架构、数据标注和训练方式入手，提升模型处理静态场景与动态视频的能力。
+
+在架构上，VGGT-Ω 做了两个重要改变。首先，它使用 **Registers** 聚合全局场景信息，并引入 **Register Attention**，让部分跨帧信息通过这些紧凑的场景 Token 交换，而不是始终依赖所有图像 Token 之间的全局注意力。其次，它**简化 projection head**，移除昂贵的高分辨率卷积层，并通过**单个稠密预测头与多任务监督**学习几何信息。
+
+实验表明，VGGT-Ω 的性能会随着模型和数据规模扩大而持续提升。此外，论文还发现，模型学到的 Register 不仅包含几何信息，还能迁移到 VLA 等下游任务，并支持与自然语言进行对齐。
+
+</PaperNote>
+
+

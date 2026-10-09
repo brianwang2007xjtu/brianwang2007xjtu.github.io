@@ -4,6 +4,8 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/Header.astro";
 import Footer from "@/components/Footer.astro";
 import PostCard from "@/components/PostCard.astro";
+import PaperGraph from "@/components/PaperGraph.astro";
+import { getPaperGraph } from "@/utils/getPaperGraph";
 import { getSortedPosts } from "@/utils/getSortedPosts";
 import { collections } from "@/data/collections";
 import config from "@/config";
@@ -15,13 +17,16 @@ export async function getStaticPaths() {
   }));
 }
 
-const { title, description, tag } = Astro.props;
+const { slug, title, description, tag } = Astro.props;
 
 const posts = await getCollection(
   "posts",
   ({ data }) => !data.draft && data.tags.includes(tag)
 );
 const sortedPosts = getSortedPosts(posts);
+
+// AI Paper 这个合集在信息模块下面多显示一张「论文关系图」
+const paperGraph = slug === "ai-paper" ? await getPaperGraph() : [];
 ---
 
 <Layout title={`${title} | ${config.site.title}`}>
@@ -38,7 +43,9 @@ const sortedPosts = getSortedPosts(posts);
       </div>
     </header>
 
-    <section>
+    {paperGraph.length > 0 && <PaperGraph papers={paperGraph} />}
+
+    <section class={paperGraph.length > 0 ? "mt-12" : ""}>
       {
         sortedPosts.length > 0 ? (
           <ul class="flex flex-col gap-4">

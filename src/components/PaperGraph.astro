@@ -1,0 +1,1548 @@
+---
+import type { PaperNode } from "@/utils/getPaperGraph";
+import { GRAPH_ROOT } from "@/data/paperGraphMeta";
+
+interface Props {
+  papers: PaperNode[];
+  /** 画布高度（px），默认 520。 */
+  height?: number;
+}
+
+const { papers, height = 520 } = Astro.props;
+
+const years = [...new Set(papers.map(p => p.year).filter(Boolean))]
+  .map(Number)
+  .sort((a, b) => b - a);
+
+/** 列表视图按 一级 → 二级 分类分组 */
+const tree: {
+  branch: string;
+  leaves: { leaf: string; items: PaperNode[] }[];
+}[] = [];
+for (const paper of papers) {
+  let branch = tree.find(b => b.branch === paper.branch);
+  if (!branch) {
+    branch = { branch: paper.branch, leaves: [] };
+    tree.push(branch);
+  }
+  let leaf = branch.leaves.find(l => l.leaf === paper.leaf);
+  if (!leaf) {
+    leaf = { leaf: paper.leaf, items: [] };
+    branch.leaves.push(leaf);
+  }
+  leaf.items.push(paper);
+}
+tree.sort(
+  (a, b) =>
+    b.leaves.reduce((n, l) => n + l.items.length, 0) -
+    a.leaves.reduce((n, l) => n + l.items.length, 0)
+);
+---
+
+<section class="paper-graph mt-10" data-paper-graph>
+  <h2 class="pg-title">Paper Graph</h2>
+
+  <div class="pg-toolbar">
+    <div class="pg-years" data-pg-years>
+      <span class="pg-toolbar-label">Year</span>
+      <button
+        type="button"
+        class="pg-chip"
+        data-pg-year="all"
+        aria-pressed="true"
+      >
+        All
+        <span class="pg-chip-count">{papers.length}</span>
+      </button>
+      {
+        years.slice(0, 3).map(year => (
+          <button
+            type="button"
+            class="pg-chip"
+            data-pg-year={year}
+            aria-pressed="false"
+          >
+            {year}
+            <span class="pg-chip-count">
+              {papers.filter(p => p.year === year).length}
+            </span>
+          </button>
+        ))
+      }
+      {
+        years.length > 3 && (
+          <>
+            <button
+              type="button"
+              class="pg-chip pg-chip-more"
+              data-pg-year-more
+              aria-expanded="false"
+              aria-label="More years"
+            >
+              ···
+            </button>
+            {years.slice(3).map(year => (
+              <button
+                type="button"
+                class="pg-chip"
+                data-pg-year={year}
+                aria-pressed="false"
+                hidden
+              >
+                {year}
+                <span class="pg-chip-count">
+                  {papers.filter(p => p.year === year).length}
+                </span>
+              </button>
+            ))}
+          </>
+        )
+      }
+    </div>
+
+    <div class="pg-tools">
+      <input
+        class="pg-search"
+        type="search"
+        placeholder="Search papers…"
+        aria-label="Search papers"
+        data-pg-search
+      />
+      <div class="pg-buttons" role="group" aria-label="View controls">
+        <button type="button" data-pg-zoom="in" aria-label="Zoom in">+</button>
+        <button type="button" data-pg-zoom="out" aria-label="Zoom out">−</button>
+        <button type="button" data-pg-reset aria-label="Reset view">Reset</button>
+        <button type="button" data-pg-toggle aria-pressed="false">List</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pg-stage" style={`--pg-height:${height}px`} data-pg-stage>
+    <canvas data-pg-canvas tabindex="0" aria-label="Paper relationship graph"></canvas>
+
+    <div class="pg-card" data-pg-card hidden>
+      <div class="pg-card-media">
+        <img data-pg-card-img alt="" loading="lazy" />
+        <span class="pg-card-media-empty" data-pg-card-noimg>暂无配图</span>
+      </div>
+      <div class="pg-card-body">
+        <p class="pg-card-name" data-pg-card-name></p>
+        <p class="pg-card-meta">
+          <span class="pg-card-year" data-pg-card-year></span>
+          <span class="pg-card-branch" data-pg-card-branch></span>
+        </p>
+        <p class="pg-card-summary" data-pg-card-summary></p>
+        <p class="pg-card-group" data-pg-card-group></p>
+      </div>
+    </div>
+
+    <p class="pg-hint-mobile">Pinch to zoom · drag to pan · tap a node</p>
+  </div>
+
+  <ul class="pg-list" data-pg-list hidden>
+    {
+      papers.map(paper => (
+        <li data-list-year={paper.year ?? ""}>
+          <a href={paper.href}>
+            <span class="pg-list-name">{paper.name}</span>
+            <span class="pg-list-meta">{paper.year ?? ""}</span>
+            <span class="pg-list-group">{paper.branch} / {paper.leaf}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <script
+    type="application/json"
+    id="paper-graph-data"
+    set:html={JSON.stringify({ papers, root: GRAPH_ROOT })}
+  />
+</section>
+
+<style>
+  .paper-graph {
+    --pg-node-min: 5px;
+    --pg-node-max: 17px;
+  }
+
+  .pg-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* 年份 + 搜索 + 按钮：同一行 */
+  .pg-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem 1rem;
+    margin: 0.7rem 0 0.85rem;
+  }
+
+  .pg-years {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 1.9rem;
+  }
+
+  .pg-toolbar-label {
+    margin-right: 0.15rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, var(--muted-foreground) 85%, transparent);
+  }
+
+  .pg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--muted) 60%, transparent);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+      background-color 0.18s,
+      color 0.18s,
+      border-color 0.18s;
+  }
+
+  .pg-chip:hover {
+    background: color-mix(in oklab, var(--muted) 100%, transparent);
+    color: var(--foreground);
+  }
+
+  .pg-chip[aria-pressed="true"] {
+    border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
+    color: var(--accent);
+  }
+
+  .pg-chip-count {
+    font-size: 0.6875rem;
+    opacity: 0.55;
+  }
+
+  .pg-chip-more {
+    padding-inline: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+
+  .pg-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .pg-search {
+    width: 11rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: var(--background);
+    font-size: 0.8125rem;
+    color: var(--foreground);
+    transition: border-color 0.18s;
+  }
+
+  .pg-search::placeholder {
+    color: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+  }
+
+  .pg-search:focus-visible {
+    border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+    outline: none;
+  }
+
+  .pg-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.15rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--muted) 40%, transparent);
+  }
+
+  .pg-buttons button {
+    min-width: 2rem;
+    padding: 0.22rem 0.55rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition:
+      background-color 0.18s,
+      color 0.18s;
+  }
+
+  .pg-buttons button:hover {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  .pg-buttons button[aria-pressed="true"] {
+    background: var(--background);
+    color: var(--accent);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  }
+
+  .pg-stage {
+    position: relative;
+    height: var(--pg-height, 520px);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background:
+      radial-gradient(
+        circle at 30% 20%,
+        color-mix(in oklab, var(--accent) 7%, transparent),
+        transparent 60%
+      ),
+      var(--background);
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .pg-stage:active {
+    cursor: grabbing;
+  }
+
+  .pg-stage canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    outline: none;
+  }
+
+  /* 悬浮卡片 */
+  .pg-card {
+    position: absolute;
+    z-index: 3;
+    width: 17rem;
+    max-width: calc(100% - 1rem);
+    border: 1px solid var(--border);
+    border-radius: 0.85rem;
+    background: color-mix(in oklab, var(--card) 96%, transparent);
+    box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.45);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+    pointer-events: auto;
+  }
+
+  .pg-card-media {
+    position: relative;
+    height: 8.5rem;
+    background: color-mix(in oklab, var(--muted) 65%, transparent);
+  }
+
+  .pg-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+  }
+
+  .pg-card-media-empty {
+    position: absolute;
+    inset: 0;
+    display: none;
+    place-items: center;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+  }
+
+  .pg-card[data-noimg] .pg-card-media-empty {
+    display: grid;
+  }
+
+  .pg-card-body {
+    padding: 0.7rem 0.85rem 0.8rem;
+  }
+
+  .pg-card-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .pg-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.3rem;
+  }
+
+  .pg-card-year,
+  .pg-card-branch {
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    color: var(--muted-foreground);
+  }
+
+  .pg-card-summary {
+    margin-top: 0.45rem;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--muted-foreground);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .pg-card-group {
+    margin-top: 0.45rem;
+    font-size: 0.6875rem;
+    color: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+  }
+
+  .pg-hint-mobile {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0.5rem;
+    display: none;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    pointer-events: none;
+  }
+
+  /* 列表视图（可访问性兜底 + 手机上好用） */
+  .pg-list {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.9rem;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  }
+
+  .pg-list a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    text-decoration: none;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s;
+  }
+
+  .pg-list a:hover {
+    border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+    background: color-mix(in oklab, var(--muted) 55%, transparent);
+  }
+
+  .pg-list-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .pg-list-meta {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    color: var(--muted-foreground);
+  }
+
+  .pg-list-group {
+    font-size: 0.6875rem;
+    color: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+  }
+
+  @media (max-width: 640px) {
+    .pg-stage {
+      height: min(var(--pg-height, 520px), 68vh);
+    }
+
+    .pg-hint-mobile {
+      display: block;
+    }
+  }
+</style>
+
+<script>
+  type Paper = {
+    id: string;
+    name: string;
+    arxivId?: string;
+    summary?: string;
+    image?: string;
+    importance: number;
+    year?: number;
+    venue: string;
+    href: string;
+    group: string;
+    groupSlug: string;
+    branch: string;
+    leaf: string;
+    related: string[];
+  };
+
+  type Kind = "root" | "branch" | "leaf" | "paper";
+  type Palette = { fill: string; soft: string };
+
+  /** 二级分类的配色（亮 / 暗两套） */
+  const LEAF_COLORS: Record<string, { light: string; dark: string }> = {
+    Backbone: { light: "#4c5bd4", dark: "#a9b4f5" },
+    "3D Vision": { light: "#1f8f9c", dark: "#7fd8e0" },
+    Diffusion: { light: "#b8813a", dark: "#e8c48a" },
+    JEPA: { light: "#6f5fd0", dark: "#bcb0f0" },
+    VLA: { light: "#b8506a", dark: "#eba8b8" },
+    WAM: { light: "#3a8f6d", dark: "#8fd9bb" },
+    Uncategorised: { light: "#64748b", dark: "#cbd5e1" },
+    Misc: { light: "#64748b", dark: "#cbd5e1" },
+  };
+
+  type GNode = {
+    id: string;
+    kind: Kind;
+    name: string;
+    paper?: Paper;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    r: number;
+    color: Palette;
+    parent?: GNode;
+    ax: number;
+    ay: number;
+    count?: number;
+    dim?: boolean;
+  };
+
+  function initGraph(root: HTMLElement) {
+    if (root.dataset.pgReady === "1") return;
+    root.dataset.pgReady = "1";
+
+    const dataEl = document.getElementById("paper-graph-data");
+    const canvas = root.querySelector<HTMLCanvasElement>("[data-pg-canvas]");
+    const stage = root.querySelector<HTMLElement>("[data-pg-stage]");
+    const card = root.querySelector<HTMLElement>("[data-pg-card]");
+    const list = root.querySelector<HTMLElement>("[data-pg-list]");
+    const toggle = root.querySelector<HTMLButtonElement>("[data-pg-toggle]");
+    const search = root.querySelector<HTMLInputElement>("[data-pg-search]");
+    if (!dataEl || !canvas || !stage || !card) return;
+
+    const payload = JSON.parse(dataEl.textContent || "{}") as {
+      papers: Paper[];
+      root: string;
+    };
+    const papers = payload.papers ?? [];
+    const rootName = payload.root || "AI";
+    /** 年份折叠：前三个直接显示，其余放在「···」里 */
+    const allYears = [...new Set(papers.map(p => p.year).filter(Boolean))]
+      .map(Number)
+      .sort((a, b) => b - a);
+    const yearsExtra = allYears.slice(3);
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const FONT = () => getComputedStyle(document.body).fontFamily || "sans-serif";
+    /** 分类节点：同级固定大小（AI 最大 → 一级 → 二级），只有论文按重要度变 */
+    const NODE_R = { root: 44, branch: 38, leaf: 30 };
+    const LABEL_FONT = { root: 16, branch: 11.5, leaf: 10.5 };
+    let isDark =
+      document.documentElement.getAttribute("data-theme") === "dark" ||
+      document.documentElement.classList.contains("dark");
+
+    function hexToRgba(hex: string, alpha: number) {
+      const v = hex.replace("#", "");
+      const r = parseInt(v.slice(0, 2), 16);
+      const g = parseInt(v.slice(2, 4), 16);
+      const b = parseInt(v.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function paletteFor(leaf: string): Palette {
+      const pair = LEAF_COLORS[leaf] ?? LEAF_COLORS.Uncategorised;
+      const base = isDark ? pair.dark : pair.light;
+      return { fill: base, soft: hexToRgba(base, isDark ? 0.11 : 0.08) };
+    }
+
+    // ---------- 建树：AI → 一级 → 二级 → 论文 ----------
+    const rootNode: GNode = {
+      id: "__root",
+      kind: "root",
+      name: rootName,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      r: NODE_R.root,
+      color: { fill: "", soft: "" },
+      ax: 0,
+      ay: 0,
+      count: papers.length,
+    };
+
+    const total = Math.max(1, papers.length);
+    const R1 = 330;
+    const R2 = 285;
+    const R3 = 165;
+    /** 画布是宽幅的，把整棵树横向拉开，缩放时才能铺满 */
+    const STRETCH_X = 1.55;
+
+    const nodes: GNode[] = [rootNode];
+    const branchNodes = new Map<string, GNode>();
+    const leafNodes = new Map<string, GNode>();
+    const paperNodes: GNode[] = [];
+
+    const branchOrder = [...new Set(papers.map(p => p.branch))].sort(
+      (a, b) =>
+        papers.filter(p => p.branch === b).length -
+        papers.filter(p => p.branch === a).length
+    );
+
+    // 每次打开都稍微换个朝向（结构不变，只是转一点）
+    let cursor = -Math.PI / 2 + (Math.random() - 0.5) * 0.9;
+    for (const branch of branchOrder) {
+      const count = papers.filter(p => p.branch === branch).length;
+      const span = (count / total) * Math.PI * 2;
+      const angle = cursor + span / 2;
+      cursor += span;
+      const node: GNode = {
+        id: `b:${branch}`,
+        kind: "branch",
+        name: branch,
+        x: Math.cos(angle) * R1,
+        y: Math.sin(angle) * R1,
+        vx: 0,
+        vy: 0,
+        r: NODE_R.branch,
+        color: { fill: "", soft: "" },
+        parent: rootNode,
+        ax: Math.cos(angle) * R1,
+        ay: Math.sin(angle) * R1,
+        count,
+      };
+      branchNodes.set(branch, node);
+      nodes.push(node);
+    }
+
+    for (const branch of branchOrder) {
+      const parent = branchNodes.get(branch)!;
+      const parentAngle = Math.atan2(parent.y, parent.x);
+      const leaves = [
+        ...new Set(papers.filter(p => p.branch === branch).map(p => p.leaf)),
+      ].sort(
+        (a, b) =>
+          papers.filter(p => p.leaf === b).length -
+          papers.filter(p => p.leaf === a).length
+      );
+      const sector = ((parent.count ?? 1) / total) * Math.PI * 2;
+      let leafCursor = parentAngle - sector / 2;
+      for (const leaf of leaves) {
+        const count = papers.filter(
+          p => p.branch === branch && p.leaf === leaf
+        ).length;
+        const span = (count / Math.max(1, parent.count ?? 1)) * sector;
+        const angle = leafCursor + span * (0.35 + Math.random() * 0.3);
+        leafCursor += span;
+        const node: GNode = {
+          id: `l:${branch}/${leaf}`,
+          kind: "leaf",
+          name: leaf,
+          x: parent.x + Math.cos(angle) * R2,
+          y: parent.y + Math.sin(angle) * R2,
+          vx: 0,
+          vy: 0,
+          r: NODE_R.leaf,
+          color: paletteFor(leaf),
+          parent,
+          ax: parent.x + Math.cos(angle) * R2,
+          ay: parent.y + Math.sin(angle) * R2,
+          count,
+        };
+        leafNodes.set(`${branch}/${leaf}`, node);
+        nodes.push(node);
+      }
+    }
+
+    const seenPerLeaf = new Map<string, number>();
+    for (const paper of papers) {
+      const key = `${paper.branch}/${paper.leaf}`;
+      const parent = leafNodes.get(key) ?? rootNode;
+      const index = seenPerLeaf.get(key) ?? 0;
+      seenPerLeaf.set(key, index + 1);
+      const siblings = papers.filter(p => `${p.branch}/${p.leaf}` === key).length;
+      const angle = (index / Math.max(1, siblings)) * Math.PI * 2 + parent.x * 0.01;
+      const radius =
+        R3 * (0.86 + Math.random() * 0.34) +
+        (index % 2 === 0 ? 0 : 24) +
+        (index % 3 === 0 ? 12 : 0);
+      const noise = 26;
+      const x =
+        parent.x +
+        Math.cos(angle) * radius +
+        (Math.random() - 0.5) * noise;
+      const y =
+        parent.y +
+        Math.sin(angle) * radius +
+        (Math.random() - 0.5) * noise;
+      const importance = Math.min(5, Math.max(1, paper.importance ?? 3));
+      const node: GNode = {
+        id: paper.id,
+        kind: "paper",
+        name: paper.name,
+        paper,
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        r: 9 + importance * 3.3,
+        color: paletteFor(paper.leaf),
+        parent,
+        ax: x,
+        ay: y,
+      };
+      paperNodes.push(node);
+      nodes.push(node);
+    }
+
+    // 论文之间的关联线（只连配置文件里写了关系的）
+    const relations: { a: GNode; b: GNode }[] = [];
+    for (const node of paperNodes) {
+      for (const id of node.paper?.related ?? []) {
+        const other = paperNodes.find(n => n.id === id);
+        if (
+          other &&
+          !relations.some(
+            r => (r.a === other && r.b === node) || (r.a === node && r.b === other)
+          )
+        ) {
+          relations.push({ a: node, b: other });
+        }
+      }
+    }
+
+    // ---------- 放松 + 强制分离 ----------
+    // 1) 常规松弛：分类节点钉在自己的角度上，论文在自己分类附近铺开
+    const anchors: Record<string, number> = { branch: 0.45, leaf: 0.3, paper: 0.022 };
+    for (let step = 0; step < 320; step++) {
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        if (a.kind === "root") continue;
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          if (b.kind === "root") continue;
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          let d2 = dx * dx + dy * dy;
+          if (d2 < 0.01) {
+            dx = (Math.random() - 0.5) * 2;
+            dy = (Math.random() - 0.5) * 2;
+            d2 = dx * dx + dy * dy;
+          }
+          const d = Math.sqrt(d2);
+          const bothPapers = a.kind === "paper" && b.kind === "paper";
+          const gap = bothPapers ? 26 : 60;
+          const min = a.r + b.r + gap;
+          const repel = bothPapers ? 1250 : 2200;
+          const force = repel / d2 + (d < min ? (min - d) * 0.75 : 0);
+          const fx = (dx / d) * force;
+          const fy = (dy / d) * force;
+          a.vx -= fx;
+          a.vy -= fy;
+          b.vx += fx;
+          b.vy += fy;
+        }
+      }
+      for (const relation of relations) {
+        const dx = relation.b.x - relation.a.x;
+        const dy = relation.b.y - relation.a.y;
+        const d = Math.max(1, Math.hypot(dx, dy));
+        const force = (d - 140) * 0.004;
+        const fx = (dx / d) * force;
+        const fy = (dy / d) * force;
+        relation.a.vx += fx;
+        relation.a.vy += fy;
+        relation.b.vx -= fx;
+        relation.b.vy -= fy;
+      }
+      for (const node of nodes) {
+        if (node.kind === "root") continue;
+        const pull = anchors[node.kind] ?? 0.02;
+        node.vx += (node.ax - node.x) * pull;
+        node.vy += (node.ay - node.y) * pull;
+        node.vx *= 0.8;
+        node.vy *= 0.8;
+        node.x += node.vx;
+        node.y += node.vy;
+      }
+    }
+
+    /** 一对节点之间至少要留的空隙（世界坐标）。 */
+    function minGap(a: GNode, b: GNode): number {
+      if (a.kind === "paper" && b.kind === "paper") return 26;
+      if (a.kind === "paper" || b.kind === "paper") return 44;
+      return 100;
+    }
+
+    // 2) 强制分离：不管随机扰动多大，最后都保证两两之间不"贴脸"
+    for (let pass = 0; pass < 400; pass++) {
+      let moved = false;
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        if (a.kind === "root") continue;
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          if (b.kind === "root") continue;
+          let dx = b.x - a.x;
+          let dy = b.y - a.y;
+          let d = Math.hypot(dx, dy);
+          if (d < 0.001) {
+            dx = Math.random() - 0.5;
+            dy = Math.random() - 0.5;
+            d = Math.hypot(dx, dy) || 1;
+          }
+          const need = a.r + b.r + minGap(a, b);
+          if (d >= need) continue;
+          const push = need - d;
+          const ux = dx / d;
+          const uy = dy / d;
+          // 论文让得多一点，分类节点尽量待在自己的位置上
+          const wa = a.kind === "paper" ? 0.85 : 0.3;
+          const wb = b.kind === "paper" ? 0.85 : 0.3;
+          const share = wa / (wa + wb);
+          a.x -= ux * push * share;
+          a.y -= uy * push * share;
+          b.x += ux * push * (1 - share);
+          b.y += uy * push * (1 - share);
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+
+    // 横向拉开，配合宽幅画布
+    for (const node of nodes) {
+      node.x *= STRETCH_X;
+      node.ax *= STRETCH_X;
+    }
+
+    // ---------- 相机 ----------
+    let scale = 1;
+    let camX = 0;
+    let camY = 0;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    function toScreen(x: number, y: number) {
+      return {
+        x: (x - camX) * scale + width / 2,
+        y: (y - camY) * scale + height / 2,
+      };
+    }
+
+    function toWorld(x: number, y: number) {
+      return {
+        x: (x - width / 2) / scale + camX,
+        y: (y - height / 2) / scale + camY,
+      };
+    }
+
+    let needsDraw = true;
+
+    function resize() {
+      const rect = stage!.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas!.width = Math.round(width * dpr);
+      canvas!.height = Math.round(height * dpr);
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function fitTo(subset: GNode[], animate = true) {
+      const group = subset.length ? subset : nodes;
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const node of group) {
+        minX = Math.min(minX, node.x - node.r);
+        minY = Math.min(minY, node.y - node.r);
+        maxX = Math.max(maxX, node.x + node.r);
+        maxY = Math.max(maxY, node.y + node.r + 16);
+      }
+      const pad = 56;
+      const spanX = Math.max(1, maxX - minX) + pad * 2;
+      const spanY = Math.max(1, maxY - minY) + pad * 2;
+      const target = Math.min(
+        1.8,
+        Math.max(0.26, Math.min(width / spanX, height / spanY))
+      );
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const from = { scale, camX, camY };
+      if (!animate) {
+        scale = target;
+        camX = cx;
+        camY = cy;
+        needsDraw = true;
+        return;
+      }
+      const start = performance.now();
+      const step = (now: number) => {
+        const t = Math.min(1, (now - start) / 380);
+        const ease = 1 - Math.pow(1 - t, 3);
+        scale = from.scale + (target - from.scale) * ease;
+        camX = from.camX + (cx - from.camX) * ease;
+        camY = from.camY + (cy - from.camY) * ease;
+        needsDraw = true;
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    function clusterOf(node: GNode): GNode[] {
+      if (node.kind === "leaf") {
+        return [node, ...paperNodes.filter(p => p.parent === node)];
+      }
+      if (node.kind === "branch") {
+        const leaves = [...leafNodes.values()].filter(l => l.parent === node);
+        return [
+          node,
+          ...leaves,
+          ...paperNodes.filter(p => p.parent && leaves.includes(p.parent)),
+        ];
+      }
+      return nodes;
+    }
+
+    // ---------- 绘制 ----------
+    let hovered: GNode | null = null;
+    let focused: GNode | null = null;
+    let highlight: Set<GNode> | null = null;
+
+    function readTheme() {
+      isDark =
+        document.documentElement.getAttribute("data-theme") === "dark" ||
+        document.documentElement.classList.contains("dark");
+      for (const node of nodes) {
+        if (node.kind === "paper" && node.paper) {
+          node.color = paletteFor(node.paper.leaf);
+        } else if (node.kind === "leaf") {
+          node.color = paletteFor(node.name);
+        }
+      }
+    }
+
+    function themeColors() {
+      const bodyStyle = getComputedStyle(document.body);
+      const rootStyle = getComputedStyle(document.documentElement);
+      return {
+        fg: bodyStyle.color || "#111",
+        muted:
+          rootStyle.getPropertyValue("--muted-foreground").trim() || "#666",
+        bg: isDark ? "#0b0b10" : "#fcfcfd",
+      };
+    }
+
+    function draw() {
+      if (!ctx) return;
+      const c = themeColors();
+      ctx.clearRect(0, 0, width, height);
+
+      // 分类光晕（替代「论文 → 分类」的连线，画面更干净）
+      for (const leaf of leafNodes.values()) {
+        const members = paperNodes.filter(p => p.parent === leaf);
+        if (!members.length) continue;
+        const reach =
+          Math.max(...members.map(p => Math.hypot(p.x - leaf.x, p.y - leaf.y))) +
+          Math.max(...members.map(p => p.r)) +
+          26;
+        const pos = toScreen(leaf.x, leaf.y);
+        const gradient = ctx.createRadialGradient(
+          pos.x,
+          pos.y,
+          Math.max(1, reach * scale * 0.1),
+          pos.x,
+          pos.y,
+          reach * scale
+        );
+        gradient.addColorStop(0, leaf.color.soft);
+        gradient.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, reach * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 层级线：AI → 一级 → 二级
+      ctx.lineWidth = 1.6;
+      for (const node of nodes) {
+        if (!node.parent || node.kind === "paper") continue;
+        const a = toScreen(node.parent.x, node.parent.y);
+        const b = toScreen(node.x, node.y);
+        const dim = highlight !== null && !highlight.has(node);
+        ctx.strokeStyle = isDark
+          ? `rgba(255,255,255,${dim ? 0.05 : 0.17})`
+          : `rgba(15,23,42,${dim ? 0.04 : 0.15})`;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      // 论文 → 所属分类的连线（同一分类一个色）
+      for (const node of paperNodes) {
+        const parent = node.parent;
+        if (!parent || parent.kind !== "leaf") continue;
+        const a = toScreen(parent.x, parent.y);
+        const b = toScreen(node.x, node.y);
+        const inCluster = highlight === null || highlight.has(node) || highlight.has(parent);
+        ctx.lineWidth = node.dim ? 0.8 : 1.2;
+        ctx.strokeStyle = hexToRgba(
+          parent.color.fill,
+          node.dim ? (isDark ? 0.08 : 0.06) : inCluster ? (isDark ? 0.42 : 0.34) : 0.1
+        );
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      // 论文之间的关联线
+      for (const relation of relations) {
+        const a = toScreen(relation.a.x, relation.a.y);
+        const b = toScreen(relation.b.x, relation.b.y);
+        const active =
+          focused !== null &&
+          focused.kind === "paper" &&
+          (relation.a === focused || relation.b === focused);
+        const dim =
+          !active &&
+          (relation.a.dim ||
+            relation.b.dim ||
+            (highlight !== null && !highlight.has(relation.a)));
+        ctx.lineWidth = active ? 2.2 : 1.2;
+        ctx.strokeStyle = active
+          ? relation.a.color.fill
+          : isDark
+            ? `rgba(148,163,184,${dim ? 0.07 : 0.42})`
+            : `rgba(71,85,105,${dim ? 0.05 : 0.3})`;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      // 节点：论文先画，分类节点后画（保证分类名字在最上层）
+      const order = [...nodes].sort((a, b) => {
+        const weight = (n: GNode) => (n.kind === "paper" ? 0 : 1);
+        return weight(a) - weight(b);
+      });
+      for (const node of order) {
+        const pos = toScreen(node.x, node.y);
+        // 分类节点（AI / 一级 / 二级）不跟着缩放一起变小，否则字会撑破圆圈
+        const r =
+          node.kind === "paper"
+            ? node.r * scale
+            : node.r * Math.max(0.9, Math.min(1.3, scale));
+        if (
+          pos.x < -60 ||
+          pos.y < -60 ||
+          pos.x > width + 60 ||
+          pos.y > height + 60
+        ) {
+          continue;
+        }
+        const isHover = node === hovered;
+        const isFocus = node === focused;
+        ctx.globalAlpha = node.dim ? 0.16 : 1;
+
+        if (node.kind === "root") {
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = c.fg;
+          ctx.fill();
+          ctx.fillStyle = c.bg;
+          ctx.font = `700 ${LABEL_FONT.root}px ${FONT()}`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(node.name, pos.x, pos.y + 1);
+        } else if (node.kind === "leaf") {
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = c.bg;
+          ctx.stroke();
+          ctx.fillStyle = node.color.fill;
+          ctx.fill();
+          if (isHover || isFocus) {
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = c.fg;
+            ctx.stroke();
+          }
+          ctx.fillStyle = c.bg;
+          ctx.font = `700 ${LABEL_FONT.leaf}px ${FONT()}`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(node.name, pos.x, pos.y + 0.5);
+        } else if (node.kind === "branch") {
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = c.bg;
+          ctx.stroke();
+          ctx.fillStyle = isDark ? "#e5e7eb" : "#111827";
+          ctx.globalAlpha = (node.dim ? 0.16 : 1) * 0.92;
+          ctx.fill();
+          ctx.globalAlpha = node.dim ? 0.16 : 1;
+          if (isHover || isFocus) {
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = node.color.fill;
+            ctx.stroke();
+          }
+          ctx.fillStyle = isDark ? "#0b0b10" : "#ffffff";
+          ctx.font = `700 ${LABEL_FONT.branch}px ${FONT()}`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(node.name, pos.x, pos.y + 0.5);
+        } else {
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = node.color.fill;
+          ctx.fill();
+          ctx.lineWidth = isHover || isFocus ? 2.4 : 1.6;
+          ctx.strokeStyle = isHover || isFocus ? c.fg : c.bg;
+          ctx.stroke();
+
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // 论文名字单独一层，画在所有节点之上，不会被分类圆盖住
+      for (const node of paperNodes) {
+        const importance = node.paper?.importance ?? 1;
+        const isHover = node === hovered;
+        const isFocus = node === focused;
+        if (!(importance >= 4 || scale > 0.85 || isHover || isFocus)) continue;
+        const pos = toScreen(node.x, node.y);
+        const r = node.r * scale;
+        if (pos.x < -60 || pos.y < -60 || pos.x > width + 60 || pos.y > height + 60) {
+          continue;
+        }
+        const label =
+          node.name.length > 24 ? `${node.name.slice(0, 23)}…` : node.name;
+        ctx.globalAlpha = node.dim ? 0.2 : 1;
+        ctx.font = `${isHover || isFocus ? "600 " : ""}${Math.max(
+          10,
+          Math.min(13, 10 + importance)
+        )}px ${FONT()}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.lineWidth = 3;
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = c.bg;
+        ctx.strokeText(label, pos.x, pos.y + r + 2);
+        ctx.fillStyle = isDark ? "#f5f5f5" : "#111";
+        ctx.fillText(label, pos.x, pos.y + r + 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // ---------- 交互 ----------
+    function nodeAt(clientX: number, clientY: number): GNode | null {
+      const rect = stage!.getBoundingClientRect();
+      const world = toWorld(clientX - rect.left, clientY - rect.top);
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        const node = nodes[i];
+        if (Math.hypot(node.x - world.x, node.y - world.y) <= node.r + 4) {
+          return node;
+        }
+      }
+      return null;
+    }
+
+    /** 当前搜索词与当前选中的年份（null = All），两者都参与"变淡"的计算 */
+    let activeQuery = "";
+    /** 当前选中的年份（null = All），列表模式也跟着过滤 */
+    let activeYear: number | null = null;
+
+    /**
+     * 谁变淡 = 年份筛选 ∪ 搜索 ∪ 悬浮高亮 三者叠加。
+     * 以前悬浮结束会把 dim 全部清空，结果年份筛选被"点亮"了。
+     */
+    function applyDim() {
+      for (const node of nodes) {
+        if (node.kind === "paper") {
+          const paper = node.paper;
+          const yearOk = activeYear === null || paper?.year === activeYear;
+          const queryOk =
+            activeQuery.length === 0 ||
+            `${node.name} ${paper?.summary ?? ""} ${paper?.branch ?? ""} ${
+              paper?.leaf ?? ""
+            }`
+              .toLowerCase()
+              .includes(activeQuery);
+          const hoverOk = highlight === null || highlight.has(node);
+          node.dim = !(yearOk && queryOk && hoverOk);
+        }
+      }
+      for (const leaf of leafNodes.values()) {
+        const members = paperNodes.filter(p => p.parent === leaf);
+        const selfMatch =
+          activeQuery.length > 0 && leaf.name.toLowerCase().includes(activeQuery);
+        leaf.dim = !selfMatch && members.length > 0 && members.every(p => p.dim);
+      }
+      for (const branch of branchNodes.values()) {
+        const leaves = [...leafNodes.values()].filter(l => l.parent === branch);
+        const selfMatch =
+          activeQuery.length > 0 &&
+          branch.name.toLowerCase().includes(activeQuery);
+        branch.dim = !selfMatch && leaves.length > 0 && leaves.every(l => l.dim);
+      }
+    }
+
+    function setHighlight(node: GNode | null) {
+      if (!node) {
+        highlight = null;
+      } else if (node.kind === "paper") {
+        const related = new Set<GNode>([node]);
+        for (const relation of relations) {
+          if (relation.a === node) related.add(relation.b);
+          if (relation.b === node) related.add(relation.a);
+        }
+        highlight = related;
+      } else {
+        highlight = new Set(clusterOf(node));
+      }
+      applyDim();
+    }
+
+    function positionCard(clientX: number, clientY: number) {
+      card!.hidden = false;
+      const stageRect = stage!.getBoundingClientRect();
+      const cardRect = card!.getBoundingClientRect();
+      let left = clientX - stageRect.left + 14;
+      let top = clientY - stageRect.top + 14;
+      left = Math.max(8, Math.min(left, stageRect.width - cardRect.width - 8));
+      top = Math.max(8, Math.min(top, stageRect.height - cardRect.height - 8));
+      card!.style.left = `${left}px`;
+      card!.style.top = `${top}px`;
+    }
+
+    function showPaperCard(node: GNode, clientX: number, clientY: number) {
+      const paper = node.paper!;
+      const img = card!.querySelector<HTMLImageElement>("[data-pg-card-img]");
+      const name = card!.querySelector<HTMLElement>("[data-pg-card-name]");
+      const year = card!.querySelector<HTMLElement>("[data-pg-card-year]");
+      const branch = card!.querySelector<HTMLElement>("[data-pg-card-branch]");
+      const summary = card!.querySelector<HTMLElement>("[data-pg-card-summary]");
+      const group = card!.querySelector<HTMLElement>("[data-pg-card-group]");
+      const link = card!.querySelector<HTMLAnchorElement>("[data-pg-card-link]");
+
+      if (name) name.textContent = paper.name;
+      if (year) year.textContent = paper.year ? String(paper.year) : "年份未知";
+      if (branch) branch.textContent = `${paper.branch} / ${paper.leaf}`;
+      if (summary) {
+        summary.textContent = paper.summary ?? "";
+        summary.hidden = !paper.summary;
+      }
+      if (group) group.textContent = `In: ${paper.group}`;
+      if (link) {
+        link.href = paper.href;
+        link.hidden = false;
+      }
+      if (img) {
+        if (paper.image) {
+          img.src = paper.image;
+          img.alt = `${paper.name} 配图`;
+          img.hidden = false;
+          card!.removeAttribute("data-noimg");
+        } else {
+          img.removeAttribute("src");
+          img.hidden = true;
+          card!.setAttribute("data-noimg", "1");
+        }
+      }
+      positionCard(clientX, clientY);
+    }
+
+    let dragging: GNode | null = null;
+    let panning = false;
+    let moved = false;
+    let lastX = 0;
+    let lastY = 0;
+    const pointers = new Map<number, { x: number; y: number }>();
+    let pinch = 0;
+
+    stage.addEventListener("pointerdown", event => {
+      if (event.target !== canvas) return;
+      canvas.setPointerCapture(event.pointerId);
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      lastX = event.clientX;
+      lastY = event.clientY;
+      moved = false;
+      if (pointers.size === 2) {
+        const [p1, p2] = [...pointers.values()];
+        pinch = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        return;
+      }
+      const node = nodeAt(event.clientX, event.clientY);
+      if (node && node.kind === "paper") dragging = node;
+      else panning = true;
+    });
+
+    canvas.addEventListener("pointermove", event => {
+      if (pointers.has(event.pointerId)) {
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      }
+      if (pointers.size === 2) {
+        const [p1, p2] = [...pointers.values()];
+        const distance = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        if (pinch > 0) {
+          scale = Math.min(3.2, Math.max(0.26, scale * (distance / pinch)));
+          needsDraw = true;
+        }
+        pinch = distance;
+        return;
+      }
+
+      const dx = event.clientX - lastX;
+      const dy = event.clientY - lastY;
+      if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+
+      if (dragging) {
+        const rect = stage!.getBoundingClientRect();
+        const world = toWorld(event.clientX - rect.left, event.clientY - rect.top);
+        dragging.x = world.x;
+        dragging.y = world.y;
+        dragging.ax = world.x;
+        dragging.ay = world.y;
+        needsDraw = true;
+      } else if (panning) {
+        camX -= dx / scale;
+        camY -= dy / scale;
+        needsDraw = true;
+      } else {
+        const node = nodeAt(event.clientX, event.clientY);
+        if (node !== hovered) {
+          hovered = node;
+          focused = node && node.kind === "paper" ? node : null;
+          setHighlight(node);
+          needsDraw = true;
+          // 只有论文节点弹卡片；分类节点只做高亮
+          if (node && node.kind === "paper") {
+            showPaperCard(node, event.clientX, event.clientY);
+          } else {
+            card!.hidden = true;
+          }
+        } else if (node && node.kind === "paper") {
+          positionCard(event.clientX, event.clientY);
+        }
+      }
+
+      lastX = event.clientX;
+      lastY = event.clientY;
+    });
+
+    function endPointer(event: PointerEvent) {
+      pointers.delete(event.pointerId);
+      if (pointers.size < 2) pinch = 0;
+      if (!moved) {
+        const node = nodeAt(event.clientX, event.clientY);
+        if (node?.kind === "paper" && node.paper) {
+          window.location.href = node.paper.href;
+        } else if (node) {
+          fitTo(clusterOf(node));
+        }
+      }
+      dragging = null;
+      panning = false;
+      moved = false;
+    }
+    canvas.addEventListener("pointerup", endPointer);
+    canvas.addEventListener("pointercancel", endPointer);
+    canvas.addEventListener("pointerleave", () => {
+      if (!dragging && !panning) {
+        hovered = null;
+        focused = null;
+        setHighlight(null);
+        needsDraw = true;
+        card!.hidden = true;
+      }
+    });
+
+    canvas.addEventListener(
+      "wheel",
+      event => {
+        event.preventDefault();
+        const rect = stage!.getBoundingClientRect();
+        const before = toWorld(event.clientX - rect.left, event.clientY - rect.top);
+        scale = Math.min(
+          3.2,
+          Math.max(0.26, scale * Math.exp(-event.deltaY * 0.0015))
+        );
+        const after = toWorld(event.clientX - rect.left, event.clientY - rect.top);
+        camX += before.x - after.x;
+        camY += before.y - after.y;
+        needsDraw = true;
+      },
+      { passive: false }
+    );
+
+    canvas.addEventListener("dblclick", () => fitTo(nodes));
+
+    root.querySelectorAll<HTMLButtonElement>("[data-pg-zoom]").forEach(button => {
+      button.addEventListener("click", () => {
+        scale = Math.min(
+          3.2,
+          Math.max(0.26, scale * (button.dataset.pgZoom === "in" ? 1.25 : 0.8))
+        );
+        needsDraw = true;
+      });
+    });
+    root
+      .querySelector("[data-pg-reset]")
+      ?.addEventListener("click", () => fitTo(nodes));
+
+    toggle?.addEventListener("click", () => {
+      const showList = list?.hidden ?? false;
+      if (list) list.hidden = !showList;
+      stage!.hidden = showList;
+      toggle.setAttribute("aria-pressed", String(showList));
+      toggle.textContent = showList ? "Graph" : "List";
+      applyListFilter();
+      if (!showList) {
+        resize();
+        needsDraw = true;
+      }
+    });
+
+    function applyListFilter() {
+      if (!list) return;
+      const query = (search?.value ?? "").trim().toLowerCase();
+      list.querySelectorAll<HTMLLIElement>("[data-list-year]").forEach(item => {
+        const year = Number(item.dataset.listYear);
+        const yearOk = activeYear === null || year === activeYear;
+        const name = (item.textContent ?? "").toLowerCase();
+        const queryOk = query.length === 0 || name.includes(query);
+        item.hidden = !(yearOk && queryOk);
+      });
+    }
+
+    const moreButton = root.querySelector<HTMLButtonElement>("[data-pg-year-more]");
+    moreButton?.addEventListener("click", () => {
+      const expanded = moreButton.getAttribute("aria-expanded") === "true";
+      moreButton.setAttribute("aria-expanded", String(!expanded));
+      moreButton.textContent = expanded ? "···" : "Less";
+      root
+        .querySelectorAll<HTMLButtonElement>("[data-pg-year]")
+        .forEach(chip => {
+          if (yearsExtra.includes(Number(chip.dataset.pgYear))) {
+            chip.hidden = expanded;
+          }
+        });
+    });
+
+    const yearButtons = [
+      ...root.querySelectorAll<HTMLButtonElement>("[data-pg-year]"),
+    ];
+
+    function selectYear(button: HTMLButtonElement | null) {
+      const raw = button?.dataset.pgYear ?? "all";
+      const isAll = raw === "all";
+      activeYear = isAll ? null : Number(raw);
+      yearButtons.forEach(other =>
+        other.setAttribute("aria-pressed", String(other === button))
+      );
+      highlight = null;
+      applyDim();
+      applyListFilter();
+      needsDraw = true;
+    }
+
+    yearButtons.forEach(button => {
+      button.addEventListener("click", () => selectYear(button));
+    });
+
+    search?.addEventListener("input", () => {
+      activeQuery = search.value.trim().toLowerCase();
+      highlight = null;
+      applyDim();
+      applyListFilter();
+      needsDraw = true;
+    });
+
+    canvas.addEventListener("keydown", event => {
+      const step = 50 / scale;
+      if (event.key === "ArrowLeft") camX -= step;
+      else if (event.key === "ArrowRight") camX += step;
+      else if (event.key === "ArrowUp") camY -= step;
+      else if (event.key === "ArrowDown") camY += step;
+      else if (event.key === "0") fitTo(nodes, false);
+      else return;
+      event.preventDefault();
+      needsDraw = true;
+    });
+
+    const themeObserver = new MutationObserver(() => {
+      readTheme();
+      needsDraw = true;
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "class"],
+    });
+
+    const resizeObserver = new ResizeObserver(() => resize());
+    resizeObserver.observe(stage);
+
+    readTheme();
+    resize();
+    fitTo(nodes, false);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      draw();
+    } else {
+      const loop = () => {
+        if (needsDraw) {
+          draw();
+          needsDraw = false;
+        }
+        requestAnimationFrame(loop);
+      };
+      loop();
+    }
+  }
+
+  function boot() {
+    document
+      .querySelectorAll<HTMLElement>("[data-paper-graph]")
+      .forEach(initGraph);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+  document.addEventListener("astro:page-load", boot);
+</script>

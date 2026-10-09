@@ -123,11 +123,7 @@ const variationMoves = variation
   .filter(Boolean);
 
 // Replay the game (captures included) and then the variation, if any.
-const {
-  points,
-  captures: allCaptures,
-  placements,
-} = boardState({
+const { points, placements } = boardState({
   size,
   mainMoves: record.moves.slice(0, shown),
   variation: variationMoves,
@@ -145,14 +141,6 @@ const {
 const COLUMNS = "ABCDEFGHJKLMNOPQRST";
 const starPoints = new Set(
   [3, 9, 15].flatMap(y => [3, 9, 15].map(x => `${x},${y}`))
-);
-
-// 提子：only the captures that happened in this figure's window (the moves it
-// numbers, plus any variation moves) — earlier figures already showed theirs.
-const figureCaptures = allCaptures.filter(
-  capture =>
-    capture.variationNumber !== undefined ||
-    (capture.moveNumber !== undefined && capture.moveNumber >= firstNumbered)
 );
 
 /**

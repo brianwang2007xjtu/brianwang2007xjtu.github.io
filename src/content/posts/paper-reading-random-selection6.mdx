@@ -1,0 +1,80 @@
+---
+title: "Paper Reading: Random Selection 6"
+author: master
+pubDatetime: 2026-10-13T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+  - vla
+description: "更多的 VLAs 📝 ～"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+新功能 [Paper Graph](/collection/ai-paper/) 已经上线博客，可在 **Collections** 中选择 **AI Paper** 查看。
+
+## $\pi^*\_\{0.6}$
+
+<PaperNote
+  title="pi*0.6"
+  arxivId="2511.14759"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/%CF%80*0.6.pdf"
+  summary="RECAP 利用真实机器人经验、强化学习与人工纠错持续改进 VLA"
+  images={["/papers/pi0.6.png"]}
+>
+
+$\pi^*\_\{0.6}$ 其实更应该叫做 RECAP，是 Physical Intelligence 在机器人强化学习方向上的一项重要工作。相比单纯扩大示范数据集，这篇论文更进一步，将机器人部署后的自主执行轨迹和人类纠错也纳入学习闭环。作者提出 **RECAP**，让 VLA 不仅能模仿人类示范，还能通过反复实践改进自己的行为。这里一个很有意思的设计取舍是，Flow Matching 策略不需要直接采用传统 PPO 的策略梯度更新，而是可以利用价值函数提供的反馈，以监督学习的方式吸收不同质量的交互经验。
+
+RECAP 首先训练价值函数，利用任务成功与失败等反馈估计状态价值，再计算动作相对于当前状态预期表现的 Advantage，并将其转化为 **positive / negative 的二值条件标记**。训练 VLA 时，这个标记作为额外条件输入，使模型能够从高优势动作中学习更好的行为，同时保留低优势轨迹，而不是简单丢弃失败数据。人类在自主执行过程中提供的纠错动作也会被标记为正优势。
+
+在衣物折叠、纸箱组装和意式浓缩咖啡制作等真实机器人任务中，RECAP 在部分最困难的任务上将执行吞吐量提高到原来的两倍以上，并将失败率降低至约一半，整体来说，效果不错。
+
+</PaperNote>
+
+## $\pi_\{0.7}$
+
+<PaperNote
+  title="pi0.7"
+  arxivId="2604.15483"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/%CF%800.7.pdf"
+  summary= "通过丰富的多模态上下文，让通用 VLA 更充分地利用异质数据并组合已有技能"
+  images={["/papers/pi0.7.png"]}
+>
+
+$\pi_\{0.7}$ 是 $\pi^*\_\{0.6}$ 的续作，是大名鼎鼎的「$\pi$ 系列」的完结篇。它很好地说明了通用机器人策略的能力不只取决于训练数据有多丰富，还取决于模型能否理解这些**数据之间的区别**。$\pi_\{0.7}$ 的做法是把这些差异显式写进模型的上下文，让提示信息不再局限于「把杯子放进柜子」这样的任务指令，而是进一步描述当前子任务、希望达到的视觉状态，以及轨迹的执行速度和质量。
+
+![](/papers/pi0.7-2.png)
+
+具体而言，$\pi_\{0.7}$ 是一个约 5B 参数的 VLA，由 4B 参数的视觉语言模型、$\mathbb\{MEM}$ 风格的视频历史编码器和约 860M 参数的 Action Expert 构成。除了整体任务指令，模型还可以接收 **Subtask Instructions、Subgoal Images 和 Episode Metadata**。其中，Subgoal Images 尤其值得关注：它们提供下一阶段期望达到的视觉状态，推理时也可以由世界模型根据当前观测和子任务生成。相比纯语言描述，这类视觉条件能够表达目标物体的具体位置、场景布局等细节；而元数据则帮助模型区分不同速度、质量和错误状态下的行为。
+
+实验中，$\pi_\{0.7}$ 展示了未见环境中的语言指令跟随、跨机器人本体迁移和技能组合能力。一个很有代表性的结果是，模型能够将主要来自较小双臂机器人的衣物折叠经验迁移到此前没有对应折叠训练数据的 **UR5e** 机器人上；在加入生成的子目标图像后，其衬衫折叠成功率达到 **80.0%**，与专家遥操作员的 80.6% 接近。对通用 VLA 而言，如何表达训练数据中的策略差异，或许是释放大规模异质数据价值的重要环节。
+
+</PaperNote>
+
+## MoPA
+
+<PaperNote
+  title="MoPA"
+  arxivId="2609.12081"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/MoPA.pdf"
+  summary= "为移动底盘和机械臂构建 heterogeneous 的感知表征，并在 joint action 生成中保留整体协调"
+  images={["/papers/MoPA.png"]}
+>
+
+
+
+**移动操作**不能简单理解为导航和抓取两个任务的拼接。底盘移动时，需要关注较大范围的场景布局和可通行区域；机械臂操作时，则更依赖目标物体的局部几何和交互状态。与此同时，两个子系统并不是独立工作的：底盘移动会改变机械臂的工作空间，机械臂的可达范围也会反过来限制底盘的位置。MoPA 从这层关系出发，将重点放在感知与动作之间的对应关系上。
+
+为此，MoPA 引入 **Dual Perceptual Streams**，利用两组（**Mobile Query / Manip Query**）相互屏蔽直接注意力的 **Query Bank**，分别形成面向 Mobile 和 Manipulation 的感知表征。随后，**Perception2Action Adaptation** 在结构化的 **MoT Decoder** 中逐层更新感知 Query 和对应的 Action Stream，使感知信息能够随着动作生成过程逐步适配各自的控制目标。不过，两套感知流的分离并不意味着底盘和机械臂也必须完全独立决策：两个 Action Stream 仍然能够交换信息，从而共同考虑整机的运动状态。最后，模型采用 **Coupled Conditional Flow Matching** 联合学习两组动作的向量场，同步生成底盘与机械臂的动作序列，将专属感知与全身协调结合起来。
+
+MoPA 在 ManiSkill-HAB 的 SetTable、TidyHouse 和 PrepareGroceries 三个任务套件上分别取得了 **88.3%**、**72.2%** 和 **67.8%** 的宏平均技能成功率，并在四项真实机器人任务中达到 **76.3%** 的平均完整任务成功率，比最佳对比方法高出 **12.5** 个百分点。
+
+这篇论文最值得借鉴的并不是简单地增加一个 Query Bank 或者再设计一套 Transformer，而是它对策略内部信息流的组织方式：**不同动作分支可以拥有各自的感知重点，却不必牺牲联合决策能力。** 
+
+PS：今天下午参加了本篇作者的 Talk，遂读之。
+
+</PaperNote>
+
+
+

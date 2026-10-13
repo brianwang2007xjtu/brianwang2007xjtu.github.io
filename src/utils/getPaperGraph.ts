@@ -16,6 +16,8 @@ export interface PaperNode {
   /** Stable id (arXiv id when known, else a slug of the name). */
   id: string;
   name: string;
+  /** 图上显示用（可能是 LaTeX）；默认等于 name。 */
+  label: string;
   arxivId?: string;
   summary?: string;
   /** Figure that appears in the note (first image of the PaperNote). */
@@ -189,6 +191,7 @@ export async function getPaperGraph(): Promise<PaperNode[]> {
       nodes.push({
         id,
         name: paper.name,
+        label: meta.label?.trim() ? meta.label.trim() : paper.name,
         arxivId: paper.arxivId,
         summary: paper.summary,
         image: paper.image,

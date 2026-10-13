@@ -1,6 +1,7 @@
 ---
 import type { PaperNode } from "@/utils/getPaperGraph";
 import { GRAPH_ROOT } from "@/data/paperGraphMeta";
+import { paperLabelToText, isLatexLabel } from "@/utils/paperLabel";
 
 interface Props {
   papers: PaperNode[];
@@ -144,7 +145,9 @@ tree.sort(
       papers.map(paper => (
         <li data-list-year={paper.year ?? ""}>
           <a href={paper.href}>
-            <span class="pg-list-name">{paper.name}</span>
+            <span class="pg-list-name" data-latex={paper.label}>
+              {paperLabelToText(paper.label)}
+            </span>
             <span class="pg-list-meta">{paper.year ?? ""}</span>
             <span class="pg-list-group">{paper.branch} / {paper.leaf}</span>
           </a>
@@ -482,9 +485,15 @@ tree.sort(
 </style>
 
 <script>
+  import {
+    paperLabelToText,
+    isLatexLabel,
+  } from "@/utils/paperLabel";
+
   type Paper = {
     id: string;
     name: string;
+    label: string;
     arxivId?: string;
     summary?: string;
     image?: string;
@@ -518,6 +527,8 @@ tree.sort(
     id: string;
     kind: Kind;
     name: string;
+    /** 画布上实际绘制的文字（LaTeX 已转 Unicode） */
+    text: string;
     paper?: Paper;
     x: number;
     y: number;
@@ -561,6 +572,29 @@ tree.sort(
     if (!ctx) return;
 
     const FONT = () => getComputedStyle(document.body).fontFamily || "sans-serif";
+
+    /** 需要显示 LaTeX 名字时才去加载站点自带的 KaTeX（MathRenderer 只在页面有公式时加载）。 */
+    let katexLoading: Promise<void> | null = null;
+    function ensureKatex(): Promise<void> {
+      const w = window as unknown as { katex?: unknown };
+      if (w.katex) return Promise.resolve();
+      if (katexLoading) return katexLoading;
+      const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+      katexLoading = new Promise<void>(resolve => {
+        if (!document.querySelector('link[href*="katex.min.css"]')) {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = `${base}/katex/katex.min.css`;
+          document.head.appendChild(link);
+        }
+        const script = document.createElement("script");
+        script.src = `${base}/katex/katex.min.js`;
+        script.onload = () => resolve();
+        script.onerror = () => resolve();
+        document.head.appendChild(script);
+      });
+      return katexLoading;
+    }
     /** 分类节点：同级固定大小（AI 最大 → 一级 → 二级），只有论文按重要度变 */
     const NODE_R = { root: 44, branch: 38, leaf: 30 };
     const LABEL_FONT = { root: 16, branch: 11.5, leaf: 10.5 };
@@ -587,6 +621,7 @@ tree.sort(
       id: "__root",
       kind: "root",
       name: rootName,
+      text: rootName,
       x: 0,
       y: 0,
       vx: 0,
@@ -627,6 +662,7 @@ tree.sort(
         id: `b:${branch}`,
         kind: "branch",
         name: branch,
+        text: branch,
         x: Math.cos(angle) * R1,
         y: Math.sin(angle) * R1,
         vx: 0,
@@ -665,6 +701,7 @@ tree.sort(
           id: `l:${branch}/${leaf}`,
           kind: "leaf",
           name: leaf,
+          text: leaf,
           x: parent.x + Math.cos(angle) * R2,
           y: parent.y + Math.sin(angle) * R2,
           vx: 0,
@@ -707,6 +744,7 @@ tree.sort(
         id: paper.id,
         kind: "paper",
         name: paper.name,
+        text: paperLabelToText(paper.label ?? paper.name),
         paper,
         x,
         y,
@@ -1086,7 +1124,7 @@ tree.sort(
           ctx.font = `700 ${LABEL_FONT.root}px ${FONT()}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(node.name, pos.x, pos.y + 1);
+          ctx.fillText(node.text, pos.x, pos.y + 1);
         } else if (node.kind === "leaf") {
           ctx.beginPath();
           ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
@@ -1104,7 +1142,7 @@ tree.sort(
           ctx.font = `700 ${LABEL_FONT.leaf}px ${FONT()}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(node.name, pos.x, pos.y + 0.5);
+          ctx.fillText(node.text, pos.x, pos.y + 0.5);
         } else if (node.kind === "branch") {
           ctx.beginPath();
           ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
@@ -1124,7 +1162,7 @@ tree.sort(
           ctx.font = `700 ${LABEL_FONT.branch}px ${FONT()}`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(node.name, pos.x, pos.y + 0.5);
+          ctx.fillText(node.text, pos.x, pos.y + 0.5);
         } else {
           ctx.beginPath();
           ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
@@ -1150,7 +1188,7 @@ tree.sort(
           continue;
         }
         const label =
-          node.name.length > 24 ? `${node.name.slice(0, 23)}…` : node.name;
+          node.text.length > 24 ? `${node.text.slice(0, 23)}…` : node.text;
         ctx.globalAlpha = node.dim ? 0.2 : 1;
         ctx.font = `${isHover || isFocus ? "600 " : ""}${Math.max(
           10,
@@ -1197,9 +1235,9 @@ tree.sort(
           const yearOk = activeYear === null || paper?.year === activeYear;
           const queryOk =
             activeQuery.length === 0 ||
-            `${node.name} ${paper?.summary ?? ""} ${paper?.branch ?? ""} ${
-              paper?.leaf ?? ""
-            }`
+            `${node.name} ${node.text} ${paper?.summary ?? ""} ${
+              paper?.branch ?? ""
+            } ${paper?.leaf ?? ""}`
               .toLowerCase()
               .includes(activeQuery);
           const hoverOk = highlight === null || highlight.has(node);
@@ -1259,7 +1297,21 @@ tree.sort(
       const group = card!.querySelector<HTMLElement>("[data-pg-card-group]");
       const link = card!.querySelector<HTMLAnchorElement>("[data-pg-card-link]");
 
-      if (name) name.textContent = paper.name;
+      if (name) {
+        const label = paper.label ?? paper.name;
+        name.textContent = paperLabelToText(label);
+        name.removeAttribute("data-latex");
+        if (isLatexLabel(label)) {
+          ensureKatex().then(() => {
+            const katex = (window as unknown as { katex?: { renderToString: (t: string, o: object) => string } }).katex;
+            if (!katex) return;
+            name.innerHTML = katex.renderToString(
+              label.replace(/^\$|\$$/g, ""),
+              { throwOnError: false }
+            );
+          });
+        }
+      }
       if (year) year.textContent = paper.year ? String(paper.year) : "年份未知";
       if (branch) branch.textContent = `${paper.branch} / ${paper.leaf}`;
       if (summary) {

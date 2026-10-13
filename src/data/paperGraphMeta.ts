@@ -20,6 +20,8 @@ export interface PaperMeta {
   branch?: string;
   /** 发表年份，不填则从 arXiv 编号推断。 */
   year?: number;
+  /** 图上的显示名，可以写 LaTeX，例如 "$\\pi^*_{0.6}$"。默认用论文名。 */
+  label?: string;
   /** 期刊 / 会议名；留空则显示 preprint。 */
   venue?: string;
   /** 设为 true 则不出现在图上。 */
@@ -50,17 +52,20 @@ export const paperMeta: Record<string, PaperMeta> = {
   "2602.10098": { importance: 3, branch: "Embodied/VLA" },  // VLA-JEPA
 
   /* ---------- 2025 ---------- */
+  "2511.14759": { importance: 3, branch: "Embodied/VLA", label: "$\\pi^*_{0.6}$" },  // pi*0.6
+  "2604.15483": { importance: 4, branch: "Embodied/VLA", label: "$\\pi_{0.7}$" },  // pi0.7
+  "2609.12081": { importance: 2, branch: "Embodied/VLA" },  // MoPA
   "2501.14622": { importance: 3, branch: "Embodied/JEPA" },  // ACT-JEPA
   "2507.04447": { importance: 2, branch: "Embodied/VLA" },  // DreamVLA
   "2511.08544": { importance: 2, branch: "Embodied/JEPA" },  // LeJEPA
-  "2504.16054": { importance: 3, branch: "Embodied/VLA" },  // pi_0.5
+  "2504.16054": { importance: 3, branch: "Embodied/VLA", label: "$\\pi_{0.5}$" },  // pi_0.5
   "2506.09985": { importance: 5, branch: "Embodied/JEPA" },  // V-JEPA-2
   "2503.11651": { importance: 5, branch: "CV/3D Vision", venue: "CVPR 2025 (Best Paper)", year: 2025 },  // VGGT
   "2512.10942": { importance: 2, branch: "Embodied/JEPA" },  // VL-JEPA
 
   /* ---------- 2024 ---------- */
   "2410.11758": { importance: 4, branch: "Embodied/VLA", venue: "ICLR 2025", year: 2025 },  // LAPA
-  "2410.24164": { importance: 3, branch: "Embodied/VLA", venue: "RSS 2025", year: 2025 },  // pi_0
+  "2410.24164": { importance: 3, branch: "Embodied/VLA", venue: "RSS 2025", year: 2025, label: "$\\pi_0$" },  // pi_0
   "2404.08471": { importance: 3, branch: "Embodied/JEPA", venue: "CVPR 2024", year: 2024 },  // V-JEPA
 
   /* ---------- 2023 ---------- */
@@ -106,7 +111,14 @@ export const paperRelations: [string, string][] = [
   ["2307.15818", "2410.24164"],  // RT-2 → pi_0
   ["2404.08471", "2506.09985"],  // V-JEPA → V-JEPA 2
   ["2404.08471", "2512.10942"],  // V-JEPA → VL-JEPA
-  ["2410.24164", "2504.16054"],  // pi_0 → pi_0.5
+  ["2410.24164", "2504.16054"],  // pi_0 ↔ pi_0.5
+  // π 系列内部构成完全图
+  ["2410.24164", "2511.14759"],  // pi_0 ↔ pi*0.6
+  ["2410.24164", "2604.15483"],  // pi_0 ↔ pi0.7
+  ["2504.16054", "2511.14759"],  // pi_0.5 ↔ pi*0.6
+  ["2504.16054", "2604.15483"],  // pi_0.5 ↔ pi0.7
+  ["2511.14759", "2604.15483"],  // pi*0.6 ↔ pi0.7
+  ["2609.12081", "2504.16054"],  // MoPA ↔ pi_0.5
   ["2511.08544", "2602.11389"],  // LeJEPA ↔ C-JEPA
   ["2506.09985", "2602.11832"],  // V-JEPA 2 → JEPA-VLA
   ["2506.09985", "2603.22281"],  // V-JEPA 2 → ThinkJEPA

@@ -25,4 +25,10 @@ export const collections: Collection[] = [
     description: "Summary on days in LMH, Oxford",
     tag: "lmh-oxford"
   },
+  {
+    slug: "electric-tech-sys",
+    title: "电子技术与系统",
+    description: "电子技术与系统课程笔记：模拟电路与数字逻辑",
+    tag: "electric-tech-sys",
+  },
 ];

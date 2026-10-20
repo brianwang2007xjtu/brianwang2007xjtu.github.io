@@ -32,6 +32,10 @@ const posts = defineCollection({
       title: z.string(),
       featured: z.boolean().optional(),
       draft: z.boolean().optional(),
+      /** 封面图（绝对路径，如 /papers/DiT.png）；列表卡片和文章页的渐变背景都用它 */
+      cover: z.string().optional(),
+      /** 卡片/文章页的主题色（十六进制，如 "#B7A1C0"）；不写则从封面图自动提取 */
+      accent: z.string().optional(),
       tags: z.array(z.string()).default(["others"]),
       category: z.enum(["research", "course", "daily", "others"]).default("others"),
       ogImage: image().or(z.string()).optional(),

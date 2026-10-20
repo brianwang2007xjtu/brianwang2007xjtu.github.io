@@ -10,6 +10,7 @@ import { getSortedPosts } from "@/utils/getSortedPosts";
 import { slugifyStr } from "@/utils/slugify";
 import { toTransitionName } from "@/utils/toTransitionName";
 import PostFooterCard from "./_components/PostFooterCard.astro";
+import { getPostCover } from "@/utils/postCover";
 import dayjs from "dayjs";
 import dayjsUtc from "dayjs/plugin/utc";
 import dayjsTimezone from "dayjs/plugin/timezone";
@@ -96,6 +97,12 @@ const {
   tags,
 } = post.data;
 
+// 文章页顶部的渐变背景：颜色与底图跟列表卡片一致
+const postCover = await getPostCover(post.body ?? "", undefined, {
+  cover: post.data.cover,
+  accent: post.data.accent,
+});
+
 
 const { Content, headings } = await render(post);
 
@@ -148,23 +155,40 @@ const ogImage = ogImageUrl
   pubDatetime={pubDatetime}
   modDatetime={modDatetime}
 >
+
+  {
+    postCover && (
+      <style is:inline set:html={`html{background-color:var(--background)}`} />
+    )
+  }
+  {
+    postCover && (
+      <div
+        class="post-tint"
+        aria-hidden="true"
+        style={`background-image:linear-gradient(to bottom,hsl(${postCover.hsl} / 0.3) 0,hsl(${postCover.hsl} / 0.1) 45vh,hsl(${postCover.hsl} / 0) 100vh)`}
+      />
+    )
+  }
+
   <Header />
 
   <main
     id="main-content"
     class:list={[
-      "app-layout-wide",
+      "app-layout-wide relative",
       { "mt-8": !config.features.showBackButton },
     ]}
+    style={postCover ? `--accent: hsl(${postCover.hsl});` : undefined}
     data-pagefind-body
   >
-    <div class="md:flex md:items-start md:gap-8 lg:gap-10">
+    <div class="relative z-10 md:flex md:items-start md:gap-8 lg:gap-10">
       <div class="mx-auto min-w-0 w-full max-w-3xl md:mx-0 md:grow">
         <BackButton />
 
         <h1
           style={{ viewTransitionName: toTransitionName(post.id) }}
-          class="text-accent inline-block text-2xl font-bold sm:text-3xl"
+          class="inline-block text-2xl font-bold text-foreground sm:text-3xl"
         >
           {title}
         </h1>
@@ -264,6 +288,14 @@ const ogImage = ogImageUrl
     const progressBar = document.createElement("div");
     progressBar.className = "progress-bar h-1 w-0 bg-accent";
     progressBar.id = "myBar";
+
+    // 进度条跟着这篇文章的配色走（--accent 设在 #main-content 上）
+    const accent = getComputedStyle(
+      document.querySelector("#main-content") ?? document.body
+    )
+      .getPropertyValue("--accent")
+      .trim();
+    if (accent) progressBar.style.backgroundColor = accent;
 
     progressContainer.appendChild(progressBar);
     document.body.appendChild(progressContainer);

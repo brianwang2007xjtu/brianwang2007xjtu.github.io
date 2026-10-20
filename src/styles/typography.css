@@ -176,3 +176,18 @@
     }
   }
 }
+
+/* 文章页：整页顶部的主题色渐变（固定在文档顶部，一屏之后回到默认配色） */
+body:has(.post-tint) {
+  background-image: none;
+  background-color: transparent;
+}
+
+.post-tint {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+}

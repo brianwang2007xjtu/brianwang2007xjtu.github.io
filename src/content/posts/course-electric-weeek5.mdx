@@ -1,0 +1,321 @@
+---
+title: "电子技术与系统 Week5"
+author: master
+pubDatetime: 2026-10-20T00:00:00Z
+category: course
+tags:
+  - electric-tech-sys
+  - course-notes
+description: "数字电路笔记1：组合逻辑与布尔代数"
+---
+
+import ImageRow from "@/components/ImageRow.astro";
+import GateTruthTables from "@/components/GateTruthTables.astro";
+import TruthTable from "@/components/TruthTable.astro";
+import Example from "@/components/Example.astro";
+import BubblePushDemo from "@/components/BubblePushDemo.astro";
+import PhotoGrid from "@/components/PhotoGrid.astro";
+
+在之前的一个多月的时间里，本课程涉及的内容是**模拟电路**，也就是研究放大、滤波、反馈，处理的是连续变化的电压和电流。从第5周开始，我们终于等来了模电的完结，也迎来了**数字电路**。对于传统数字电路问题，信号只有高、低两种状态，我们关心的是「输入取什么值时，输出应该是什么」，也就是**逻辑**。数电第一周的内容主要是组合逻辑的第一部分：**布尔表达式、布尔代数与化简**。
+
+## Lec11 数字逻辑电路与布尔代数
+
+### 数字逻辑电路
+
+一个逻辑电路通常可以用四样东西描述：
+
+- **输入**：若干个输入信号，例如 $A, B, C$；
+- **输出**：若干个输出信号，例如 $Y, Z$；
+- **功能规范**：输入和输出的对应关系（真值表、布尔表达式）；
+- **时序规范**：输出相对输入**什么时候**有效（延迟、建立保持时间）。做真实电路时它和功能同样重要。
+
+电路内部由**结点**和**电路元件**组成：结点是导线，元件是更小的电路（**与门、或门、非门**等）。描述一个电路，本质上是说明结点与元件之间的连接关系」。这种「**用基本元件搭积木**」的思路正是数字电路设计的起点。
+
+逻辑门是最简单的元件，而**与门、或门、非门**是三种最为基础的逻辑门。这三种逻辑门可以按照输入信号的个数大致分为两类：单输入（非）和多输入（与/或）。除了「非」，常见的单输入逻辑门还有**缓冲器 Buffer**；除了「与」和「非」，常见的双输入逻辑门还有**异或XOR、与非NAND、或非NOR、同或XNOR**。它们的真值表如下所示：
+
+<GateTruthTables />
+
+
+
+在这一部分，需要着重注意三种基本逻辑门的画法，以及它们所对应的布尔表达式的写法。
+
+### 组合逻辑与时序逻辑
+
+| | 组合逻辑电路 | 时序逻辑电路 |
+| --- | --- | --- |
+| 记忆 | 无记忆 | 有记忆（触发器、寄存器）|
+| 输出取决于 | 仅**当前**输入 | 当前输入 + **之前**的输入（状态）|
+| 典型例子 | 加法器、译码器、多路选择器 | 计数器、状态机 |
+| 时序要求 | 只需关心延迟 | 还要关心时钟、建立/保持时间 |
+
+判断一个电路是不是组合逻辑，需要着重检查以下三条：
+1. **每个元件本身是组合电路**
+2. **每个结点要么是某个元件的输入、要么是整个电路的输入端**（不能两个输出短接在一起）
+3. **电路不包含回路**。
+
+第二条其实就是「一个结点只能被一个源驱动」，否则会出现两个门同时驱动一根线的冲突。
+
+<figure>
+  <img src="/electric/week5/szljdl.png"/>
+  <figcaption>逻辑电路的组成</figcaption>
+</figure>
+
+### 布尔表达式
+
+数字电路里的变量只有两个值：TRUE / FALSE（$1 / 0$）。基本运算有三个：**与（AND，$\cdot$）**、**或（OR，$+$）**、**非（NOT，$\overline\{X}$）**。优先级从高到低是 **非 &gt; 与 &gt; 或**，和普通代数里「**先乘除后加减**」的位置一样。
+
+>[!note] 布尔表达式常用术语
+> - **取反**：$\overline\{A\}$（也可写成 $A^\{\prime}$）；
+> - **项**：一个变量或它的反，例如 $A,\ \overline\{A\},\ B$；
+> - **乘积项（蕴涵项）**：若干个项相与，例如 $ABC,\ A\overline\{C\},\ BC$；
+> - **最小项**：包含**全部**输入变量的乘积项，每个变量以原变量或反变量的形式出现一次；
+> - **最大项**：包含**全部**输入变量的和项
+
+对于 $n$ 个输入，最小项共有 $2^n$ 个，每个最小项**只在真值表的某一行上取 1**，与真值表一一对应。这就是下面两种标准形式的来源。
+
+#### 与或式（SOP）
+
+任意真值表都可以用「**输出为 1 的所有最小项之和**」写出，叫做**与或式**。例如：
+
+$$
+Y = F(A, B) = \overline\{A\}B + AB = \sum m(1, 3)
+$$
+
+同一个真值表写出的与或式是**唯一**的。考虑如下的真值表：
+
+<TruthTable
+  inputs={["A", "B", "C"]}
+  rows={[
+    { bits: [0, 0, 0], y: 1 },
+    { bits: [0, 0, 1], y: 0 },
+    { bits: [0, 1, 0], y: 1 },
+    { bits: [0, 1, 1], y: 0 },
+    { bits: [1, 0, 0], y: 1 },
+    { bits: [1, 0, 1], y: 1 },
+    { bits: [1, 1, 0], y: 0 },
+    { bits: [1, 1, 1], y: 1 },
+  ]}
+  caption="圈出的行输出为 1：$Y = \sum m(0, 2, 4, 5, 7)$"
+/>
+
+把所有 $Y = 1$ 的行取出来，则最终的结果可以由这些行所对应的最小项的「或」组成：
+
+$$Y = \overline\{A\}\\,\overline\{B\}\\,\overline\{C\} + \overline\{A\}\\,B\\,\overline\{C\} + A\\,\overline\{B\}\\,\overline\{C\} + A\\,\overline\{B\}\\,C + ABC = \sum m(0, 2, 4, 5, 7)$$
+
+#### 或与式（POS）
+
+反过来，也可以用「**输出为 0 的那些最大项之积**」写出，叫做**或与式**：
+
+$$
+Y = F(A, B) = (A + B)(\overline\{A\} + B) = \prod M(0, 2)
+$$
+
+>[!warning] 易错点
+最大项里，**取值为 0 的变量写原变量、取值为 1 的变量写反变量**，刚好和最小项相反。
+
+两种写法描述的是**同一个函数**，用哪个通常取决于是不是更短：真值表里 TRUE 的行少，与或式就短；FALSE 的行少，或与式就短。
+
+> [!example] 两个例子
+> 1. Ben 去野炊，如果**下雨**（R）或**有蚂蚁**（A），就不能享受。真值表里只有 $R = 0, A = 0$ 这一行输出 1，所以与或式只有一项：$E = \overline\{R\}\\,\overline\{A\}$；而或与式要把三行 0 都收进来。这正是「TRUE 行少就用与或式」的原因。
+> 2. 你去餐厅吃饭但**不想吃肉夹馍**（$E = 1$）。只有「开门（$O=1$）而且店里只有肉夹馍（$C=1$）」时你才吃不到。真值表里只有一行输出 0，于是或与式只有一项 $E = \overline\{O\} + \overline\{C\}$，比与或式短得多。
+
+### 布尔代数
+
+布尔代数就是「只有 0 和 1 的代数」。它的公理和定理比普通代数更简单，但结构**完全对偶**。
+
+#### 公理与对偶性
+
+布尔代数有如下的五条基本的公理：
+
+$$
+\begin\{aligned\}
+A1:&\quad B = 0 \ \text\{ if \} \ B \neq 1 \\\\
+A2:&\quad \overline\{0\} = 1 \\\\
+A3:&\quad 0 \cdot 0 = 0 \\\\
+A4:&\quad 1 \cdot 1 = 1 \\\\
+A5:&\quad 0 \cdot 1 = 1 \cdot 0 = 0
+\end\{aligned\}
+$$
+
+布尔代数具有**对偶性**，也就是说把式子里的 $\cdot$ 和 $+$ 互换、$0$ 和 $1$ 互换，得到的**对偶式**仍然成立。五条公理的对偶式分别如下：
+
+$$
+\begin\{aligned\}
+A1^\{\prime\}:&\quad B = 1 \ \text\{ if \} \ B \neq 0 \\\\
+A2^\{\prime\}:&\quad \overline\{1\} = 0 \\\\
+A3^\{\prime\}:&\quad 1 + 1 = 1 \\\\
+A4^\{\prime\}:&\quad 0 + 0 = 0 \\\\
+A5^\{\prime\}:&\quad 1 + 0 = 0 + 1 = 1
+\end\{aligned\}
+$$
+
+#### 单变量定理
+
+<table>
+  <thead>
+    <tr>
+      <th>编号</th>
+      <th>定理</th>
+      <th>对偶式</th>
+      <th>名称</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>T1</td>
+      <td>$B \cdot 1 = B$</td>
+      <td>$B + 0 = B$</td>
+      <td>同一性定理</td>
+    </tr>
+    <tr>
+      <td>T2</td>
+      <td>$B \cdot 0 = 0$</td>
+      <td>$B + 1 = 1$</td>
+      <td>零元定理</td>
+    </tr>
+    <tr>
+      <td>T3</td>
+      <td>$B \cdot B = B$</td>
+      <td>$B + B = B$</td>
+      <td>重叠定理</td>
+    </tr>
+    <tr>
+      <td>T4</td>
+      <td colspan="2" align="center">$\overline\{\overline\{B\}\} = B$</td>
+      <td>回旋定理</td>
+    </tr>
+    <tr>
+      <td>T5</td>
+      <td>$B \cdot \overline\{B\} = 0$</td>
+      <td>$B + \overline\{B\} = 1$</td>
+      <td>互补定理</td>
+    </tr>
+  </tbody>
+</table>
+
+这些定理都能直接用**门电路**理解：T1 说明「与一个恒为 1 的信号相与」等于什么都没做；T2 说明「与 0 相与」输出恒为 0。在真实芯片里，一个逻辑门要花面积、功耗和延迟，所以能用一根导线代替的门就绝不要画出来。这些定理就是化简的合法性来源。
+
+#### 其它定理
+
+| 编号 | 定理 | 对偶式 | 名称 |
+| --- | --- | --- | --- |
+| T6 | $B \cdot C = C \cdot B$ | $B + C = C + B$ | 交换律 |
+| T7 | $(B \cdot C) \cdot D = B \cdot (C \cdot D)$ | $(B + C) + D = B + (C + D)$ | 结合律 |
+| T8 | $B \cdot (C + D) = B \cdot C + B \cdot D$ | $B + CD = (B + C)(B + D)$ | 分配律 |
+| T9 | $B \cdot (B + C) = B$ | $B + B \cdot C = B$ | 吸收律 |
+| T10 | $BC + B\overline\{C\} = B$ | $(B + C)(B + \overline\{C\}) = B$ | 合并律 |
+| T11 | $BC + BD + CD = BC + BD$ | $(B+C)(B+D)(C+D) = (B+C)(B+D)$ | 一致律 |
+
+要特别注意 **T8 的对偶式**：在布尔代数里，**或对与也满足分配律**。这在普通代数里并不成立，而它恰恰是布尔代数化简中很常用的一条。
+
+#### 如何证明定理
+
+证明一条布尔代数定理主要有两种方法：
+
+1. **完全归纳法**：把每个输入组合都代进去，两边结果一致即成立。通常在输入变量较少、枚举成本较小时使用
+2. **用已知定理推导**：把等式的一边一步步变形成另一边
+
+以吸收律 **T9** 为例：
+
+$$
+B(B + C) = B \cdot B + B \cdot C = B + BC = B(1 + C) = B \cdot 1 = B
+$$
+
+推导过程依次用到**8、T3、T8、T2、T1**。合并律 **T10** 同理：
+
+$$
+BC + B\overline\{C\} = B(C + \overline\{C\}) = B \cdot 1 = B
+$$
+
+一致律 **T11** 的推导稍麻烦，核心技巧是**用合并律把一个项拆成两项**，再吸收：
+
+$$
+\begin\{aligned\}
+BC + BD + CD &= BC + BD + (\overline\{B\}CD + BCD) \\\\
+&= (BC + BCD) + (BD + \overline\{B\}CD) \\\\
+&= BC + BD
+\end\{aligned\}
+$$
+
+#### 等式化简
+
+布尔代数化简的目标是：**乘积项的个数最少，且每一项里的变量最少**。项数决定要用多少个门，而变量数决定每个门要几个输入，两者直接对应了实际电路的硬件成本。
+
+常用的化简方法如下所示：
+
+| 方法 | 公式 | 作用 |
+| --- | --- | --- |
+| 分配律 | $B(C + D) = BC + BD$、$B + CD = (B+C)(B+D)$ | 展开 / 提取公因子 |
+| 吸收律 | $A + AP = A$、$A(A + P) = A$ | 吃掉多余的项 |
+| 合并律 | $PA + P\overline\{A\} = P$ | 合并只差一个变量反号的两项 |
+| 展开 | $P = PA + P\overline\{A\}$、$A = A + AP$ | 凑出能合并的项 |
+| 重复 | $A = A + A$ | 多复制一份，凑出能合并的项 |
+| 简化定理 | $PA + \overline\{A\} = P + \overline\{A\}$ | 消掉一项里多余的变量 |
+
+「简化定理」本身值得证一下：
+
+$$
+PA + \overline\{A\} = PA + \overline\{A\}(1 + P) = PA + \overline\{A\} + \overline\{A\}P = (A + \overline\{A\})P + \overline\{A\} = P + \overline\{A\}
+$$
+
+依次用到**T9、T8、T6、T5、T1**。
+
+#### 化简例题
+
+<Example n={1} prompt="$Y = AB + A\overline B$" answer="$Y = A$">
+  用合并律（$PA + P\overline\{A\} = P$）直接得到 $Y = A$。
+</Example>
+
+<Example n={2} title="提公因子 + 吸收" prompt="$Y = A(AB + AB\overline C)$" answer="$Y = AB$">
+  先提公因子，再用吸收律：
+
+  $$
+  Y = A\big(AB(1 + \overline\{C\})\big) = A(AB) = (AA)B = AB
+  $$
+</Example>
+
+<Example n={3} title="吸收律" prompt="$Y = \overline A BC + \overline A$" answer="$Y = \overline A$">
+  用吸收律 $A + AP = A$，把 $BC$ 看作 $P$，立刻得到 $Y = \overline\{A\}$。
+</Example>
+
+<Example n={4} title="重复 + 合并" prompt="$Y = A\overline B C + ABC + \overline A BC$" answer="$Y = C(A + B)$">
+  把中间项 $ABC$ 复制一份，分别与两边合并：
+
+  $$
+  Y = (A\overline\{B\}C + ABC) + (ABC + \overline\{A\}BC) = AC + BC = C(A + B)
+  $$
+
+  这一题用的正是「重复 + 合并」：先把 $ABC$ 写两遍，才能同时消掉 $\overline\{B\}$ 和 $\overline\{A\}$。
+</Example>
+
+### **De Morgan** 定理与「推泡泡」
+
+**De Morgan 定理（T12）** 很常用，意思是：所有项乘积的补，等于**每个项各自取补后相加**；所有项相加的补，等于**每个项各自取补后相乘**。即：
+
+$$
+\overline\{B\_0 \cdot B\_1 \cdot B\_2 \cdots\} = \overline\{B\_0\} + \overline\{B\_1\} + \overline\{B\_2\} + \cdots
+$$
+
+$$
+\overline\{B\_0 + B\_1 + B\_2 + \cdots\} = \overline\{B\_0\} \cdot \overline\{B\_1\} \cdot \overline\{B\_2\} \cdots
+$$
+
+最常用的两个特例是 $\overline\{AB\} = \overline\{A\} + \overline\{B\}$ 和 $\overline\{A + B\} = \overline\{A\}\\,\overline\{B\}$。用门电路看，就是「与非门」与「输入带泡泡的或门」完全等价。这就延伸出了该定理的图形版本，即「**推泡泡**」：把与门换成或门（或反过来），同时把泡泡从一侧「推」到另一侧，电路功能不变。这个过程有两条规则：
+
+- **反向推**：主体（与门 ↔ 或门）改变，泡泡推到输入端；
+- **前向推**：主体改变，泡泡推到输出端。
+
+下面是一个很经典的例子：
+
+<BubblePushDemo />
+
+
+
+## 小结
+
+本周的主线只有一条：**真值表 ⇄ 布尔表达式 ⇄ 门电路**。真值表是功能规范，与或式 / 或与式是它的两种标准写法，布尔代数则提供了「在不改变功能的前提下换一种更**简洁**的电路」的工具， **De Morgan**定理和「推泡泡」则是处理**取反**的实用化简技巧。
+
+## Reference
+
+- 课程课件：《数字逻辑电路设计 —— 组合逻辑 1.0》，刘龙军，2026 年 10 月（第 2 章 组合逻辑设计）
+- 参考教材：Harris &amp; Harris, *Digital Design and Computer Architecture*（第 2 章 Combinational Logic）

@@ -1,0 +1,162 @@
+---
+/**
+ * 一张漂亮的三输入（或 n 输入）真值表，可以把输出为 1 的行「圈」出来。
+ *
+ *   <TruthTable
+ *     inputs={["A", "B", "C"]}
+ *     rows={[
+ *       { bits: [0, 0, 0], y: 1 },
+ *       ...
+ *     ]}
+ *     caption="Y = Σm(0, 2, 4, 5, 7)"
+ *   />
+ */
+interface Row {
+  /** 输入位，顺序与 inputs 对应 */
+  bits: number[];
+  /** 输出值 */
+  y: number;
+}
+
+interface Props {
+  inputs?: string[];
+  rows: Row[];
+  /** 圈出输出为 1 的行（默认）；设成 false 则不圈 */
+  ringOnes?: boolean;
+  /** 表下方的小注释，可以写 $...$ */
+  caption?: string;
+  /** 表的标题，例如「Y = F(A, B, C)」 */
+  title?: string;
+}
+
+const {
+  inputs = ["A", "B", "C"],
+  rows,
+  ringOnes = true,
+  caption,
+  title,
+} = Astro.props;
+
+const isCircled = (row: Row) => (ringOnes ? row.y === 1 : row.y === 0);
+---
+
+<div class="tt-wrap">
+  <table class="tt">
+    {
+      title && (
+        <caption class="tt-title" set:html={title} />
+      )
+    }
+    <thead>
+      <tr>
+        {inputs.map(name => (
+          <th class="tt-in">{name}</th>
+        ))}
+        <th class="tt-y">Y</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map(row => (
+        <tr class={isCircled(row) ? "is-circled" : ""}>
+          {row.bits.map(bit => (
+            <td class="tt-in">{bit}</td>
+          ))}
+          <td class="tt-y">{row.y}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  {caption && <p class="tt-caption" set:html={caption} />}
+</div>
+
+<style>
+  .tt-wrap {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 1.4rem auto;
+  }
+
+  .tt {
+    width: max-content;
+    min-width: 15rem;
+    max-width: 100%;
+    margin: 0 auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    padding: 0.35rem 0.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9375rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tt-title {
+    caption-side: top;
+    padding-bottom: 0.45rem;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+  }
+
+  .tt th,
+  .tt td {
+    padding: 0.28rem 0.7rem;
+    text-align: center;
+    line-height: 1.35;
+  }
+
+  .tt thead th {
+    font-weight: 700;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    color: var(--foreground);
+    border-bottom: 2px solid color-mix(in oklab, var(--foreground) 55%, transparent);
+  }
+
+  /* 输出列前的一道竖线 */
+  .tt .tt-y {
+    border-left: 2px solid color-mix(in oklab, var(--foreground) 45%, transparent);
+    color: var(--muted-foreground);
+  }
+
+  .tt tbody tr td {
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  }
+
+  .tt tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  /* 圈出输出为 1 的行：四条边 + 圆角 */
+  .tt tr.is-circled td {
+    border-top: 1.6px solid var(--accent);
+    border-bottom: 1.6px solid var(--accent);
+    background: color-mix(in oklab, var(--accent) 7%, transparent);
+    color: var(--foreground);
+  }
+
+  .tt tr.is-circled td.tt-y {
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .tt tr.is-circled td:first-child {
+    border-left: 1.6px solid var(--accent);
+    border-top-left-radius: 0.55rem;
+    border-bottom-left-radius: 0.55rem;
+  }
+
+  .tt tr.is-circled td:last-child {
+    border-right: 1.6px solid var(--accent);
+    border-top-right-radius: 0.55rem;
+    border-bottom-right-radius: 0.55rem;
+  }
+
+  .tt-caption {
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+    text-align: center;
+  }
+</style>

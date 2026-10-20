@@ -262,7 +262,7 @@ KaTeX 不支持 LaTeX 的 `algorithm` / `algorithmic` 环境，因此用内置�
 </Theorem>
 
 $$
-\frac\{d\}\{dt\}p_t(x) = \int \left( \frac\{d\}\{dt\}p_t(x|x_1) \right) q(x_1)\,dx_1 = -\int \mathrm\{div\}\left( u_t(x|x_1)p_t(x|x_1) \right) q(x_1)\,dx_1 = -\mathrm\{div\}\left( \int u_t(x|x_1)p_t(x|x_1)q(x_1)\,dx_1 \right) = -\mathrm\{div\}\left( u_t(x)p_t(x) \right)
+\frac\{d\}\{dt\}p_t(x) = \int \left( \frac\{d\}\{dt\}p_t(x|x_1) \right) q(x_1)\\,dx_1 = -\int \mathrm\{div\}\left( u_t(x|x_1)p_t(x|x_1) \right) q(x_1)\\,dx_1 = -\mathrm\{div\}\left( \int u_t(x|x_1)p_t(x|x_1)q(x_1)\\,dx_1 \right) = -\mathrm\{div\}\left( u_t(x)p_t(x) \right)
 $$
 
 > 其它可用组件：`PdfEmbed`（内嵌 PDF + 下载）、`PaperNote`（论文阅读卡片，含 Arxiv ID 与笔记下载）等，使用方法见对应源码 `src/components/`。

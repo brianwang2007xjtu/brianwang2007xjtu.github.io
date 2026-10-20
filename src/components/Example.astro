@@ -1,0 +1,129 @@
+---
+/**
+ * 例题卡片：左侧一道强调色竖条 + 「例 N」徽标，让例题在正文里一眼可辨。
+ *
+ *   <Example n={1} answer="$Y = A$">
+ *     $Y = AB + A\overline{B}$，用合并律直接得 $Y = A$。
+ *   </Example>
+ *
+ * - `n`      题号（数字）
+ * - `title`  可选的小标题，例如「提公因子」
+ * - `answer` 可选的答案，会显示在卡片底部的一行「答案」里
+ */
+interface Props {
+  n: number | string;
+  title?: string;
+  answer?: string;
+  /** 例题的题干（可选），显示在徽标下面 */
+  prompt?: string;
+}
+
+const { n, title, answer, prompt } = Astro.props;
+---
+
+<section class="example-card">
+  <header class="example-head">
+    <span class="example-badge">例 {n}</span>
+    {title && <span class="example-title">{title}</span>}
+  </header>
+
+  {prompt && <p class="example-prompt" set:html={prompt} />}
+
+  <p class="example-solve-label">解</p>
+  <div class="example-body">
+    <slot />
+  </div>
+
+  {
+    answer && (
+      <footer class="example-answer">
+        <span class="example-answer-label">答案</span>
+        <span class="example-answer-value" set:html={answer} />
+      </footer>
+    )
+  }
+</section>
+
+<style>
+  .example-card {
+    position: relative;
+    margin: 1.25rem 0;
+    padding: 0.85rem 1rem 0.9rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
+    border-left: 3px solid var(--accent);
+    border-radius: 0.85rem;
+    background: color-mix(in oklab, var(--accent) 4%, var(--card));
+    overflow: hidden;
+  }
+
+  .example-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .example-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05rem 0.5rem;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--accent) 16%, transparent);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--accent);
+  }
+
+  .example-title {
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+  }
+
+  /* 题干单独一行，和下面的解答分开 */
+  .example-prompt {
+    margin: 0 0 0.55rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed color-mix(in oklab, var(--accent) 22%, transparent);
+  }
+
+  .example-solve-label {
+    margin: 0 0 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+  }
+
+  .example-body > :first-child {
+    margin-top: 0;
+  }
+
+  .example-body > :last-child {
+    margin-bottom: 0;
+  }
+
+  .example-answer {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    padding-top: 0.55rem;
+    border-top: 1px dashed color-mix(in oklab, var(--accent) 30%, transparent);
+    font-size: 0.875rem;
+  }
+
+  .example-answer-label {
+    flex: none;
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .example-answer-value {
+    color: var(--foreground);
+  }
+</style>

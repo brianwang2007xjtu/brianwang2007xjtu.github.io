@@ -1,0 +1,327 @@
+---
+/**
+ * 「推泡泡」动画，按课件里的三张图逐步演示：
+ *
+ *   0) 原电路：NOR(A,B) → NAND(·,C) → NAND(·,D) → Y
+ *   1) 推最右边的门：NAND → OR，泡泡全到输入端，输出端没有泡泡
+ *   2) 线上出现一对泡泡（中间门的输出 + 右边门的输入），标出来
+ *   3) 再推最左边的门：NOR → AND，泡泡到输入端，输出端没有泡泡
+ *
+ * 三段电路的功能完全相同：Y = ¬A·¬B·C + ¬D
+ */
+---
+
+<div class="bp-demo" data-bp-demo>
+  <div class="bp-stage" data-bp-stage="0">
+    <svg viewBox="0 0 780 300" role="img" aria-label="推泡泡示例电路">
+      <!-- 端点标签 -->
+      <text class="bp-label" x="34" y="74">A</text>
+      <text class="bp-label" x="34" y="118">B</text>
+      <text class="bp-label" x="34" y="182">C</text>
+      <text class="bp-label" x="34" y="256">D</text>
+      <text class="bp-label" x="716" y="176">Y</text>
+
+      <!-- 连线：d 由脚本按当前帧重算 -->
+      <path class="bp-wire" data-wire="a" d="M52 68 H150" />
+      <path class="bp-wire" data-wire="b" d="M52 112 H150" />
+      <path class="bp-wire" data-wire="c" d="M52 176 H330" />
+      <path class="bp-wire" data-wire="d" d="M52 250 H470 V186 H500" />
+      <path class="bp-wire" data-wire="g12" d="M216 90 H300 V132 H330" />
+      <path class="bp-wire" data-wire="g23" d="M400 154 H500" />
+      <path class="bp-wire" data-wire="out" d="M566 170 H716" />
+
+      <!-- 门 1：NOR（初始）→ AND（推完）；输入关于中心对称（68 / 112，中心 90） -->
+      <g class="bp-gate bp-g1">
+        <path
+          class="bp-body bp-body-or"
+          d="M150 52 C170 52 192 62 216 90 C192 118 170 128 150 128 C161 111 161 69 150 52 Z"
+        />
+        <path
+          class="bp-body bp-body-and"
+          d="M150 52 H188 A38 38 0 0 1 188 128 H150 Z"
+        />
+        <circle class="bp-bubble bp-out-bubble" cx="224" cy="90" r="7" />
+        <circle class="bp-bubble bp-in-bubble bp-in-1" cx="150" cy="68" r="6" />
+        <circle class="bp-bubble bp-in-bubble bp-in-2" cx="150" cy="112" r="6" />
+      </g>
+
+      <!-- 门 2：NAND（输入 132 / 176，中心 154） -->
+      <g class="bp-gate bp-g2">
+        <path
+          class="bp-body bp-body-and"
+          d="M330 122 H368 A32 32 0 0 1 368 186 H330 Z"
+        />
+        <circle class="bp-bubble bp-out-bubble" cx="408" cy="154" r="7" />
+      </g>
+
+      <!-- 门 3：NAND（初始）→ OR（输入 154 / 186，中心 170） -->
+      <g class="bp-gate bp-g3">
+        <path
+          class="bp-body bp-body-and"
+          d="M500 138 H538 A32 32 0 0 1 538 202 H500 Z"
+        />
+        <path
+          class="bp-body bp-body-or"
+          d="M500 138 C520 138 542 148 566 170 C542 192 520 202 500 202 C511 185 511 155 500 138 Z"
+        />
+        <circle class="bp-bubble bp-out-bubble" cx="574" cy="170" r="7" />
+        <circle class="bp-bubble bp-in-bubble bp-in-1" cx="492" cy="154" r="6" />
+        <circle class="bp-bubble bp-in-bubble bp-in-2" cx="492" cy="186" r="6" />
+      </g>
+    </svg>
+  </div>
+</div>
+
+<style>
+  .bp-demo {
+    margin: 1.5rem 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: color-mix(in oklab, var(--card) 70%, transparent);
+  }
+
+  .bp-stage svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 320px;
+    overflow: visible;
+  }
+
+  .bp-wire,
+  .bp-body,
+  .bp-bubble {
+    fill: none;
+    stroke: color-mix(in oklab, var(--foreground) 82%, transparent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .bp-label {
+    fill: var(--foreground);
+    stroke: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 19px;
+    font-style: italic;
+  }
+
+  .bp-bubble {
+    fill: var(--card);
+    transition: opacity 0.4s ease;
+  }
+
+  .bp-body {
+    transition: opacity 0.4s ease;
+  }
+
+  /* ---- 初始状态：NOR → NAND → NAND ---- */
+  .bp-g1 .bp-body-and { opacity: 0; }
+  .bp-g1 .bp-body-or { opacity: 1; }
+  .bp-g3 .bp-body-and { opacity: 1; }
+  .bp-g3 .bp-body-or { opacity: 0; }
+  .bp-in-bubble { opacity: 0; }
+  .bp-out-bubble { opacity: 1; }
+
+  /* ---- ① 推最右边的门：NAND → OR，输出端不再有泡泡 ---- */
+  .bp-stage[data-bp-stage="1"] .bp-g3 .bp-body-and,
+  .bp-stage[data-bp-stage="2"] .bp-g3 .bp-body-and,
+  .bp-stage[data-bp-stage="3"] .bp-g3 .bp-body-and { opacity: 0; }
+
+  .bp-stage[data-bp-stage="1"] .bp-g3 .bp-body-or,
+  .bp-stage[data-bp-stage="2"] .bp-g3 .bp-body-or,
+  .bp-stage[data-bp-stage="3"] .bp-g3 .bp-body-or { opacity: 1; }
+
+  .bp-stage[data-bp-stage="1"] .bp-g3 .bp-in-bubble,
+  .bp-stage[data-bp-stage="2"] .bp-g3 .bp-in-bubble,
+  .bp-stage[data-bp-stage="3"] .bp-g3 .bp-in-bubble { opacity: 1; }
+
+  .bp-stage[data-bp-stage="1"] .bp-g3 .bp-out-bubble,
+  .bp-stage[data-bp-stage="2"] .bp-g3 .bp-out-bubble,
+  .bp-stage[data-bp-stage="3"] .bp-g3 .bp-out-bubble { opacity: 0; }
+
+  /* ---- ② 线上那一对泡泡：中间门的输出 + 右边门的第一个输入 ---- */
+  .bp-stage[data-bp-stage="2"] .bp-g2 .bp-out-bubble,
+  .bp-stage[data-bp-stage="2"] .bp-g3 .bp-in-1 {
+    stroke: #4c5bd4;
+    animation: bp-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes bp-pulse {
+    0%, 100% { stroke-width: 2.2; }
+    50% { stroke-width: 3.6; }
+  }
+
+  /* ---- ③ 两个泡泡抵消；同时把最左边的门 NOR → AND ---- */
+  .bp-stage[data-bp-stage="3"] .bp-g2 .bp-out-bubble,
+  .bp-stage[data-bp-stage="3"] .bp-g3 .bp-in-1 { opacity: 0; }
+
+  .bp-stage[data-bp-stage="3"] .bp-g1 .bp-body-and { opacity: 1; }
+  .bp-stage[data-bp-stage="3"] .bp-g1 .bp-body-or { opacity: 0; }
+  .bp-stage[data-bp-stage="3"] .bp-g1 .bp-in-bubble { opacity: 1; }
+  .bp-stage[data-bp-stage="3"] .bp-g1 .bp-out-bubble { opacity: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bp-body,
+    .bp-bubble {
+      transition: none;
+    }
+
+    .bp-stage[data-bp-stage="2"] .bp-g2 .bp-out-bubble,
+    .bp-stage[data-bp-stage="2"] .bp-g3 .bp-in-1 {
+      animation: none;
+      stroke-width: 3;
+    }
+  }
+</style>
+
+<script>
+  function initBubbleDemo(root: HTMLElement) {
+    if (root.dataset.bpReady === "1") return;
+    root.dataset.bpReady = "1";
+
+    const el = root.querySelector<HTMLElement>("[data-bp-stage]");
+    if (!el) return;
+
+    const STEP_MS = 1000; // 每一步停 1s
+    const LOOP_GAP_MS = 3000; // 一轮结束停 3s
+    let started = false;
+
+    // ---- 每一帧都重算线的端点，保证正好贴在门体/泡泡边缘 ----
+    // 几何：门体范围、泡泡位置
+    const GEO = {
+      g1: { left: 150, orTip: 216, andEdge: 226, outY: 90, outBubble: { x: 224, y: 90, r: 7 } },
+      g2: { left: 330, right: 400, topInY: 132, bottomInY: 176, outY: 154, outBubble: { x: 408, y: 154, r: 7 } },
+      g3: {
+        left: 500,
+        orTip: 566,
+        andEdge: 570,
+        outY: 170,
+        outBubble: { x: 574, y: 170, r: 7 },
+        inTopY: 154,
+        inBottomY: 186,
+        inTopBubble: { x: 492, y: 154, r: 6 },
+        inBottomBubble: { x: 492, y: 186, r: 6 },
+      },
+      inGap: 6,
+    };
+
+
+    type State = {
+      g1: "nor" | "and";
+      g1InBubbles: boolean;
+      g1OutBubble: boolean;
+      g2OutBubble: boolean;
+      g3: "nand" | "or";
+      g3TopInBubble: boolean;
+      g3BottomInBubble: boolean;
+      g3OutBubble: boolean;
+    };
+
+    const STATES: Record<string, State> = {
+      // 原电路：NOR → NAND → NAND
+      "0": { g1: "nor", g1InBubbles: false, g1OutBubble: true, g2OutBubble: true, g3: "nand", g3TopInBubble: false, g3BottomInBubble: false, g3OutBubble: true },
+      // ① 右边门推完：OR + 两个输入泡泡，没有输出泡泡
+      "1": { g1: "nor", g1InBubbles: false, g1OutBubble: true, g2OutBubble: true, g3: "or", g3TopInBubble: true, g3BottomInBubble: true, g3OutBubble: false },
+      "2": { g1: "nor", g1InBubbles: false, g1OutBubble: true, g2OutBubble: true, g3: "or", g3TopInBubble: true, g3BottomInBubble: true, g3OutBubble: false },
+      // ③ 一对泡泡抵消 + 左边门推完
+      "3": { g1: "and", g1InBubbles: true, g1OutBubble: false, g2OutBubble: false, g3: "or", g3TopInBubble: false, g3BottomInBubble: true, g3OutBubble: false },
+    };
+
+    const wire = (name: string) =>
+      root.querySelector<SVGPathElement>(`[data-wire="${name}"]`);
+
+    function layout(stage: string) {
+      const st = STATES[stage] ?? STATES["0"];
+      const { g1, g2, g3 } = GEO;
+
+      // A、B 引线：有输入泡泡时停在泡泡左缘
+      const g1InEdge = st.g1InBubbles ? g1.left - GEO.inGap : g1.left;
+      wire("a")?.setAttribute("d", `M52 68 H${g1InEdge}`);
+      wire("b")?.setAttribute("d", `M52 112 H${g1InEdge}`);
+
+      // C 进中间门下输入（中间门输入没有泡泡）
+      wire("c")?.setAttribute("d", `M52 ${g2.bottomInY} H${g2.left}`);
+
+      // D 进右边门的下输入
+      const g3BottomEdge = st.g3BottomInBubble
+        ? g3.inBottomBubble.x - g3.inBottomBubble.r
+        : g3.left;
+      wire("d")?.setAttribute("d", `M52 250 H470 V${g3.inBottomY} H${g3BottomEdge}`);
+
+      // 门 1 输出 → 门 2 上输入
+      const g1Out = st.g1OutBubble
+        ? g1.outBubble.x + g1.outBubble.r
+        : st.g1 === "and"
+          ? g1.andEdge
+          : g1.orTip;
+      wire("g12")?.setAttribute("d", `M${g1Out} ${g1.outY} H300 V${g2.topInY} H${g2.left}`);
+
+      // 门 2 输出 → 门 3 上输入
+      const g2Out = st.g2OutBubble ? g2.outBubble!.x + g2.outBubble!.r : g2.right;
+      const g3TopEdge = st.g3TopInBubble
+        ? g3.inTopBubble.x - g3.inTopBubble.r
+        : g3.left;
+      wire("g23")?.setAttribute("d", `M${g2Out} ${g2.outY} H${g3TopEdge}`);
+
+      // 门 3 输出 → Y
+      const g3Out = st.g3OutBubble
+        ? g3.outBubble.x + g3.outBubble.r
+        : st.g3 === "nand"
+          ? g3.andEdge
+          : g3.orTip;
+      wire("out")?.setAttribute("d", `M${g3Out} ${g3.outY} H716`);
+    }
+
+    const set = (n: string) => {
+      el.dataset.bpStage = n;
+      layout(n);
+    };
+    layout("0");
+
+    function playLoop() {
+      set("0");
+      window.setTimeout(() => set("1"), STEP_MS);
+      window.setTimeout(() => set("2"), STEP_MS * 2);
+      window.setTimeout(() => set("3"), STEP_MS * 3);
+      window.setTimeout(playLoop, STEP_MS * 3 + LOOP_GAP_MS);
+    }
+
+    const start = () => {
+      if (started) return;
+      started = true;
+      playLoop();
+    };
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              start();
+              observer.disconnect();
+            }
+          });
+        },
+        { threshold: 0.35 }
+      );
+      observer.observe(root);
+    } else {
+      start();
+    }
+  }
+
+  function boot() {
+    document
+      .querySelectorAll<HTMLElement>("[data-bp-demo]")
+      .forEach(initBubbleDemo);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+  document.addEventListener("astro:page-load", boot);
+</script>

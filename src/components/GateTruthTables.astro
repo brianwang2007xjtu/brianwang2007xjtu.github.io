@@ -1,0 +1,271 @@
+---
+/**
+ * 常见逻辑门的真值表：一行 4 个卡片，每张卡片带门符号 + 真值表。
+ *
+ *   <GateTruthTables />
+ *
+ * 需要别的门时，直接在下面的 `gates` 里加一条即可。
+ */
+type Inputs = "A" | "AB";
+
+interface Gate {
+  /** 英文名 */
+  name: string;
+  /** 中文名 */
+  zh: string;
+  /** 布尔表达式（可写 $...$，页面上的 MathRenderer 会自动渲染） */
+  expr: string;
+  /** 输入组合：单输入只有 AB 的一种写法，用 "A"；双输入用 "AB" */
+  inputs: Inputs;
+  /** 输出的 0/1，顺序与真值表一致（A B = 00,01,10,11） */
+  outputs: number[];
+  /** 门符号：not / buffer / and / nand / or / nor / xor / xnor */
+  symbol: string;
+}
+
+const gates: Gate[] = [
+  { name: "NOT", zh: "非门", expr: "$Y = \\overline{A}$", inputs: "A", outputs: [1, 0], symbol: "not" },
+  { name: "Buffer", zh: "缓冲器", expr: "$Y = A$", inputs: "A", outputs: [0, 1], symbol: "buffer" },
+  { name: "AND", zh: "与门", expr: "$Y = A \\cdot B$", inputs: "AB", outputs: [0, 0, 0, 1], symbol: "and" },
+  { name: "OR", zh: "或门", expr: "$Y = A + B$", inputs: "AB", outputs: [0, 1, 1, 1], symbol: "or" },
+  { name: "XOR", zh: "异或门", expr: "$Y = A \\oplus B$", inputs: "AB", outputs: [0, 1, 1, 0], symbol: "xor" },
+  { name: "NAND", zh: "与非门", expr: "$Y = \\overline{A \\cdot B}$", inputs: "AB", outputs: [1, 1, 1, 0], symbol: "nand" },
+  { name: "NOR", zh: "或非门", expr: "$Y = \\overline{A + B}$", inputs: "AB", outputs: [1, 0, 0, 0], symbol: "nor" },
+  { name: "XNOR", zh: "同或门", expr: "$Y = \\overline{A \\oplus B}$", inputs: "AB", outputs: [1, 0, 0, 1], symbol: "xnor" },
+];
+
+const combos: Record<Inputs, number[][]> = {
+  A: [[0], [1]],
+  AB: [
+    [0, 0],
+    [0, 1],
+    [1, 0],
+    [1, 1],
+  ],
+};
+---
+
+<div class="gate-grid">
+  {
+    gates.map(gate => {
+      const rows = combos[gate.inputs];
+      return (
+        <figure class="gate-card">
+          <figcaption class="gate-head">
+            <span class="gate-name">{gate.name}</span>
+            <span class="gate-zh">{gate.zh}</span>
+          </figcaption>
+
+          <div class="gate-symbol" aria-hidden="true">
+            {gate.symbol === "not" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 20 H18" />
+                <path d="M18 9 L39 20 L18 31 Z" />
+                <circle cx="44" cy="20" r="4" />
+                <path d="M48 20 H58" />
+              </svg>
+            )}
+            {gate.symbol === "buffer" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 20 H18" />
+                <path d="M18 9 L42 20 L18 31 Z" />
+                <path d="M42 20 H58" />
+              </svg>
+            )}
+            {gate.symbol === "and" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 14 H18" />
+                <path d="M6 26 H18" />
+                <path d="M18 8 H32 A12 12 0 0 1 32 32 H18 Z" />
+                <path d="M44 20 H58" />
+              </svg>
+            )}
+            {gate.symbol === "nand" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 14 H18" />
+                <path d="M6 26 H18" />
+                <path d="M18 8 H32 A12 12 0 0 1 32 32 H18 Z" />
+                <circle cx="48" cy="20" r="4" />
+                <path d="M52 20 H58" />
+              </svg>
+            )}
+            {gate.symbol === "or" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 14 H21" />
+                <path d="M6 26 H21" />
+                <path d="M18 7 C28 9 38 14 46 20 C38 26 28 31 18 33 C24 27 24 13 18 7 Z" />
+                <path d="M46 20 H58" />
+              </svg>
+            )}
+            {gate.symbol === "nor" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 14 H21" />
+                <path d="M6 26 H21" />
+                <path d="M18 7 C27 9 35 14 41 20 C35 26 27 31 18 33 C24 27 24 13 18 7 Z" />
+                <circle cx="45" cy="20" r="4" />
+                <path d="M49 20 H58" />
+              </svg>
+            )}
+            {gate.symbol === "xor" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 14 H20" />
+                <path d="M6 26 H20" />
+                <path d="M14 7 C18 13 18 27 14 33" />
+                <path d="M18 7 C28 9 38 14 46 20 C38 26 28 31 18 33 C24 27 24 13 18 7 Z" />
+                <path d="M46 20 H58" />
+              </svg>
+            )}
+            {gate.symbol === "xnor" && (
+              <svg viewBox="0 0 64 40">
+                <path d="M6 14 H20" />
+                <path d="M6 26 H20" />
+                <path d="M14 7 C18 13 18 27 14 33" />
+                <path d="M18 7 C27 9 35 14 41 20 C35 26 27 31 18 33 C24 27 24 13 18 7 Z" />
+                <circle cx="45" cy="20" r="4" />
+                <path d="M49 20 H58" />
+              </svg>
+            )}
+          </div>
+
+          <table class="gate-table">
+            <thead>
+              <tr>
+                {rows[0].map((_, i) => (
+                  <th>{gate.inputs === "A" ? "A" : i === 0 ? "A" : "B"}</th>
+                ))}
+                <th class="gate-out">Y</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr>
+                  {row.map(value => (
+                    <td>{value}</td>
+                  ))}
+                  <td class={`gate-out${gate.outputs[i] === 1 ? " is-one" : ""}`}>
+                    {gate.outputs[i]}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p class="gate-expr">{gate.expr}</p>
+        </figure>
+      );
+    })
+  }
+</div>
+
+<style>
+  .gate-grid {
+    display: grid;
+    gap: 0.85rem;
+    margin: 1.5rem 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .gate-card {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0.85rem 0.9rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    background: color-mix(in oklab, var(--card) 82%, transparent);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+    transition:
+      border-color 0.2s,
+      transform 0.2s;
+  }
+
+  .gate-card:hover {
+    border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+    transform: translateY(-2px);
+  }
+
+  .gate-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .gate-name {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--foreground);
+  }
+
+  .gate-zh {
+    font-size: 0.6875rem;
+    color: var(--muted-foreground);
+  }
+
+  .gate-symbol {
+    display: flex;
+    justify-content: center;
+    padding: 0.45rem 0 0.5rem;
+  }
+
+  .gate-symbol svg {
+    width: 4rem;
+    height: 2.5rem;
+    fill: none;
+    stroke: color-mix(in oklab, var(--foreground) 78%, transparent);
+    stroke-width: 1.7;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .gate-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gate-table th,
+  .gate-table td {
+    padding: 0.12rem 0.1rem;
+    text-align: center;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+  }
+
+  .gate-table thead th {
+    font-weight: 600;
+    color: var(--muted-foreground);
+    border-bottom-color: var(--border);
+  }
+
+  .gate-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .gate-out {
+    border-left: 1px dashed color-mix(in oklab, var(--border) 90%, transparent);
+    color: var(--muted-foreground);
+  }
+
+  .gate-table td.gate-out.is-one {
+    font-weight: 700;
+    color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 8%, transparent);
+  }
+
+  .gate-expr {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 900px) {
+    .gate-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

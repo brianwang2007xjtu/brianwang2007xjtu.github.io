@@ -1,0 +1,144 @@
+---
+title: "Paper Reading: Recent Work"
+author: master
+pubDatetime: 2026-10-21T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+  - representation-learning
+  - wam
+  - jepa
+description: "近期有意思的工作 📝 ～"
+cover: "/papers/LAWA.png"
+accent: "#c9bd67"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+## Long-WAM
+
+<PaperNote
+  title="Long-WAM"
+  arxivId="2610.10528"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/Long-WAM.pdf"
+  summary="自回归视频预训练与高效长上下文推理"
+  images={["/papers/Long-WAM.png"]}
+>
+
+Long-WAM 最值得关注的一点，是它发现**长上下文带来的收益，很大程度上取决于视频模型是怎么预训练的**。在 RoboCasa GR-1 上，将历史观测从 2.4 秒扩展到 19.2 秒后，采用自回归预训练的模型成功率从 66.3% 提升到了 78.7%；而使用双向视频预训练初始化的模型，并没有获得同样的提升。这说明，把更多历史帧输入模型并不一定能让它更好地理解任务进度，模型还需要具备从过去预测未来的能力。
+
+Long-WAM 使用两个 Expert 分别处理未来预测与动作生成。Video Expert 基于历史观测预测未来的视频 latent，Action Expert 则结合历史观测与预测得到的未来 latent 生成动作序列。为了让前者具备真正的因果预测能力，作者先在大规模机器人和第一人称视频上进行自回归预训练，再将其迁移到世界模型与动作联合建模中。整个过程中不需要为预训练视频提供 action label。
+
+在实验方面，Long-WAM 在 **LIBERO-Long** 上取得了 **99.5%** 的成功率，在 **RoboTwin 2.0** 上取得了 **94.4%** 的平均成功率。真实机器人实验也比较有意思：在动态叠杯任务中，Long-WAM 完成了 **19/20** 次，而 $\pi_\{0.5}$ 和 Fast-WAM 在各自的 20 次试验中均未成功。相比单纯增加 Transformer 的上下文窗口，Long-WAM 更强调预训练与推理系统之间的配合。**对 WAM 来说，历史观测不仅可以作为动作生成的额外条件，也可以通过自回归视频预训练变成更有用的时序信息**；而如何在此基础上进一步降低长上下文带来的计算开销，仍然值得探索。
+
+</PaperNote>
+
+## LAWA
+
+<PaperNote
+  title="LAWA"
+  arxivId="2608.24882"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/LAWA.pdf"
+  summary= "将 Latent Action 作为「意图」，在不生成未来视频的情况下保留 WAM 的能力"
+  images={["/papers/LAWA.png"]}
+>
+
+LAWA 是一篇很有意思的 WAM 工作，它试图在 Fast-WAM 和 Joint-WAM 之间找到一个更好的平衡。Joint-WAM 在推理时需要显式生成未来视频，推理开销比较大；Fast-WAM 则直接移除未来视频生成分支，但在 few-shot 和分布外场景下，泛化能力不如显式预测未来的模型。LAWA 的思路是，**既然动作生成需要的是对未来状态变化的理解，那是否一定要把未来视频完整生成出来**？作者选择用一串紧凑的 **Latent Action** 表示未来意图，让 Action Expert 根据这组预测的 latent action 生成实际动作，而不必重建未来画面的所有细节。
+
+![](/papers/LAWA1.png)
+
+这套设计的关键在于 **latent action tokenizer**。作者先利用无动作标注的机器人视频和第一人称视频进行预训练，将相邻帧之间的变化压缩成离散的 codebook token；同时引入基于 **SAM 2** 自动生成的手部与机械臂区域 mask，辅助 tokenizer 关注真正发生交互的位置，避免表征过多地保留静态场景信息。到了 WAM 训练阶段，模型仍然包含 **Video、Latent Action 和 Action** 三个 Expert，并通过 Joint Attention 协同学习未来视频、潜在意图和可执行动作。不过到了推理阶段，Video Expert 的未来视频去噪分支就不再运行了，只保留 Latent Action 和 Action 两个分支联合去噪。这里还有一个值得注意的细节：**tokenizer 的监督目标来自离散 codebook**，但推理时预测的 latent action 是连续表征，不需要再经过最近邻量化。
+
+![](/papers/LAWA2.png)
+
+实验结果比较能体现这种设计的价值。在 **RoboCasa** 上，LAWA 在 few-shot 和 full-data 设置下分别取得 **65.6%** 和 **80.8%** 的平均成功率，比匹配实现的 Fast-WAM 分别高出 **9.6** 和 **4.5** 个百分点，同时基本保持了 Joint-WAM 的性能，而推理延迟降低了 **42.9%**。在 **LIBERO-Plus** 上，LAWA 的 zero-shot 平均成功率也达到 **74.4%**，优于 Fast-WAM 和 Joint-WAM。论文另一个值得关注的发现是，latent action 并不是天然就能替代未来视频：缺少第一人称视频预训练时，LAWA 的表现反而不如显式预测未来观测的 Joint-WAM。也就是说，真正重要的不只是把未来压缩成更紧凑的表示，还要让这个表示学到与操作有关的动态信息。相比单纯移除未来想象，LAWA 提供了一种更有意思的思路：**不生成完整的未来，但仍然预测对动作决策有用的未来。**
+
+</PaperNote>
+
+## StageWAM
+
+<PaperNote
+  title="StageWAM"
+  arxivId="2608.10780"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/StageWAM.pdf"
+  summary= "在 JEPA 的阶段级未来预测引入 WAM，为短期视频与动作生成提供任务进度引导"
+  images={["/papers/StageWAM.png"]}
+>
+
+StageWAM 关注的是 WAM 在长时序任务中的一个局限：**模型即使能够预测短期的视频和动作，也不一定知道任务接下来应该推进到什么状态**。为此，作者引入 **Stage-JEPA**，利用**冻结的 V-JEPA2** 从机器人轨迹中自动提取关键帧，学习预测下一阶段的潜在表征，不需要人工标注任务阶段。推理时，Stage-JEPA 根据当前观测和任务指令预测阶段级目标，再将其作为条件输入 WAM，引导未来视频与动作生成。
+
+和 LAWA 用 Latent Action 替代未来视频生成不同，StageWAM 保留了原有的视频—动作建模，只是额外加入了一个更高层次的阶段预测信号。在 **RoboTwin 2.0** 上，StageWAM 的平均成功率达到 **90.25%**，高于 Motus 的 **88.66%**；成功轨迹的平均执行步数也从 **79.57** 降至 **74.82**。相比单纯预测局部物理动态，这项工作尝试让 WAM 同时考虑任务应该朝哪个方向推进。不过，**如何让阶段级 latent 更准确地表达任务进度，而不只是作为额外的条件输入**，仍然值得探索。
+
+</PaperNote>
+
+## OpenWAM
+
+<PaperNote
+  title="OpenWAM"
+  arxivId="2610.07922"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/OpenWAM.pdf"
+  summary= "统一比较 WAM 的视频—动作交互方式，并利用反事实轨迹学习可复用的动力学模型"
+  images={["/papers/OpenWAM.png"]}
+>
+
+其实有两篇同期工作都叫做 OpenWAM，一篇来自 OpenWAM-Official 团队，一篇来自于 Stanford。本博客讨论的是后者。
+
+本篇提出了一套可组合 WAM 框架，重点研究 **World 和 Action 应该如何交互**。作者基于 **Wan2.2-5B**，使用超过 **10,000** 小时的机器人视频进行因果预训练，再通过 **MoT** 引入独立的 Action Expert，系统比较了 **VTA、ATV、Joint 和 Decoupled** 四种方式。其中，经过机器人视频训练与因果适配后，VTA 在 **LIBERO-Long** 上的成功率从 **68.4%** 提升至 **97.8%**。
+
+另一个值得关注的设计是**利用反事实轨迹训练独立的动力学模型**。作者在相同初始状态下尝试不同动作，构造了 **32,000** 段反事实轨迹。对于四个未参与 IDM 训练的 **LIBERO-90** 任务，使用反事实数据与示范训练的冻结局部 IDM 达到了 **84.0%** 的平均成功率，而使用完整历史的 IDM 和仅用示范训练的局部 IDM 分别只有 **47.0%** 和 **21.5%**。这说明 WAM 的世界模型不一定必须与动作策略始终端到端联合训练，**独立学习、可复用的动力学模型也能为机器人控制提供有效支持**。
+
+</PaperNote>
+
+## RoboJEPA
+
+<PaperNote
+  title="RoboJEPA"
+  arxivId="2610.10515"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/RoboJEPA.pdf"
+  summary= "JEPA 世界模型的 Scaling Law 与零样本机器人规划"
+  images={["/papers/RoboJEPA.png"]}
+>
+
+RoboJEPA 关注的是一个很有意思的问题：**机器人世界模型能否像 LLM 一样，通过扩大模型规模与训练计算量，获得可预测的性能提升？** 作者基于冻结的 **V-JEPA 2.1** 编码器，在潜在空间中训练 action-conditioned world model，使用涵盖 **12 种机器人本体、23 个公开数据集**的混合数据进行预训练，模型规模从 22M 一直扩展到 8B。部署时，RoboJEPA 不需要额外训练一个任务专用策略，而是通过 **CEM / MPC** 在 latent space 中搜索动作序列，使预测的未来表征尽可能接近**目标图像的表征**，从而直接完成机器人规划。
+
+![](/papers/RoboJEPA1.png)
+
+论文最重要的发现是，**模型的 latent rollout 预测误差与训练计算量之间呈现出可预测的二阶 Scaling Law**，而且预测误差与下游规划能力密切相关。但这种规律并不是简单地扩大模型就能获得：对于需要绕过障碍物等长时序规划的任务，作者发现短期预测训练不足以支撑有效规划，因此进一步采用 **10 步自回归预测的 cooldown**，改善了长时序预测与规划表现。
+
+</PaperNote>
+
+## UniJEPA
+
+<PaperNote
+  title="UniJEPA"
+  arxivId="2510.10642"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/UniJEPA.pdf"
+  summary= "联合连续未来视觉预测与离散语义理解"
+  images={["/papers/UniJEPA.png"]}
+>
+
+UniJEPA 的核心思路是将 **JEPA 式的连续未来表征预测与 VLM 的离散语义理解结合起来**。作者认为，单纯依赖 VLM 虽然具备较强的语义理解能力，却缺乏对环境动态的显式建模；而单纯学习未来视觉生成，又容易丢失原有的视觉—语言对齐。因此，UniJEPA 基于 **MoT**，通过不同的 Expert 分别处理语言理解、未来视觉表征预测和动作生成。预训练阶段，模型不直接生成未来图像，而是利用冻结的视觉编码器提取未来观测的连续 latent，同时学习离散文本预测；随后再使用真实机器人数据微调，让模型将预测表征映射到动作空间。
+
+UniJEPA 采用两阶段训练，在保留预训练语义能力的同时，将对未来状态的预测引入动作学习。在 **SimplerEnv** 上，模型在 **WidowX** 和 **Google Robot** 两个平台分别取得 **71.0% 和 78.4%** 的平均成功率；在真实机器人实验中，它也展现了对未见物体和场景的较强泛化能力。笔者认为这篇工作的价值在于，**未来表征预测不一定要取代 VLM，而是可以作为补充，帮助 VLA 在保留语义理解能力的同时学习环境动态**。这也是连续表征与离散表征联合训练值得继续探索的方向。
+
+</PaperNote>
+
+## LatentUM
+
+<PaperNote
+  title="LatentUM"
+  arxivId="2604.02097"
+  noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/LatentUM.pdf"
+  summary= "在统一语义潜在空间中结合视觉理解、生成与世界模型预测"
+  images={["/papers/LatentUM.png"]}
+>
+
+LatentUM 的核心思路是**让视觉理解和视觉生成共享同一个语义潜在空间**。以往的 Unified Model 往往使用不同的视觉表征处理理解与生成：模型生成图像后，还需要将其解码到像素空间，再重新编码成理解所需的特征，才能继续推理。LatentUM 试图省去这个过程，提出 **Model Behavior-Aligned Quantization（MBAQ）**，将 CLIP 特征量化为离散的语义视觉 token，并通过自回归 Transformer 统一建模文本和视觉 token。这样，模型就能直接对自己生成的视觉表征进行推理，而不必依赖像素空间作为中间桥梁。
+
+这套设计不仅用于图像生成和视觉规划，也被拓展到了世界模型。作者在机器人导航数据 RECON 上微调模型，根据历史观测和文本形式的动作预测未来的视觉语义 token，并利用预训练继承的视觉—语言对齐能力，实现零样本的语言条件导航。在 Visual Spatial Planning 基准上，逐步交替生成文本推理与视觉状态的方案取得了 **99%** 的平均准确率；在 Navigation World Model 基准上，模型的 ATE 和 RPE 分别达到 **1.34** 和 **0.34**。不过，目前的世界模型在自回归 rollout 时仍需要将预测结果渲染成图像，再重新编码为下一步输入，因此还没有实现完全在 latent 空间中闭环预测。
+
+笔者认为 LatentUM 对具身表征学习最有启发的地方，是它**把世界状态预测也看作统一语义空间中的序列建模问题**。相比追求像素级细节，语义 latent 更直接地服务于场景理解与任务规划；但对于机器人控制而言，这种表征是否保留了足够精细的几何和物理动态信息，仍需要进一步验证。如何在语义层面的可推理性与物理层面的可预测性之间取得平衡，是这条路线值得继续探索的方向。
+
+
+</PaperNote>

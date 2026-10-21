@@ -36,6 +36,13 @@ export const GRAPH_ROOT = "AI";
 
 export const paperMeta: Record<string, PaperMeta> = {
   /* ---------- 2026 ---------- */
+  // Recent Work 系列（按文章里的出场顺序：2,4,1,2,4,2,4）
+  "2610.10528": { importance: 2, branch: "Embodied/WAM" },  // Long-WAM
+  "2608.24882": { importance: 4, branch: "Embodied/WAM" },  // LAWA
+  "2608.10780": { importance: 1, branch: "Embodied/WAM" },  // StageWAM
+  "2610.07922": { importance: 2, branch: "Embodied/WAM" },  // OpenWAM
+  "2610.10515": { importance: 4, branch: "Embodied/JEPA" },  // RoboJEPA
+  "2604.02097": { importance: 4, branch: "CV/Backbone" },  // LatentUM
   "2602.11389": { importance: 1, branch: "Embodied/JEPA" },  // C-JEPA
   "2609.32779": { importance: 2, branch: "Embodied/WAM" },  // Copper-Policy
   "2602.15922": { importance: 5, branch: "Embodied/WAM" },  // DreamZero
@@ -52,12 +59,13 @@ export const paperMeta: Record<string, PaperMeta> = {
   "2602.10098": { importance: 3, branch: "Embodied/VLA" },  // VLA-JEPA
 
   /* ---------- 2025 ---------- */
+  "2510.10642": { importance: 2, branch: "Embodied/VLA" },  // UniJEPA
   "2511.14759": { importance: 3, branch: "Embodied/VLA", label: "$\\pi^*_{0.6}$" },  // pi*0.6
   "2604.15483": { importance: 4, branch: "Embodied/VLA", label: "$\\pi_{0.7}$" },  // pi0.7
   "2609.12081": { importance: 2, branch: "Embodied/VLA" },  // MoPA
   "2501.14622": { importance: 3, branch: "Embodied/JEPA" },  // ACT-JEPA
   "2507.04447": { importance: 2, branch: "Embodied/VLA" },  // DreamVLA
-  "2511.08544": { importance: 2, branch: "Embodied/JEPA" },  // LeJEPA
+  "2511.08544": { importance: 4, branch: "Embodied/JEPA" },  // LeJEPA
   "2504.16054": { importance: 3, branch: "Embodied/VLA", label: "$\\pi_{0.5}$" },  // pi_0.5
   "2506.09985": { importance: 5, branch: "Embodied/JEPA" },  // V-JEPA-2
   "2503.11651": { importance: 5, branch: "CV/3D Vision", venue: "CVPR 2025 (Best Paper)", year: 2025 },  // VGGT
@@ -112,6 +120,13 @@ export const paperRelations: [string, string][] = [
   ["2404.08471", "2506.09985"],  // V-JEPA → V-JEPA 2
   ["2404.08471", "2512.10942"],  // V-JEPA → VL-JEPA
   ["2410.24164", "2504.16054"],  // pi_0 ↔ pi_0.5
+  // Recent Work 这批 WAM / JEPA 工作的承接关系
+  ["2603.16666", "2608.24882"],  // Fast-WAM ↔ LAWA
+  ["2608.24882", "2608.10780"],  // LAWA ↔ StageWAM
+  ["2608.24882", "2610.10528"],  // LAWA ↔ Long-WAM
+  ["2608.24882", "2610.07922"],  // LAWA ↔ OpenWAM
+  ["2603.14482", "2610.10515"],  // V-JEPA-2.1 ↔ RoboJEPA
+  ["2506.09985", "2608.10780"],  // V-JEPA-2 ↔ StageWAM
   // π 系列内部构成完全图
   ["2410.24164", "2511.14759"],  // pi_0 ↔ pi*0.6
   ["2410.24164", "2604.15483"],  // pi_0 ↔ pi0.7

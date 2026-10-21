@@ -41,12 +41,12 @@ Long-WAM 使用两个 Expert 分别处理未来预测与动作生成。Video Exp
   arxivId="2608.24882"
   noteUrl="https://github.com/brianwang2007xjtu/ai-paper-reading/blob/main/papers/LAWA.pdf"
   summary= "将 Latent Action 作为「意图」，在不生成未来视频的情况下保留 WAM 的能力"
-  images={["/papers/LAWA.png"]}
+  images={["/papers/LAWA0.png"]}
 >
 
 LAWA 是一篇很有意思的 WAM 工作，它试图在 Fast-WAM 和 Joint-WAM 之间找到一个更好的平衡。Joint-WAM 在推理时需要显式生成未来视频，推理开销比较大；Fast-WAM 则直接移除未来视频生成分支，但在 few-shot 和分布外场景下，泛化能力不如显式预测未来的模型。LAWA 的思路是，**既然动作生成需要的是对未来状态变化的理解，那是否一定要把未来视频完整生成出来**？作者选择用一串紧凑的 **Latent Action** 表示未来意图，让 Action Expert 根据这组预测的 latent action 生成实际动作，而不必重建未来画面的所有细节。
 
-![](/papers/LAWA1.png)
+![](/papers/LAWA0.png)
 
 这套设计的关键在于 **latent action tokenizer**。作者先利用无动作标注的机器人视频和第一人称视频进行预训练，将相邻帧之间的变化压缩成离散的 codebook token；同时引入基于 **SAM 2** 自动生成的手部与机械臂区域 mask，辅助 tokenizer 关注真正发生交互的位置，避免表征过多地保留静态场景信息。到了 WAM 训练阶段，模型仍然包含 **Video、Latent Action 和 Action** 三个 Expert，并通过 Joint Attention 协同学习未来视频、潜在意图和可执行动作。不过到了推理阶段，Video Expert 的未来视频去噪分支就不再运行了，只保留 Latent Action 和 Action 两个分支联合去噪。这里还有一个值得注意的细节：**tokenizer 的监督目标来自离散 codebook**，但推理时预测的 latent action 是连续表征，不需要再经过最近邻量化。
 

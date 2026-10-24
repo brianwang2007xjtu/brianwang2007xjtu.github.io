@@ -1,0 +1,454 @@
+---
+title: "RLHF 概述"
+author: master
+pubDatetime: 2026-10-24T00:00:00Z
+category: research
+tags:
+  - rlhf
+  - ppo
+  - dpo
+description: "可以很简单，也可以复杂的 Flow Matching ~"
+cover: "/rlhf/loop.png"
+accent: "#9f6262"
+---
+
+import ImageRow from "@/components/ImageRow.astro";
+import Algorithm from "@/components/Algorithm.astro";
+import Theorem from "@/components/Theorem.astro";
+
+<figure>
+  <img src="/rlhf/cover.png"/>
+  <figcaption> * 图片来源：[《Reinforcement Learning from Human Feedback》](https://rlhfbook.com/c/03-training-overview)</figcaption>
+</figure>
+
+> The primary task of AI safety is to ensure that the objectives we give to machines are, in fact, the objectives we want.
+
+<p style="text-align: right; font-style: italic;"> —— Stuart Russell &nbsp;</p>
+
+## 引言
+
+笔者曾经对后训练不感兴趣。在我最初的理解中，现代模型的能力主要来自预训练阶段：模型在海量多模态数据上学习理解与推理能力，而后训练似乎只是通过一些偏好数据，让模型的回答更符合人类的期待。这件事固然重要，但相比预训练中那些更有意思的架构设计与学习范式，总觉得少了些值得深入研究的东西。
+
+不过近几天，笔者偶然间看到了 **Nathan Lambert** 大佬的[《Reinforcement Learning from Human Feedback》](https://rlhfbook.com/)，简洁优雅的排版和事无巨细的解说一下子让笔者心动。于是，笔者花了两天的时间仔细学习了该手册的基础部分，并且有了不少收获。
+
+本篇博客将从强化学习的基本概念与数学工具出发，依次介绍偏好数据的构建、奖励模型的训练以及正则化，再到策略梯度和直接对齐算法。希望通过对关键公式的推导与直观解释，厘清这些方法背后的数学原理，以及它们之间的内在联系。本文并不打算面面俱到地复述手册的全部内容，而是更侧重于笔者在学习过程中产生的理解与思考。对于一些容易混淆的概念，笔者也会尝试从自己的角度重新梳理，力求在理解算法的同时，弄清楚每个公式究竟在解决什么问题。
+
+不过，在这一切的一切之前，我们需要大致了解 RLHF 究竟是什么。
+
+---
+
+## 什么是 RLHF
+
+RLHF 的全称是 Reinforcement Learning from Human Feedback，即基于人类反馈的强化学习。顾名思义，它的核心思想是**将人类反馈转化为可用于优化模型的学习信号**，使模型逐渐生成更符合人类偏好的回答。对语言模型来说（之后若无特别说明，本博客均以最基础的语言模型作为 RLHF 的目标对象），要实现这个最终目标，原始的流程包含三部分。首先，我们需要有一个已经预训练好或者已经经过初步 SFT 的语言模型，也即传统 RL 中的**策略模型**；其次，人类偏好数据的收集是非常关键的一步，从这些偏好数据中，我们可以得到反映人类偏好的**奖励模型**；最后，我们再利用 **RL 优化器**，对语言模型进行优化，通过采样生成内容并根据奖励模型进行评分。
+
+<figure>
+  <img src="/rlhf/structure.png"/>
+  <figcaption> * 图片来源：[《Reinforcement Learning from Human Feedback》](https://rlhfbook.com/)</figcaption>
+</figure>
+
+预训练的目标是让模型尽可能准确地拟合训练数据中的文本分布。模型在这个过程中获得了丰富的知识与生成能力，但它并不会因此自动学会如何更好地响应用户。例如，面对一个明确的问题，模型可能给出简洁准确的回答，也可能生成一段冗长的文本，甚至延续成类似网页、论坛或者百科条目的内容。这些输出未必不符合预训练数据的分布，却不一定符合用户的真实需求。
+
+监督微调（SFT）可以通过高质量的**指令-回答**数据，让模型学会按照指令组织回答。然而，示范数据告诉模型应该模仿什么，人类偏好则进一步提供了不同回答之间的相对评价。 与其要求人工为每一种可能的回答设计一套精确的评分规则，不如让人类直接比较两个回答，并指出哪一个更好。通过收集大量这样的偏好数据，我们便可以训练奖励模型，再利用它提供的反馈优化语言模型。
+
+不过，这自然而然又引出了许多问题：**为什么一个语言模型可以被看作策略？人类偏好又是如何转化为梯度信号的？为什么训练过程中还需要额外的价值网络**？要回答这些问题，我们需要先从传统强化学习的数学框架出发，再看看语言模型为这个框架带来了哪些变化。
+
+---
+
+## RL 与语言建模
+
+初次接触强化学习只需要理解几个最核心的概念（如果想再进一步，可以参考笔者的[《RL 手写笔记》](/posts/rl-link/)）。因此，笔者在这里不打算从头构建一套完整的强化学习理论，而是结合后续 RLHF 中会反复出现的符号，介绍理解策略梯度、PPO 与 DPO 所必需的数学工具。
+
+强化学习通常被描述为一个 Agent 与 Environment 不断交互的过程。在这个过程中，有三个最基本的概念：
+
+- **State**：描述智能体当前所处的情景，记作 $s_t$。
+
+- **Action**：智能体在当前状态下采取的行为，记作 $a_t$。
+
+- **Policy**：决定智能体在给定状态下如何选择动作的规则，记作 $\pi(a_t\mid s_t)$。
+
+其中策略是最需要理解的部分，其本质是一个条件概率密度。对于深度强化学习，我们通常使用神经网络对策略进行参数化，记为 $\pi_\theta(a_t\mid s_t)$。
+
+对于最常见的自回归语言模型，这三个概念也有自然的对应关系：给定一个 prompt，模型根据当前已经生成的文本，预测下一个 token 的概率分布，并从中生成下一个 token。我们可以将已经生成的上下文视为 state，将下一个 token 视为 action，而**语言模型本身就是一个策略模型**。具体来说，语言模型在第 $t$ 步生成 $y_t$ 的概率为：
+
+$$
+\pi_\theta (y_t\mid x, y_\{\<t})
+$$
+
+其中，$x$ 为输入的 prompt，$y_\{\<t}$ 为此前已经生成的 token 序列。整条回答的概率可以通过自回归分解写成：
+
+$$
+\prod_\{t=1}^\{|y|}
+\pi_\theta(y_t\mid x,y_\{\<t})
+$$
+
+<figure>
+  <img src="/rlhf/loop.png"/>
+  <figcaption> * 图片来源：[《Reinforcement Learning from Human Feedback》](https://rlhfbook.com/)</figcaption>
+</figure>
+
+这也是为什么我们可以直接将语言模型放进强化学习的框架，**模型生成文本的过程，本身就可以看作一个由策略控制的连续决策过程**。除此之外，为了使得衡量一个策略的好坏，我们需要引入奖励 $r_t$。一系列的状态、动作、奖励可以构成一个轨迹 $\tau$。而判断一个轨迹的好坏不能只关注某一步获得的即时奖励，因为当前动作还可能影响未来的决策与收益。因此，我们引入**累计回报（Return）**，表示从当前时刻开始，未来能够获得的折扣奖励之和：
+
+$$
+G_t = 
+\sum_\{k=0}\^\{T-t-1}
+\gamma^k r_\{t+k+1}.
+$$
+
+需要注意的是，累计回报描述的是一次具体交互的结果，但强化学习往往需要在采取动作之前判断未来的表现。为此，我们引入**价值函数** 和 **Q函数**。这两个函数的关系非常紧密，其中价值函数的研究对象是某个状态：
+
+$$
+V^\{\pi}(s) = \mathbb\{E_\{\pi}} \left[\sum_\{t=0}\^\infty \gamma^tr_\{t} \mid S_0 = s \right]
+$$
+
+而动作函数，即 Q函数，则是估算在某状态采取特定动作后所能获得的期望累计奖励：
+
+$$
+  Q^\{\pi}(s,a) = \mathbb\{E}\left[\sum_\{t=0}\^\{\infty} \gamma^t r_t \mid s_0 = s, a_0 = a \right]
+$$
+
+换句话说，价值函数评价的是当前状态整体上有多好，Q函数评价的则是在当前状态下采取某个特定动作有多好。需要注意，这里讨论的是理论上的价值函数与 Q 函数。实际算法中，我们通常无法精确计算它们，而是通过神经网络对其进行近似估计。然而,在后续的许多策略算法中，我们需要衡量一个策略所指导的动作相较于「平均水平」的好坏。因此，真正重要的概念是**优势函数**： 
+
+$$
+  A^\{\pi}(s,a) = Q^\{\pi}(s,a) - V^\{\pi}(s)
+$$
+
+可以把它理解为一种相对评价，我们不仅想知道某个动作最终能够得到多少回报，更想知道它是否比当前策略原本预期的表现更好。综合上面所述的所有概念，有了状态、动作、策略与回报，我们便可以正式写出强化学习的优化目标，即**最大化策略所产生的期望累计回报**：决定智能体在给定状态下如何选择动作的规则，记作：
+
+$$
+  \max_\{\theta} \mathbb\{E}\_\{\tau \sim P(\cdot \mid \pi_\{\theta})} \left[\sum_\{t=0}\^\{\infty} \gamma^t r_t \right]
+$$
+
+其中，$P(\cdot \mid \pi_\theta)$ 表示在策略 $\pi_\theta$ 与环境状态转移共同作用下产生的轨迹分布。该目标中的期望不仅包含动作选择的随机性，也包含环境转移和初始状态等因素带来的随机性。
+
+---
+
+## 偏好数据 
+
+在前面的讨论中，我们已经知道，RLHF 的目标是使模型生成更符合人类偏好的回答。那么，最直接的问题就是：**我们究竟应该如何描述人类偏好**？一个看似自然的想法是设计一个**奖励函数**，为每一个回答给出一个分数。例如，我们可以根据回答的准确性、完整性、安全性和表达质量分别打分，再将这些分数综合起来。
+
+然而，这种做法很快就会遇到困难。首先，人类对回答质量的要求并不总是容易量化的。对于同一个问题，有些人更看重简洁，有些人更看重解释的完整程度；在某些情况下，准确性优先于表达风格，而在另一些情况下，回答的语气与组织形式也会显著影响用户体验。其次，即使我们能够明确这些标准，也很难为所有可能的回答设计一套统一的评分规则。
+
+<figure>
+  <img src="/rlhf/preference.png"/>
+  <figcaption> * 图片来源：[《Reinforcement Learning from Human Feedback》](https://rlhfbook.com/)</figcaption>
+</figure>
+
+相比之下，让人类直接比较两个回答，判断哪一个更好，往往要容易得多。例如，对于同一个 prompt $x$，假设模型生成了两个回答 $y_1$ 和 $y_2$。标注者不需要给它们分别打出绝对分数，只需要指出哪个回答更符合自己的偏好。我们便可以记录这样一条数据：
+
+$$
+(x,y_c,y_r)
+$$
+
+其中，$y_c$ 表示被选中的较好的回答（chosen），$y_r$ 表示较差的被拒绝的回答（rejected）。这就是后训练中最常见的**成对偏好数据**。
+
+---
+
+## 奖励建模
+
+有了偏好数据之后，我们接下来需要考虑的是，如何让模型从成对比较中学习，并将这种偏好推广到尚未见过的回答。一种常见做法是训练奖励模型，它以 prompt 和回答作为输入，输出一个标量分数 $r(\cdot)$。由上一节的「比较思想」，我们可以轻松推断出：单独看一个回答的奖励值，通常很难判断它究竟有多好；相比之下，在同一个 prompt 下，两个回答的奖励差往往更有意义。
+
+为了将这种分数与人类偏好联系起来，我们可以采用 **Bradley–Terry 偏好模型**。假设对于同一个 prompt $x$，奖励模型分别为两个回答打分，那么模型认为 $y_c$ 优于 $y_r$ 的概率为：
+
+$$
+P(y_c \succ y_r) = \frac\{e^\{r(y_c)}}\{e^\{r(y_c)} + e^\{r(y_r)}}
+$$
+
+最大化上述函数的对数似然（或等价地，最小化负对数似然），即可得到奖励模型的训练损失：
+
+$$
+\begin\{aligned}
+  \theta^* = \arg \max_\{\theta} P(y_c \succ y_r) &= \arg \max_\{\theta} \frac\{1}\{1+e^\{-(r_\{\theta}(y_c)-r_\{\theta}(y_r))}} \\\\[1em]
+  &= \arg \max_\{\theta} \sigma(r_\{\theta}(y_c) - r_\{\theta}(y_r)) \\\\[0.8em]
+  &= \arg \min_\{\theta} -\log (\sigma(r_\{\theta}(y_c) - r_\{\theta}(y_r)))
+\end\{aligned}
+$$
+
+这个公式可以从直觉上理解，两个回答的奖励差越大，模型就越倾向于认为奖励更高的那个回答受到偏好。当两个回答获得相同的奖励时，偏好概率为 $1/2$。奖励模型损失的实现非常简单。 更多的工程挑战在于设置独立的数据加载器和推理流程。 只要数据加载器正确，损失函数可这样写：
+
+```python file=reward_model_loss.py
+import torch.nn as nn
+
+rewards_chosen = model(**inputs_chosen).logits.squeeze(-1)
+rewards_rejected = model(**inputs_rejected).logits.squeeze(-1)
+
+loss = -nn.functional.logsigmoid(rewards_chosen - rewards_rejected).mean()
+```
+
+---
+
+## 正则化
+
+在上一节中，我们已经利用人类偏好数据训练出了奖励模型。接下来，一个自然的想法是：既然奖励模型能够评价回答的好坏，我们只需要不断优化策略，使其获得更高的奖励，不就可以了吗？问题在于，奖励模型只是人类偏好的近似，**过度优化奖励可能反而损害模型的实际表现**。因此，在 RLHF 中，我们不仅希望模型获得更高的奖励，还需要限制优化过程，避免模型过度利用奖励模型的缺陷。**正则化**便是实现这一目标的重要手段。 
+
+为了突出重点和简便，本博客只介绍最常用的 **KL 正则化**。在 RLHF 中，我们通常将当前强化学习策略记为 $\pi^\{\mathrm\{RL}}$，将固定的参考策略记为 $\pi^\{\mathrm\{Ref}}$。参考策略通常来自经过 SFT 的模型，用于约束当前策略的变化。于是，我们可以得到利用 KL 散度的正则化形式：
+
+$$
+r = r_\theta - \lambda_\{\mathrm\{KL\}\} D_\{\mathrm\{KL\}\}\left( \pi^\{\mathrm\{RL\}\}(\cdot\mid x) \Vert \pi^\{\mathrm\{Ref\}\}(\cdot\mid x) \right)
+$$
+
+这个公式表达的思想非常直观：模型希望获得更高的奖励，但如果当前策略过度偏离参考策略，就会受到额外惩罚。参数 $\lambda_\{\mathrm\{KL}}$ 越大，这种约束通常越强；反之，模型就可以更积极地追求奖励。
+
+---
+
+## 策略梯度算法
+
+直接造就 RLHF 在模型后训练领域至高地位的，正是基于**策略梯度**的 RL 优化算法。这一类算法利用最近生成的样本直接更新模型，而不是像传统强化学习那样依赖经验回放缓冲区。在前面的内容中，我们已经介绍了策略、奖励、累计回报、价值函数和优势函数。但这些概念目前仍然是相对独立的。一个很自然的、可以把这些概念全部都串联起来的问题是，**奖励信号是如何转化为模型参数的更新方向的**。
+
+策略梯度算法可以很好的回答这个问题。令 $d_0(s)$ 为与参数无关的初始状态分布，期望回报目标为：
+
+$$
+  J(\theta) = \sum_\{s} d_0(s)V^\{\pi_\{\theta}}(s)
+$$
+
+策略梯度算法的核心就是计算当前策略下有限时间期望回报的梯度。有了期望回报 $J$，参数更新可以表示为：
+
+$$
+  \theta \leftarrow \theta + \alpha \nabla_\{\theta} J(\theta)
+$$
+
+这里的关键问题是如何计算 $\nabla_\{\theta} J(\theta)$。在实际强化学习中，我们通常无法枚举所有可能的状态、动作和轨迹，因此需要通过**采样**来估计这一梯度。对于有限回合、$\gamma=1$ 的常见语言模型设置，可以将目标梯度写成如下形式：
+
+$$
+g = \mathbb\{E}\Big[\sum_\{t=0}^\infty \Psi_t \nabla_\theta \log \pi_\theta(a_t|s_t) \Big].
+$$
+
+这里，$\Psi_t$ 表示用来加权策略对数概率梯度的信号。根据具体算法的设计，它可以采用不同形式。通常，我们选择带有 **baseline** 的形式，基线的作用是降低策略更新的方差。同时，使用优势函数是常见的选择，但它并不意味着在所有基线中都能保证获得最低方差。
+
+### Vanilla Policy Gradient
+
+最基础的策略梯度方法通常称为 Vanilla Policy Gradient。它直接使用轨迹中的累计回报，对策略目标关于参数求导：
+
+$$
+\nabla_\theta J(\pi_\theta) = \mathbb\{E}\_\{\tau} \left[ \sum\_\{t=0}^T \nabla_\theta \log \pi_\theta(a_t|s_t) G_t \right]
+$$
+
+这条公式的直觉并不复杂：对于采样轨迹中实际采取的动作，策略对数概率的梯度决定参数更新的方向，而 $G_t$ 则决定该梯度的权重。不过，直接使用累计回报也有一个明显问题：不同轨迹的回报可能存在很大的差异，导致梯度估计的方差较高。为此，我们通常会引入基线，或者使用优势函数代替累计回报。
+
+$$
+\nabla_\theta J(\pi_\theta) = \mathbb\{E}\_\{\tau} \left[ \sum_\{t=0}^T \nabla_\theta \log \pi_\theta(a_t|s_t) A^\{\pi_\theta}(s_t, a_t) \right]
+$$
+
+这个想法是后面 PPO 与其他策略梯度算法的共同基础。用优势估计指导策略更新，让模型不仅知道某条回答的奖励是多少，也能够判断实际采取的动作是否优于当前策略的平均预期。
+
+不过，这里有一个伏笔，就是优势函数究竟应该如何估计出来。我们后面再说。
+
+### REINFORCE
+
+REINFORCE 是非常经典的策略梯度算法，是 Vanilla Policy Gradient 基于**蒙特卡洛估计**的具体实现，也是理解现代 RLHF 的一个重要起点：
+
+<Algorithm
+  number={1}
+  title="REINFORCE"
+  lines={[
+    { text: "Require: differentiable policy $\\pi_\\theta(a \\mid s)$, learning rate $\\alpha$, discount factor $\\gamma$" },
+    { n: 1, keyword: true, text: "repeat" },
+    { n: 2, indent: 1, text: "Sample a trajectory $\\tau = (s_0, a_0, r_1, \\dots, s_T)$ by running $\\pi_\\theta$" },
+    { n: 3, indent: 1, text: "For every step $t$, compute the return" },
+    { formula: true, indent: 1, text: "$G_t = \\sum_{k=0}^{T-t-1} \\gamma^k r_{t+k+1}$" },
+    { n: 4, indent: 1, text: "Estimate the policy gradient with the Monte-Carlo return (with an optional baseline $b(s_t)$)" },
+    { formula: true, indent: 1, text: "$g = \\sum_{t=0}^{T-1} \\nabla_\\theta \\log \\pi_\\theta(a_t \\mid s_t) \\left( G_t - b(s_t) \\right)$" },
+    { n: 5, indent: 1, text: "Update the parameters" },
+    { formula: true, indent: 1, text: "$\\theta \\leftarrow \\theta + \\alpha g$" },
+    { n: 6, keyword: true, text: "until converged" },
+  ]}
+/>
+
+可以看出，和传统 RLHF 常用的梯度算法不同，REINFORCE 一般不使用价值网络，可以使用简单的奖励均值或滑动平均作为基线，也可以使用学习得到的价值函数作为基线。
+
+### PPO
+
+PPO，即 **Proximal Policy Optimization 近端策略优化**，是深度强化学习和经典 RLHF 中最具代表性的算法之一，也是本博客最为核心的内容。在前面的策略梯度公式中，我们直接使用当前策略的对数概率梯度更新模型。但在实际训练中，如果一次更新使策略发生过大的变化，模型可能迅速偏离采样时的数据分布，进而影响优化稳定性。
+
+为此，PPO 创造性地引入了新旧策略之间的概率比：
+
+$$
+\rho_t(\theta)=\frac\{\pi_\theta(a_t|s_t)}\{\pi_\{\mathrm\{old}}(a_t|s_t)} 
+$$
+
+其中，$\pi_\{\mathrm\{old}}$ 是采样时使用的旧策略，$\pi_\theta$ 是当前待更新的策略。根据这个比值，我们便可以构造一个重要性采样加权的策略梯度代理目标。但如果允许概率比无限制地变化，优化仍然可能使策略发生过大的更新。因此，PPO 引入了**裁剪函数**：
+
+$$
+\operatorname\{clip}(x,1-\varepsilon,1+\varepsilon) 
+$$
+
+裁剪函数将输入限制在 $[1-\varepsilon,1+\varepsilon]$ 区间内。其中，$\varepsilon>0$ 是裁剪阈值。由此，PPO 的核心目标函数为：
+
+$$
+\mathcal L_\{\mathrm\{policy}}(\theta)=-\mathbb E_t
+\left[
+\min\left(
+\rho_t(\theta)\hat A_t,
+\operatorname\{clip}\left(
+\rho_t(\theta),1-\varepsilon,1+\varepsilon
+\right)\hat A_t
+\right)
+\right]
+$$
+
+要实际应用这个优化目标，我们需要考虑的问题是，在语言模型中如何计算概率比。在传统强化学习中，动作可能是离散动作，也可能是连续控制量。但对于自回归语言模型，每一步动作都是一个 token。因此，语言模型中的概率比通常在 token 级别计算：
+
+$$
+\rho_t(\theta)=\frac\{
+\pi_\theta(y_t \mid x,y_\{\<t})}\{
+\pi_\{\theta_\{\mathrm\{old}}}(y_t\mid x,y_\{\<t\})}
+$$
+
+对应的逐 token 的 PPO 优化目标为：
+
+$$
+J(\theta) = 
+\mathbb E_\{x,y}
+\left[
+\frac\{1}\{T}
+\sum_\{t=1}\^\{T}
+\min\left(
+\rho_t(\theta)A_t,
+\operatorname\{clip}\left(
+\rho_t(\theta),1-\varepsilon,1+\varepsilon
+\right)A_t
+\right)
+\right]
+$$
+
+需要注意，逐 token 的裁剪目标与整条回答的序列级裁剪目标并不相同。前者可以对每个 token 的策略变化分别施加约束，而后者则关注整条回答的整体概率变化。
+
+除此之外，我们还需要解决之前埋下的伏笔，进行**优势估计**，才能对上式进行计算。在经典 PPO 的 Actor-Critic 实现中，除了策略模型以外，还需要一个**价值网络**，通常记为：$V_\phi(s_t)$。该网络输入当前状态 $s_t$，输出一个标量，用于估计从当前状态继续行动所能获得的期望累计回报。
+
+这里很容易混淆的一点是，**价值函数的作用并不等同于奖励模型**。奖励模型负责评价完整回答，价值网络则负责估计当前生成上下文的未来回报。在经典 PPO-RLHF 中，奖励模型的最终评分往往集中在回答结束时，而价值网络需要对回答中不同 token 所处的状态分别进行预测。
+
+<figure>
+  <img src="/rlhf/PPO.png"/>
+  <figcaption> * 图片来源：[《Reinforcement Learning from Human Feedback》](https://rlhfbook.com/)</figcaption>
+</figure>
+
+有别于 REINFORCE 采用蒙特卡洛方法进行估计，在经典 PPO-RLHF 中，优势通常通过**广义优势估计 GAE** 计算。GAE 的核心思想并不复杂，我们既不完全依赖价值网络的一步预测，也不一定直接使用整条轨迹的完整回报，而是将不同时间跨度的估计结合起来，在**偏差**与**方差**之间寻找平衡。
+
+$n$ 步优势估计的数学表达式如下：
+
+$$
+\hat\{A\}\_t^\{(n)\} = \begin\{cases\}
+r\_t + \gamma V(s\_\{t+1\}) - V(s\_t), & n = 1 \\\\
+r\_t + \gamma r\_\{t+1\} + \gamma^2 V(s\_\{t+2\}) - V(s\_t), & n = 2 \\\\
+\vdots \\\\
+r\_t + \gamma r\_\{t+1\} + \gamma^2 r\_\{t+2\} + \cdots - V(s\_t), & n = \infty
+\end\{cases\}
+$$
+
+总结下来，经典 PPO 的完整算法流程如下：
+
+<Algorithm
+  number={2}
+  title="PPO"
+  lines={[
+    { text: "Require: policy $\\pi_\\theta$, value network $V_\\phi$, reward model $r$, reference policy $\\pi_{\\text{ref}}$, learning rate $\\alpha$, clip range $\\varepsilon$, KL weight $\\beta$" },
+    { n: 1, keyword: true, text: "repeat" },
+    { n: 2, indent: 1, text: "Sample prompts $x \\sim \\mathcal{D}$ and completions $y \\sim \\pi_{\\theta_{\\text{old}}}(\\cdot \\mid x)$" },
+    { n: 3, indent: 1, text: "Score the completions and subtract the per-token KL penalty" },
+    { formula: true, indent: 1, text: "$\\tilde{r}_t = r(x, y) - \\beta \\, D_{\\text{KL}}\\left(\\pi_{\\theta_{\\text{old}}}(\\cdot \\mid s_t) \\,\\|\\, \\pi_{\\text{ref}}(\\cdot \\mid s_t)\\right)$" },
+    { n: 4, indent: 1, text: "Estimate the advantages with GAE" },
+    { formula: true, indent: 1, text: "$\\hat{A}_t = \\sum_{l=0}^{\\infty} (\\gamma\\lambda)^l \\delta_{t+l}, \\qquad \\delta_t = \\tilde{r}_t + \\gamma V_\\phi(s_{t+1}) - V_\\phi(s_t)$" },
+    { n: 5, indent: 1, text: "For each update epoch and minibatch:" },
+    { n: 6, indent: 2, text: "Update the policy with the clipped surrogate objective" },
+    { formula: true, indent: 2, text: "$\\rho_t(\\theta) = \\frac{\\pi_\\theta(y_t \\mid x, y_{\\lt t})}{\\pi_{\\theta_{\\text{old}}}(y_t \\mid x, y_{\\lt t})}, \\qquad \\mathcal{L}^{\\text{clip}} = \\mathbb{E}\\left[ \\min\\left( \\rho_t \\hat{A}_t, \\; \\text{clip}(\\rho_t, 1 - \\varepsilon, 1 + \\varepsilon) \\hat{A}_t \\right) \\right]$" },
+    { n: 7, indent: 2, text: "Fit the value network by regression" },
+    { formula: true, indent: 2, text: "$\\mathcal{L}^{\\text{VF}} = \\mathbb{E}\\left[ \\left( V_\\phi(s_t) - \\hat{R}_t \\right)^2 \\right]$" },
+    { n: 8, indent: 1, text: "Sync the old policy: $\\theta_{\\text{old}} \\leftarrow \\theta$" },
+    { n: 9, keyword: true, text: "until converged" },
+  ]}
+/>
+
+### GRPO
+
+GRPO，即 **Group Relative Policy Optimization**，是 PPO 风格的一种变体，最早在 DeepSeekMath 中提出。它的动机非常直接：经典 PPO 需要额外训练一个与策略模型同等规模的价值网络，这在显存与工程上都是相当昂贵的，而如何为语言模型配一个合适的价值网络，至今也没有公认的最佳实践。GRPO 的做法是**干脆去掉价值网络**，转而让同一 prompt 下的多条回答互相比较，从而构造优势。
+
+<figure>
+  <img src="/rlhf/GRPO.png"/>
+  <figcaption> * 图片来源：[《Reinforcement Learning from Human Feedback》](https://rlhfbook.com/)</figcaption>
+</figure>
+
+具体来说，对每个 prompt $x$，用当前策略采样 $G$ 条回答，并让奖励模型分别打分。随后，将这 $G$ 个分数在**组内标准化**。一条回答的优势，就是它的分数超出组内平均值多少个标准差：
+
+$$
+A_i = \frac\{r_i - \mathrm\{mean\}(r_1, \ldots, r_G)\}\{\mathrm\{std\}(r_1, \ldots, r_G) + \epsilon\}
+$$
+
+与 PPO 一样，GRPO 的训练目标采用裁剪的重要性采样代理目标；一个非常大的区别在于，KL 惩罚不再被放进奖励里，而是**直接加进损失函数**：
+
+$$
+J(\theta) = \frac\{1\}\{G\} \sum_\{i=1\}^\{G\} \frac\{1\}\{|y_i|\} \sum_\{t=1\}^\{|y_i|\} \Big[ \min\Big( \rho_\{i,t\} A_i,\ \mathrm\{clip\}\Big( \rho_\{i,t\}, 1 - \varepsilon, 1 + \varepsilon \Big) A_i \Big) - \beta D_\{\mathrm\{KL\}\}\Big( \pi_\theta(\cdot \mid s_\{i,t\}) \\,\Vert\\, \pi_\{\mathrm\{ref\}\}(\cdot \mid s_\{i,t\}) \Big) \Big]
+$$
+
+GRPO 的完整算法流程总结如下：
+
+<Algorithm
+  number={3}
+  title="GRPO"
+  lines={[
+    { text: "Require: policy $\\pi_\\theta$, old policy $\\pi_{\\theta_{\\text{old}}}$, reward model $r$, reference policy $\\pi_{\\text{ref}}$, learning rate $\\alpha$, clip range $\\varepsilon$, KL weight $\\beta$, group size $G$" },
+    { n: 1, keyword: true, text: "repeat" },
+    { n: 2, indent: 1, text: "Sample a batch of prompts $\\{x^{(i)}\\} \\sim \\mathcal{D}$" },
+    { n: 3, indent: 1, text: "For each prompt, sample $G$ completions $y^{(i,g)} \\sim \\pi_{\\theta_{\\text{old}}}(\\cdot \\mid x^{(i)})$ and score them" },
+    { formula: true, indent: 1, text: "$r^{(i,g)} = r\\left(x^{(i)}, y^{(i,g)}\\right)$" },
+    { n: 4, indent: 1, text: "Normalize the rewards within each group to get the advantages" },
+    { formula: true, indent: 1, text: "$A^{(i,g)} = \\frac{r^{(i,g)} - \\mathrm{mean}\\left(r^{(i,1)}, \\dots, r^{(i,G)}\\right)}{\\mathrm{std}\\left(r^{(i,1)}, \\dots, r^{(i,G)}\\right) + \\epsilon}$" },
+    { n: 5, indent: 1, text: "For each update epoch and minibatch:" },
+    { n: 6, indent: 2, text: "Update the policy with the clipped objective minus the KL penalty" },
+    { formula: true, indent: 2, text: "$\\rho_{i,t} = \\frac{\\pi_\\theta(y_{i,t} \\mid s_{i,t})}{\\pi_{\\theta_{\\text{old}}}(y_{i,t} \\mid s_{i,t})}, \\qquad \\mathcal{L} = \\frac{1}{G} \\sum_{g=1}^{G} \\frac{1}{|y^{(i,g)}|} \\sum_{t=1}^{|y^{(i,g)}|} \\left[ \\min\\left( \\rho_{i,t} A^{(i,g)},\\; \\text{clip}\\left( \\rho_{i,t}, 1 - \\varepsilon, 1 + \\varepsilon \\right) A^{(i,g)} \\right) - \\beta \\, D_{\\text{KL}}\\left( \\pi_\\theta(\\cdot \\mid s_{i,t}) \\,\\Vert\\, \\pi_{\\text{ref}}(\\cdot \\mid s_{i,t}) \\right) \\right]$" },
+    { n: 7, indent: 1, text: "Sync the old policy: $\\theta_{\\text{old}} \\leftarrow \\theta$" },
+    { n: 8, keyword: true, text: "until converged" },
+  ]}
+/>
+
+---
+
+## 直接对齐算法
+
+前面两节的 PPO 与 GRPO，都需要先训练一个奖励模型，再通过策略梯度类的优化器去最大化带 KL 正则化的奖励目标。不过，一个很自然的问题是，能不能绕开奖励模型和 RL 优化器，直接从偏好数据训练策略本身？基于这个问题，产生了一类不同与 PPO 的优化算法 **DPO**。
+
+DPO 的核心在于，我们可以把**策略本身当作隐式的奖励模型**。具体来说，给定系数 $\beta$ 与冻结的参考策略 $\pi_\{\mathrm\{ref\}\}$，DPO 用策略与参考模型的对数概率比来定义奖励：
+
+$$
+r\_\theta(x, y) = \beta \log \frac\{\pi\_\theta(y \mid x)\}\{\pi\_\{\mathrm\{ref\}\}(y \mid x)\}
+$$
+
+把这个隐式奖励代入 Bradley-Terry 偏好模型，就得到了 DPO 的损失函数：
+
+$$
+\mathcal\{L}\_\{\mathrm\{DPO}} = - \mathbb\{E}\_\{(x, y\_c, y\_r) \sim \mathcal\{D}} \left[ \log \sigma \left( \beta \log \frac\{\pi\_\theta(y\_c \mid x)}\{\pi\_\{\mathrm\{ref}}(y\_c \mid x)} - \beta \log \frac\{\pi\_\theta(y\_r \mid x)}\{\pi\_\{\mathrm\{ref}}(y\_r \mid x)\} \right) \right]
+$$
+
+直观地说，这个损失在做的事与前面奖励模型的损失完全同构：**拉大选中与被拒回答的分数差**。只是这里的「分数」不再是独立奖励模型的输出，而是策略自身相对参考模型的概率比。因此，DPO 的整个训练流程非常简洁，总结如下：
+
+<Algorithm
+  number={4}
+  title="DPO"
+  lines={[
+    { text: "Require: policy $\\pi_\\theta$, reference policy $\\pi_{\\text{ref}}$ (frozen), preference dataset $\\mathcal{D}$, coefficient $\\beta$, learning rate $\\alpha$" },
+    { n: 1, keyword: true, text: "repeat" },
+    { n: 2, indent: 1, text: "Sample a batch of preference pairs $(x, y_c, y_r) \\sim \\mathcal{D}$" },
+    { n: 3, indent: 1, text: "Compute the log-ratio difference against the reference model" },
+    { formula: true, indent: 1, text: "$h_\\theta(x, y_c, y_r) = \\log \\frac{\\pi_\\theta(y_c \\mid x)}{\\pi_{\\text{ref}}(y_c \\mid x)} - \\log \\frac{\\pi_\\theta(y_r \\mid x)}{\\pi_{\\text{ref}}(y_r \\mid x)}$" },
+    { n: 4, indent: 1, text: "Compute the loss" },
+    { formula: true, indent: 1, text: "$\\mathcal{L}_{\\text{DPO}} = -\\log \\sigma\\left( \\beta \\, h_\\theta(x, y_c, y_r) \\right)$" },
+    { n: 5, indent: 1, text: "Update the policy" },
+    { formula: true, indent: 1, text: "$\\theta \\leftarrow \\theta - \\alpha \\nabla_\\theta \\mathcal{L}_{\\text{DPO}}$" },
+    { n: 6, keyword: true, text: "until converged" },
+  ]}
+/>
+
+与 PPO、GRPO 相比，DPO 没有在线采样、没有价值网络、也没有显式的奖励模型，只需要维护一份冻结的参考模型，直接对偏好数据做离线优化。这一简洁性正是它迅速普及的原因。
+
+---
+
+## 小结
+
+行文至此，笔者已经很是疲惫，好在 RLHF 的主线内容已经说完。不过，本博客涉及的也仅仅是 RLHF 这个庞大领域的冰山一角，大概率连入门都不算。对这个领域感兴趣的读者可以自行再深入探究。无论是偏好数据、正则化，还是最为核心的策略梯度算法，每个组件本身都是一个很大的课题～
+
+---
+
+## Reference
+
+1. https://rlhfbook.com/
+2. https://jweihe.github.io/RLHF-book-Chinese/index.html
+3. https://www.bilibili.com/video/BV1rpLj6xEzU/?spm_id_from=333.337.search-card.all.click&vd_source=9c67ab7c97a2e7ce6de61476e02f2c32
+

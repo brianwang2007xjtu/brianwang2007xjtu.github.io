@@ -44,6 +44,12 @@ export const commonLinks: FriendLink[] = [
     url: "https://www.assassinlike.top/",
     avatar: "https://www.assassinlike.top/figs/bg.jpg",
   },
+  {
+    name: "yuzhexzf的博客",
+    desc: "个人博客",
+    url: "https://yuzhexzf.top/index.html",
+    avatar: "https://yuzhexzf.top/mysource/img/avatar/mmexport1779381309495.jpg",
+  },
 ];
 
 /** 申请友链时展示的本站信息（点击即可复制）。 */

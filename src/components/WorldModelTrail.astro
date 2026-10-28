@@ -1,0 +1,264 @@
+---
+// "Take a closer look" style world-model trail: solid simulator robot with a
+// trail of blue world-model ghosts, plus an auto-playing, draggable timeline.
+const CLIP = "run2_subject4";
+const FRAMES = 450;
+const FPS = 50;
+const TICKS = Array.from({ length: 8 }, (_, i) => i + 2); // 2s … 9s
+---
+
+<div class="wm-trail not-prose" data-wm-trail>
+  <div class="wt-screen">
+    <video
+      class="wt-film"
+      data-wt-video
+      src="/supermimic-demo/videos/wm_trail_run2.mp4"
+      playsinline
+      muted
+      autoplay
+      preload="auto"
+      disablepictureinpicture
+      controlslist="nodownload noplaybackrate noremoteplayback"
+      oncontextmenu="return false;"
+    ></video>
+    <div class="wt-legend">
+      <span class="lg"><span class="dot sim"></span>Simulator</span>
+      <span class="lg"><span class="dot wm"></span>World model</span>
+    </div>
+  </div>
+
+  <div class="wt-meta">
+    <span class="wt-frames"><span data-wt-frame>0</span> / {FRAMES}</span>
+    <span class="wt-title">Run 2 · subject 4&nbsp;&nbsp;<span class="wt-mono">9 s</span></span>
+  </div>
+
+  <div class="wt-controls">
+    <button class="wt-btn" type="button" data-wt-toggle aria-label="暂停">
+      <svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="7" y="5" width="3.4" height="14" rx="1" />
+        <rect x="13.6" y="5" width="3.4" height="14" rx="1" />
+      </svg>
+      <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M8 5.2v13.6l11-6.8z" />
+      </svg>
+    </button>
+    <div class="wt-timeline">
+      <input
+        class="wt-range"
+        data-wt-range
+        type="range"
+        min="0"
+        max={FRAMES}
+        step="1"
+        value="0"
+        aria-label="播放进度"
+      />
+      <div class="wt-ticks">
+        {TICKS.map(s => <span style={`left:${(s / 9) * 100}%`}>{s}s</span>)}
+      </div>
+    </div>
+  </div>
+
+  <p class="wt-note">
+    灰白为 MuJoCo 仿真，蓝色为世界模型（44k 检查点）从同一初始状态自回归想象的轨迹；平均关节误差
+    0.062 rad，长时程根部漂移约 0.11 m。
+  </p>
+</div>
+
+<style>
+  .wm-trail {
+    --w-ink: #1d1d1f;
+    --w-ink2: #6e6e73;
+    --w-hair: #d2d2d7;
+    --w-track: #e8e8ed;
+    margin: 2rem 0;
+    padding: 1.25rem 1.25rem 1rem;
+    border-radius: 22px;
+    background: var(--background);
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--border) 80%, transparent);
+  }
+  :global(html[data-theme="dark"]) .wm-trail {
+    --w-ink: #f5f5f7;
+    --w-ink2: #a1a1a6;
+    --w-hair: #3a3a3c;
+    --w-track: #2c2c2e;
+  }
+  .wt-screen {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0b0d10;
+    aspect-ratio: 16 / 9;
+  }
+  .wt-film {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+  .wt-legend {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+  }
+  .lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #1d1d1f;
+    white-space: nowrap;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .dot.sim {
+    background: #bdbdbd;
+    box-shadow: inset 0 0 0 2px #3a3a3c;
+  }
+  .dot.wm {
+    background: #5aa9ea;
+  }
+  .wt-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 0.9rem 0 0.35rem;
+    font-size: 12px;
+    color: var(--w-ink2);
+  }
+  .wt-frames {
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .wt-title {
+    font-weight: 500;
+    color: var(--w-ink);
+  }
+  .wt-mono {
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-weight: 400;
+    color: var(--w-ink2);
+    font-size: 11px;
+  }
+  .wt-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .wt-btn {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: var(--w-track);
+    color: var(--w-ink);
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .wt-btn:hover {
+    background: color-mix(in srgb, var(--w-track) 60%, var(--w-ink) 8%);
+  }
+  .wt-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  .wt-btn .ic-play {
+    display: none;
+  }
+  .wm-trail[data-paused="1"] .wt-btn .ic-pause {
+    display: none;
+  }
+  .wm-trail[data-paused="1"] .wt-btn .ic-play {
+    display: block;
+  }
+  .wt-timeline {
+    position: relative;
+    flex: 1;
+    padding-bottom: 18px;
+  }
+  .wt-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--w-ink) 0%,
+      var(--w-ink) var(--p, 0%),
+      var(--w-track) var(--p, 0%),
+      var(--w-track) 100%
+    );
+    outline: none;
+  }
+  .wt-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+    cursor: grab;
+  }
+  .wt-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+    cursor: grab;
+  }
+  .wt-ticks {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 14px;
+    pointer-events: none;
+  }
+  .wt-ticks span {
+    position: absolute;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    color: var(--w-ink2);
+    white-space: nowrap;
+  }
+  .wt-ticks span::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -8px;
+    width: 1px;
+    height: 4px;
+    background: var(--w-hair);
+  }
+  .wt-note {
+    margin-top: 0.85rem;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--w-ink2);
+  }
+</style>

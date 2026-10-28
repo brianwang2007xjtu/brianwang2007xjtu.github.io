@@ -1,0 +1,610 @@
+---
+// Motion demo in the style of the official SuperMimic demo: glass HUD over the
+// footage, a floating pill dock at the bottom, a popover motion list with
+// folders. No seek bar, no native controls — replay only.
+import manifest from "@/data/supermimic-manifest.json";
+
+const GROUPS: [string, string][] = [
+  ["walk", "Walk"],
+  ["dance", "Dance"],
+  ["run", "Run"],
+  ["sprint", "Sprint"],
+  ["fight", "Fight"],
+  ["jumps", "Jumps"],
+  ["fallAndGetUp", "Fall & Get Up"],
+];
+const clips = manifest.clips;
+const folders = GROUPS.map(([group, label]) => ({
+  group,
+  label,
+  items: clips.filter(c => c.group === group),
+})).filter(f => f.items.length > 0);
+---
+
+<div class="studio not-prose" data-motion-embed>
+  <div class="screen">
+    <video
+      class="film"
+      data-me-video
+      playsinline
+      muted
+      preload="metadata"
+      disablepictureinpicture
+      controlslist="nodownload noplaybackrate noremoteplayback"
+      oncontextmenu="return false;"
+    ></video>
+    <div class="loader" data-me-loader>
+      <div class="loader-card">
+        <div class="loader-label">Loading</div>
+        <div class="loader-bar"><span data-me-bar></span></div>
+        <div class="loader-pct" data-me-pct>0%</div>
+      </div>
+    </div>
+    <button class="play-overlay" data-me-play type="button" aria-label="播放">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+    </button>
+    <button class="replay-overlay" data-me-replay type="button" aria-label="重新播放">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3" />
+        <path d="M3.5 4.2v4.6h4.6" />
+      </svg>
+    </button>
+
+    <div class="hud top-left">
+      <div class="brand">SuperMimic</div>
+      <div class="kicker">LAFAN1 · 44,000 steps · MuJoCo</div>
+    </div>
+
+    <div class="hud top-right legend">
+      <span class="lg"><span class="dot sim"></span>Simulator</span>
+      <span class="lg"><span class="dot ref"></span>Reference</span>
+    </div>
+
+    <div class="dock">
+      <button class="dock-main" data-me-open type="button">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+          stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1.8 4.2h5.1l1.3 1.4h6" />
+          <path d="M1.8 4.2v7.6h12.4V5.6H8.2" />
+        </svg>
+        <span class="dock-label">
+          <span class="cat" data-me-cat></span>
+          <span class="name" data-me-name>motions</span>
+        </span>
+        <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 10.5 8 6.5l4 4" />
+        </svg>
+      </button>
+      <span class="sep"></span>
+      <span class="ret" data-me-ret>return —</span>
+      <span class="sep"></span>
+      <button class="icon" data-me-icon-replay type="button" aria-label="重新播放">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3" />
+          <path d="M3.5 4.2v4.6h4.6" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="sheet" data-me-sheet hidden>
+      <input class="filter" type="search" placeholder="Filter motions" data-me-filter />
+      <div class="list" data-me-list>
+        {
+          folders.map(f => (
+            <div class="folder" data-folder={f.group} data-collapsed="0">
+              <button type="button" class="folder-head" data-folder-head>
+                <svg class="arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden="true">
+                  <path d="M6 4l4 4-4 4" />
+                </svg>
+                <span>{f.label}</span>
+                <span class="count">{f.items.length}</span>
+              </button>
+              <div class="items">
+                {f.items.map(c => (
+                  <button
+                    type="button"
+                    class="item"
+                    data-name={c.name}
+                    data-src={c.src}
+                    data-return={c.norm_return.toFixed(3)}
+                    data-group={c.group}
+                  >
+                    <span class="nm">{c.name}</span>
+                    <span class="r">{c.norm_return.toFixed(2)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .studio {
+    --s-ink: #1d1d1f;
+    --s-ink2: #6e6e73;
+    --s-hair: #d2d2d7;
+    --s-mat: rgba(255, 255, 255, 0.72);
+    --s-hover: rgba(0, 0, 0, 0.05);
+    --s-lift: 0 10px 30px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+    --s-ease: cubic-bezier(0.28, 0.11, 0.32, 1);
+    margin: 2rem 0;
+  }
+  :global(html[data-theme="dark"]) .studio {
+    --s-ink: #f5f5f7;
+    --s-ink2: #a1a1a6;
+    --s-hair: #3a3a3c;
+    --s-mat: rgba(28, 28, 30, 0.7);
+    --s-hover: rgba(255, 255, 255, 0.08);
+    --s-lift: 0 10px 30px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  .screen {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 38%, #1c2430 0%, #0d1117 65%, #080a0e 100%);
+    box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--s-hair) 70%, transparent);
+    aspect-ratio: 16 / 9;
+  }
+
+  .film {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+
+  .hud {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .top-left {
+    top: 18px;
+    left: 20px;
+  }
+  .brand {
+    font-family: "Inter Tight", "Inter", system-ui, -apple-system, sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: #fff;
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+  }
+  .kicker {
+    margin-top: 4px;
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.66);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+  }
+  .top-right {
+    top: 18px;
+    right: 20px;
+  }
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+    white-space: nowrap;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+  }
+  /* MuJoCo's own robot: grey shell ringed in its joints. */
+  .dot.sim {
+    background: #bdbdbd;
+    box-shadow: inset 0 0 0 2px #3a3a3c;
+  }
+  /* The reference motion (mocap ghost). */
+  .dot.ref {
+    background: #5aa9ea;
+  }
+
+  .dock {
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--s-mat);
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), var(--s-lift);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    max-width: calc(100% - 24px);
+  }
+  .dock-main {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--s-ink);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s var(--s-ease);
+    max-width: 320px;
+  }
+  .dock-main:hover {
+    background: var(--s-hover);
+  }
+  .dock-main .ico {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    opacity: 0.8;
+  }
+  .dock-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .dock-label .cat {
+    color: var(--s-ink2);
+    text-transform: capitalize;
+  }
+  .dock-label .cat:not(:empty)::after {
+    content: " · ";
+    color: var(--s-ink2);
+  }
+  .chev {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    opacity: 0.55;
+    transition: transform 0.25s var(--s-ease);
+  }
+  .studio[data-open="1"] .chev {
+    transform: rotate(180deg);
+  }
+  .sep {
+    width: 1px;
+    height: 20px;
+    background: var(--s-hair);
+    margin: 0 4px;
+    flex: none;
+  }
+  .ret {
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: var(--s-ink2);
+    white-space: nowrap;
+    padding: 0 4px;
+  }
+  .icon {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    color: var(--s-ink);
+    cursor: pointer;
+    transition: background 0.2s var(--s-ease);
+  }
+  .icon:hover {
+    background: var(--s-hover);
+  }
+  .icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* ---------- loading card ---------- */
+  .loader {
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(8, 10, 14, 0.55);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s var(--s-ease);
+  }
+  .loader[hidden] {
+    display: none;
+  }
+  .loader-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: var(--s-mat);
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), var(--s-lift);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    color: var(--s-ink);
+    font-size: 12px;
+  }
+  .loader-label {
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--s-ink2);
+  }
+  .loader-bar {
+    position: relative;
+    width: 120px;
+    height: 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--s-ink2) 25%, transparent);
+    overflow: hidden;
+  }
+  .loader-bar span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    border-radius: 999px;
+    background: var(--s-ink);
+    transition: width 0.2s linear;
+  }
+  .loader-bar.indeterminate span {
+    width: 40%;
+    animation: slide 1.1s var(--s-ease) infinite;
+  }
+  @keyframes slide {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(300%); }
+  }
+  .loader-pct {
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    color: var(--s-ink2);
+    font-variant-numeric: tabular-nums;
+    min-width: 3.2ch;
+    text-align: right;
+  }
+  .play-overlay {
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    margin: auto;
+    width: 64px;
+    height: 64px;
+    display: none;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    color: #fff;
+    cursor: pointer;
+  }
+  .play-overlay svg {
+    width: 26px;
+    height: 26px;
+    margin-left: 3px;
+  }
+  .play-overlay.is-visible {
+    display: grid;
+  }
+
+  .replay-overlay {
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    margin: auto;
+    width: 64px;
+    height: 64px;
+    display: none;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.15s var(--s-ease), background 0.15s var(--s-ease);
+  }
+  .replay-overlay:hover {
+    transform: scale(1.05);
+    background: rgba(0, 0, 0, 0.62);
+  }
+  .replay-overlay svg {
+    width: 26px;
+    height: 26px;
+  }
+  .replay-overlay.is-visible {
+    display: grid;
+  }
+
+  .sheet {
+    position: absolute;
+    z-index: 5;
+    right: 12px;
+    bottom: 70px;
+    width: min(320px, calc(100% - 24px));
+    max-height: min(58%, 420px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 20px;
+    background: var(--s-mat);
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), var(--s-lift);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    animation: rise 0.26s var(--s-ease);
+  }
+  .sheet[hidden] {
+    display: none;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  .filter {
+    flex: none;
+    height: 34px;
+    border: 0;
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 13px;
+    color: var(--s-ink);
+    background: rgba(118, 118, 128, 0.14);
+    outline: none;
+  }
+  .filter::placeholder {
+    color: var(--s-ink2);
+  }
+  .list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--s-hair) transparent;
+  }
+  .folder {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .folder-head {
+    height: 30px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--s-ink);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .folder-head:hover {
+    background: var(--s-hover);
+  }
+  .folder-head .count {
+    margin-left: auto;
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--s-ink2);
+    letter-spacing: 0.04em;
+  }
+  .folder-head .arrow {
+    width: 10px;
+    height: 10px;
+    flex: none;
+    transition: transform 0.25s var(--s-ease);
+    opacity: 0.5;
+  }
+  .folder[data-collapsed="0"] .arrow {
+    transform: rotate(90deg);
+  }
+  .items {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin: 0 0 3px 10px;
+    padding-left: 6px;
+    border-left: 1px solid var(--s-hair);
+  }
+  .folder[data-collapsed="1"] .items {
+    display: none;
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--s-ink2);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .item .nm {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item:hover {
+    background: var(--s-hover);
+    color: var(--s-ink);
+  }
+  .item.active {
+    background: var(--s-ink);
+    color: var(--s-mat);
+    font-weight: 500;
+  }
+  .item .r {
+    flex: none;
+    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 560px) {
+    .brand {
+      font-size: 15px;
+    }
+    .top-right {
+      display: none;
+    }
+    .ret {
+      display: none;
+    }
+    .dock-main {
+      max-width: 200px;
+    }
+  }
+</style>

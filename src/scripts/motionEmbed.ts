@@ -45,6 +45,7 @@ function initEmbed(embed: HTMLElement) {
     for (let i = 0; i < video.buffered.length; i++) {
       bufferedEnd = Math.max(bufferedEnd, video.buffered.end(i));
     }
+    if (bufferedEnd <= 0) return;
     const p = Math.min(100, Math.round((bufferedEnd / video.duration) * 100));
     barBox?.classList.remove("indeterminate");
     if (bar) bar.style.width = `${p}%`;
@@ -66,7 +67,6 @@ function initEmbed(embed: HTMLElement) {
   };
 
   let watchdog: number | undefined;
-  let stalled = 0;
 
   const startPlayback = (retries: number) => {
     const attempt = video.play();
@@ -75,10 +75,7 @@ function initEmbed(embed: HTMLElement) {
       // Autoplay refused or the element is not ready: reload once, then fall
       // back to an explicit play button instead of leaving the loader up.
       if (retries > 0) {
-        window.setTimeout(() => {
-          video.load();
-          startPlayback(retries - 1);
-        }, 350);
+        window.setTimeout(() => startPlayback(retries - 1), 400);
       } else {
         window.clearTimeout(watchdog);
         hideLoader();
@@ -88,20 +85,15 @@ function initEmbed(embed: HTMLElement) {
 
   const armWatchdog = () => {
     window.clearTimeout(watchdog);
-    stalled = 0;
-    // No frames at all after 3 s -> force a reload; still nothing at 8 s -> give up on autoplay.
-    watchdog = window.setTimeout(function tick() {
+    // Only intervene when the element has no usable source at all; a slow but
+    // working download must not be interrupted (reloading restarts the fetch).
+    watchdog = window.setTimeout(() => {
       if (video.readyState >= 2 || video.currentTime > 0) return;
-      stalled += 1;
-      if (stalled <= 2) {
+      if (video.networkState === 3 || video.error) {
         video.load();
         startPlayback(1);
-        armWatchdog();
-        showLoader(true);
-      } else {
-        hideLoader();
       }
-    }, 3000);
+    }, 8000);
   };
   const started = () => {
     window.clearTimeout(watchdog);
@@ -237,7 +229,7 @@ function initTrail(el: HTMLElement) {
   // Force a fresh resource selection: the client router can insert the element
   // without ever starting the load (currentSrc stays empty, error code 4).
   const src = video.getAttribute("src");
-  if (src) {
+  if (src && !video.currentSrc) {
     video.src = src;
     video.load();
   }
@@ -280,25 +272,14 @@ function initTrail(el: HTMLElement) {
   setFill();
   tryPlay();
 
-  // Hard reload if no frames arrive at all (offscreen autoplay can be deferred).
-  let stallTimer: number | undefined;
-  const reloadIfStalled = () => {
-    window.clearTimeout(stallTimer);
-    stallTimer = window.setTimeout(() => {
-      if (video.readyState < 2) {
-        video.load();
-        tryPlay();
-        window.setTimeout(() => {
-          if (video.readyState >= 2) drawer?.();
-        }, 1200);
-      }
-    }, 3000);
-  };
-  const drawer = () => window.clearTimeout(stallTimer);
-  video.addEventListener("canplay", drawer);
-  video.addEventListener("playing", drawer);
-  video.addEventListener("loadeddata", drawer);
-  reloadIfStalled();
+  // Offscreen media can be deferred by the browser: retry playback when it
+  // scrolls into view, but never reload while a download is still progressing.
+  video.addEventListener("error", () => {
+    if (video.error) {
+      video.load();
+      tryPlay();
+    }
+  });
 
   // Autoplay can be rejected right after a client-side navigation; retry when
   // the block scrolls into view and on the first user gesture.

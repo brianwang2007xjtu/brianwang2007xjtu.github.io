@@ -27,11 +27,6 @@ const TICKS = Array.from({ length: 8 }, (_, i) => i + 2); // 2s … 9s
     </div>
   </div>
 
-  <div class="wt-meta">
-    <span class="wt-frames"><span data-wt-frame>0</span> / {FRAMES}</span>
-    <span class="wt-title">Run 2 · subject 4&nbsp;&nbsp;<span class="wt-mono">9 s</span></span>
-  </div>
-
   <div class="wt-controls">
     <button class="wt-btn" type="button" data-wt-toggle aria-label="暂停">
       <svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -58,11 +53,6 @@ const TICKS = Array.from({ length: 8 }, (_, i) => i + 2); // 2s … 9s
       </div>
     </div>
   </div>
-
-  <p class="wt-note">
-    灰白为 MuJoCo 仿真，蓝色为世界模型（44k 检查点）从同一初始状态自回归想象的轨迹；平均关节误差
-    0.062 rad，长时程根部漂移约 0.11 m。
-  </p>
 </div>
 
 <style>
@@ -133,29 +123,6 @@ const TICKS = Array.from({ length: 8 }, (_, i) => i + 2); // 2s … 9s
   }
   .dot.wm {
     background: #5aa9ea;
-  }
-  .wt-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin: 0.9rem 0 0.35rem;
-    font-size: 12px;
-    color: var(--w-ink2);
-  }
-  .wt-frames {
-    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
-    letter-spacing: 0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-  .wt-title {
-    font-weight: 500;
-    color: var(--w-ink);
-  }
-  .wt-mono {
-    font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
-    font-weight: 400;
-    color: var(--w-ink2);
-    font-size: 11px;
   }
   .wt-controls {
     display: flex;
@@ -254,11 +221,5 @@ const TICKS = Array.from({ length: 8 }, (_, i) => i + 2); // 2s … 9s
     width: 1px;
     height: 4px;
     background: var(--w-hair);
-  }
-  .wt-note {
-    margin-top: 0.85rem;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--w-ink2);
   }
 </style>

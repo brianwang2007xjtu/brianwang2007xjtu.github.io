@@ -10,9 +10,7 @@ function initEmbed(embed: HTMLElement) {
   const nameEl = embed.querySelector("[data-me-name]") as HTMLElement | null;
   const catEl = embed.querySelector("[data-me-cat]") as HTMLElement | null;
   const retEl = embed.querySelector("[data-me-ret]") as HTMLElement | null;
-  const replayOverlay = embed.querySelector("[data-me-replay]") as HTMLButtonElement | null;
   const replayIcon = embed.querySelector("[data-me-icon-replay]") as HTMLButtonElement | null;
-  const playOverlay = embed.querySelector("[data-me-play]") as HTMLButtonElement | null;
   const loader = embed.querySelector("[data-me-loader]") as HTMLElement | null;
   const barBox = embed.querySelector(".loader-bar") as HTMLElement | null;
   const bar = embed.querySelector("[data-me-bar]") as HTMLElement | null;
@@ -56,8 +54,6 @@ function initEmbed(embed: HTMLElement) {
   const play = (item: HTMLButtonElement) => {
     const src = item.dataset.src;
     if (!src) return;
-    playOverlay?.classList.remove("is-visible");
-    replayOverlay?.classList.remove("is-visible");
     showLoader(true);
     video.src = `/supermimic-demo/videos/${src}`;
     video.load();
@@ -66,26 +62,46 @@ function initEmbed(embed: HTMLElement) {
     if (retEl) retEl.textContent = `return ${item.dataset.return ?? "—"}`;
     items.forEach(el => el.classList.toggle("active", el === item));
     armWatchdog();
-    const attempt = video.play();
-    if (attempt && attempt.catch) {
-      attempt.catch(() => {
-        window.clearTimeout(watchdog);
-        hideLoader();
-        playOverlay?.classList.add("is-visible");
-      });
-    }
+    startPlayback(2);
   };
 
   let watchdog: number | undefined;
+  let stalled = 0;
+
+  const startPlayback = (retries: number) => {
+    const attempt = video.play();
+    if (!attempt || !attempt.catch) return;
+    attempt.catch(() => {
+      // Autoplay refused or the element is not ready: reload once, then fall
+      // back to an explicit play button instead of leaving the loader up.
+      if (retries > 0) {
+        window.setTimeout(() => {
+          video.load();
+          startPlayback(retries - 1);
+        }, 350);
+      } else {
+        window.clearTimeout(watchdog);
+        hideLoader();
+      }
+    });
+  };
+
   const armWatchdog = () => {
     window.clearTimeout(watchdog);
-    // If the clip has not started within 4 s, drop the loader and offer play.
-    watchdog = window.setTimeout(() => {
-      if (video.paused && video.currentTime === 0) {
+    stalled = 0;
+    // No frames at all after 3 s -> force a reload; still nothing at 8 s -> give up on autoplay.
+    watchdog = window.setTimeout(function tick() {
+      if (video.readyState >= 2 || video.currentTime > 0) return;
+      stalled += 1;
+      if (stalled <= 2) {
+        video.load();
+        startPlayback(1);
+        armWatchdog();
+        showLoader(true);
+      } else {
         hideLoader();
-        playOverlay?.classList.add("is-visible");
       }
-    }, 4000);
+    }, 3000);
   };
   const started = () => {
     window.clearTimeout(watchdog);
@@ -108,16 +124,13 @@ function initEmbed(embed: HTMLElement) {
   video.addEventListener("error", () => {
     window.clearTimeout(watchdog);
     hideLoader();
-    playOverlay?.classList.add("is-visible");
     if (nameEl) nameEl.textContent = "加载失败";
   });
-  playOverlay?.addEventListener("click", () => {
-    playOverlay.classList.remove("is-visible");
-    showLoader(true);
-    video.play().catch(() => {
-      hideLoader();
-      playOverlay?.classList.add("is-visible");
-    });
+  // The loading card is clickable: if autoplay or the fetch stalled, a tap retries.
+  loader?.addEventListener("click", () => {
+    hideLoader();
+    if (!video.currentSrc && video.getAttribute("src")) video.load();
+    startPlayback(1);
   });
 
   list.querySelectorAll<HTMLElement>("[data-folder-head]").forEach(head => {
@@ -157,18 +170,55 @@ function initEmbed(embed: HTMLElement) {
     if (open && !embed.contains(e.target as Node)) setOpen(false);
   });
 
+  const playNext = () => {
+    const active = items.findIndex(el => el.classList.contains("active"));
+    for (let k = 1; k <= items.length; k++) {
+      const candidate = items[(Math.max(active, 0) + k) % items.length];
+      if (candidate && candidate.style.display !== "none") {
+        play(candidate);
+        return;
+      }
+    }
+  };
+
   const replay = () => {
     video.currentTime = 0;
-    replayOverlay?.classList.remove("is-visible");
     showLoader(false);
     video.play().catch(() => {});
   };
-  replayOverlay?.addEventListener("click", replay);
   replayIcon?.addEventListener("click", replay);
 
-  video.addEventListener("ended", () => replayOverlay?.classList.add("is-visible"));
+  video.addEventListener("ended", playNext);
 
   if (items.length) play(items[0]);
+
+  // Some browsers refuse to start media inserted by the client router, or defer
+  // offscreen videos. Retry when the block scrolls into view and on first input.
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && video.paused) startPlayback(0);
+        }
+      },
+      { threshold: 0.25 }
+    );
+    io.observe(embed);
+  }
+  const kick = () => {
+    if (!video.paused) return;
+    if (!video.currentSrc) video.load();
+    startPlayback(1);
+  };
+  // Autoplay can be blocked outright (Safari/Chrome policies). Rather than cover
+  // the frame with a play button, start on the first scroll/gesture instead.
+  for (const ev of ["pointerdown", "keydown", "wheel", "touchstart"] as const) {
+    document.addEventListener(ev, kick, { once: true, passive: true });
+  }
+  window.addEventListener("scroll", kick, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && video.paused) startPlayback(0);
+  });
 }
 
 function initTrail(el: HTMLElement) {
@@ -177,20 +227,32 @@ function initTrail(el: HTMLElement) {
 
   const video = el.querySelector("[data-wt-video]") as HTMLVideoElement | null;
   const range = el.querySelector("[data-wt-range]") as HTMLInputElement | null;
-  const frameEl = el.querySelector("[data-wt-frame]") as HTMLElement | null;
   const toggle = el.querySelector("[data-wt-toggle]") as HTMLButtonElement | null;
-  if (!video || !range || !frameEl || !toggle) return;
+  if (!video || !range || !toggle) return;
 
   const FPS = 50;
-  const max = Number(range.max) || 500;
+  const max = Number(range.max) || 450;
+  let userPaused = false;
+
+  // Force a fresh resource selection: the client router can insert the element
+  // without ever starting the load (currentSrc stays empty, error code 4).
+  const src = video.getAttribute("src");
+  if (src) {
+    video.src = src;
+    video.load();
+  }
+
   const setFill = () => {
     range.style.setProperty("--p", `${(Number(range.value) / max) * 100}%`);
   };
   const sync = () => {
-    const f = Math.min(max, Math.round(video.currentTime * FPS));
-    frameEl.textContent = String(f);
-    range.value = String(f);
+    range.value = String(Math.min(max, Math.round(video.currentTime * FPS)));
     setFill();
+  };
+  const tryPlay = () => {
+    if (userPaused) return;
+    const p = video.play();
+    if (p && p.catch) p.catch(() => {});
   };
 
   video.addEventListener("timeupdate", sync);
@@ -202,8 +264,13 @@ function initTrail(el: HTMLElement) {
     el.dataset.paused = "1";
   });
   toggle.addEventListener("click", () => {
-    if (video.paused) video.play().catch(() => {});
-    else video.pause();
+    if (video.paused) {
+      userPaused = false;
+      tryPlay();
+    } else {
+      userPaused = true;
+      video.pause();
+    }
   });
   range.addEventListener("input", () => {
     video.currentTime = Number(range.value) / FPS;
@@ -211,7 +278,49 @@ function initTrail(el: HTMLElement) {
   });
 
   setFill();
-  video.play().catch(() => {});
+  tryPlay();
+
+  // Hard reload if no frames arrive at all (offscreen autoplay can be deferred).
+  let stallTimer: number | undefined;
+  const reloadIfStalled = () => {
+    window.clearTimeout(stallTimer);
+    stallTimer = window.setTimeout(() => {
+      if (video.readyState < 2) {
+        video.load();
+        tryPlay();
+        window.setTimeout(() => {
+          if (video.readyState >= 2) drawer?.();
+        }, 1200);
+      }
+    }, 3000);
+  };
+  const drawer = () => window.clearTimeout(stallTimer);
+  video.addEventListener("canplay", drawer);
+  video.addEventListener("playing", drawer);
+  video.addEventListener("loadeddata", drawer);
+  reloadIfStalled();
+
+  // Autoplay can be rejected right after a client-side navigation; retry when
+  // the block scrolls into view and on the first user gesture.
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && video.paused) tryPlay();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    io.observe(el);
+  }
+  const kick = () => {
+    if (video.paused) tryPlay();
+  };
+  document.addEventListener("pointerdown", kick, { once: true });
+  document.addEventListener("keydown", kick, { once: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && video.paused) tryPlay();
+  });
 }
 
 function initAllEmbeds() {

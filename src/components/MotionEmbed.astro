@@ -40,16 +40,6 @@ const folders = GROUPS.map(([group, label]) => ({
         <div class="loader-pct" data-me-pct>0%</div>
       </div>
     </div>
-    <button class="play-overlay" data-me-play type="button" aria-label="播放">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
-    </button>
-    <button class="replay-overlay" data-me-replay type="button" aria-label="重新播放">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3" />
-        <path d="M3.5 4.2v4.6h4.6" />
-      </svg>
-    </button>
 
     <div class="hud top-left">
       <div class="brand">SuperMimic</div>
@@ -397,61 +387,7 @@ const folders = GROUPS.map(([group, label]) => ({
     min-width: 3.2ch;
     text-align: right;
   }
-  .play-overlay {
-    position: absolute;
-    z-index: 4;
-    inset: 0;
-    margin: auto;
-    width: 64px;
-    height: 64px;
-    display: none;
-    place-items: center;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.5);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    color: #fff;
-    cursor: pointer;
-  }
-  .play-overlay svg {
-    width: 26px;
-    height: 26px;
-    margin-left: 3px;
-  }
-  .play-overlay.is-visible {
-    display: grid;
-  }
 
-  .replay-overlay {
-    position: absolute;
-    z-index: 4;
-    inset: 0;
-    margin: auto;
-    width: 64px;
-    height: 64px;
-    display: none;
-    place-items: center;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.5);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    color: #fff;
-    cursor: pointer;
-    transition: transform 0.15s var(--s-ease), background 0.15s var(--s-ease);
-  }
-  .replay-overlay:hover {
-    transform: scale(1.05);
-    background: rgba(0, 0, 0, 0.62);
-  }
-  .replay-overlay svg {
-    width: 26px;
-    height: 26px;
-  }
-  .replay-overlay.is-visible {
-    display: grid;
-  }
 
   .sheet {
     position: absolute;

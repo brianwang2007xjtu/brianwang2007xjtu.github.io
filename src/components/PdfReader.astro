@@ -1,0 +1,534 @@
+---
+/**
+ * 基于 PDF.js 的阅读器：直接把 PDF 渲染到 canvas，矢量清晰（任意缩放都不糊），
+ * 自带翻页、缩放、缩略图与下载，替掉浏览器默认那个灰色的 PDF 插件。
+ *
+ * 用法：
+ *   <PdfReader src="/papers/x.pdf" title="..." label="下载 PDF" />
+ *
+ * 依赖：public/pdfjs/{pdf.min.mjs, pdf.worker.min.mjs}（自托管，不走 CDN）
+ */
+interface Props {
+  /** PDF 地址（/public 下的绝对路径） */
+  src: string;
+  /** 无障碍标题，也用于下载按钮的 title */
+  title?: string;
+  /** 下载按钮文案 */
+  label?: string;
+  /** 初始缩放：fit = 适应宽度 */
+  zoom?: number;
+}
+
+const { src, title = "PDF", label = "下载 PDF" } = Astro.props;
+---
+
+<div class="pdfr" data-pdfr data-src={src} data-title={title}>
+  <div class="pdfr-stage">
+    <div class="pdfr-loading" data-pdfr-loading>
+      <span class="pdfr-spinner" aria-hidden="true"></span>
+      <span>正在加载 PDF…</span>
+    </div>
+    <canvas class="pdfr-canvas" data-pdfr-canvas></canvas>
+    <button class="pdfr-nav pdfr-prev" data-pdfr-prev aria-label="上一页">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+    </button>
+    <button class="pdfr-nav pdfr-next" data-pdfr-next aria-label="下一页">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+    </button>
+  </div>
+
+  <div class="pdfr-bar">
+    <span class="pdfr-count">
+      <span data-pdfr-page>1</span><span class="pdfr-sep">/</span><span data-pdfr-total>–</span>
+    </span>
+    <div class="pdfr-track"><div class="pdfr-fill" data-pdfr-fill></div></div>
+    <div class="pdfr-zoom">
+      <button data-pdfr-out aria-label="缩小">−</button>
+      <span data-pdfr-zoom>100%</span>
+      <button data-pdfr-in aria-label="放大">＋</button>
+    </div>
+    <a class="pdfr-download" href={src} download title={title}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+      {label}
+    </a>
+  </div>
+
+  <div class="pdfr-thumbs" data-pdfr-thumbs aria-label="页面缩略图"></div>
+</div>
+
+<style>
+  .pdfr {
+    margin: 1.5rem 0;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: color-mix(in oklab, var(--card) 92%, transparent);
+    overflow: hidden;
+  }
+
+  .pdfr-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0.75rem;
+    background:
+      radial-gradient(
+        circle at 50% 0%,
+        color-mix(in oklab, var(--accent) 6%, transparent),
+        transparent 60%
+      ),
+      color-mix(in oklab, var(--muted) 45%, transparent);
+    min-height: 12rem;
+  }
+
+  .pdfr-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.4rem;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.08),
+      0 8px 28px -12px rgb(0 0 0 / 0.28);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .pdfr-canvas.is-ready {
+    opacity: 1;
+  }
+
+  .pdfr-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+  }
+
+  .pdfr-loading[hidden] {
+    display: none;
+  }
+
+  .pdfr-spinner {
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+    border-top-color: var(--accent);
+    border-radius: 9999px;
+    animation: pdfr-spin 0.8s linear infinite;
+  }
+
+  @keyframes pdfr-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  .pdfr-nav {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--background) 85%, transparent);
+    color: var(--foreground);
+    cursor: pointer;
+    opacity: 0;
+    backdrop-filter: blur(6px);
+    transition: opacity 0.2s ease, scale 0.2s ease;
+  }
+
+  .pdfr-nav svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .pdfr-prev {
+    left: 0.75rem;
+  }
+
+  .pdfr-next {
+    right: 0.75rem;
+  }
+
+  .pdfr:hover .pdfr-nav,
+  .pdfr-nav:focus-visible {
+    opacity: 1;
+  }
+
+  .pdfr-nav:hover {
+    scale: 1.06;
+  }
+
+  .pdfr-nav:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .pdfr-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  }
+
+  .pdfr-count {
+    flex: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+  }
+
+  .pdfr-sep {
+    margin: 0 0.25rem;
+    opacity: 0.5;
+  }
+
+  .pdfr-track {
+    position: relative;
+    flex: 1;
+    height: 3px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--muted-foreground) 22%, transparent);
+    overflow: hidden;
+  }
+
+  .pdfr-fill {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 2%;
+    border-radius: 9999px;
+    background: var(--accent);
+    transition: width 0.25s ease;
+  }
+
+  .pdfr-zoom {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+
+  .pdfr-zoom button {
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .pdfr-zoom button:hover {
+    background: var(--muted);
+  }
+
+  .pdfr-download {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.6rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border));
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+  }
+
+  .pdfr-download svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .pdfr-download:hover {
+    background: color-mix(in oklab, var(--accent) 12%, transparent);
+  }
+
+  .pdfr-thumbs {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.6rem 0.85rem 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  }
+
+  :global(.pdfr-thumb) {
+    position: relative;
+    flex: none;
+    width: 5.4rem;
+    padding: 0;
+    border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
+    border-radius: 0.45rem;
+    background: #fff;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease, translate 0.2s ease;
+  }
+
+  :global(.pdfr-thumb canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  :global(.pdfr-thumb.is-active) {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  :global(.pdfr-thumb:hover) {
+    translate: 0 -2px;
+  }
+
+  @media (max-width: 640px) {
+    .pdfr-nav {
+      opacity: 1;
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .pdfr-zoom {
+      display: none;
+    }
+  }
+</style>
+
+<script is:inline>
+  // 客户端直接用运行时的 ESM 动态导入加载自托管 PDF.js，
+  // 不走打包器（否则 1.3MB 的 worker + 350KB 主库会被 tsc/vite 一并处理，构建会炸）。
+  (function () {
+    var PDFJS_BASE = "/pdfjs/";
+
+    function loadPdfjs() {
+      if (window.__pdfjsPromise) return window.__pdfjsPromise;
+      window.__pdfjsPromise = import(PDFJS_BASE + "pdf.min.mjs").then(function (mod) {
+        mod.GlobalWorkerOptions.workerSrc = PDFJS_BASE + "pdf.worker.min.mjs";
+        return mod;
+      });
+      return window.__pdfjsPromise;
+    }
+
+    function initReader(root) {
+      if (root.dataset.pdfrReady === "1") return;
+      root.dataset.pdfrReady = "1";
+
+      var src = root.dataset.src;
+      var canvas = root.querySelector("[data-pdfr-canvas]");
+      var loading = root.querySelector("[data-pdfr-loading]");
+      var pageLabel = root.querySelector("[data-pdfr-page]");
+      var totalLabel = root.querySelector("[data-pdfr-total]");
+      var fill = root.querySelector("[data-pdfr-fill]");
+      var zoomLabel = root.querySelector("[data-pdfr-zoom]");
+      var thumbsBox = root.querySelector("[data-pdfr-thumbs]");
+      var prevBtn = root.querySelector("[data-pdfr-prev]");
+      var nextBtn = root.querySelector("[data-pdfr-next]");
+      var zoomIn = root.querySelector("[data-pdfr-in]");
+      var zoomOut = root.querySelector("[data-pdfr-out]");
+      if (!canvas) return;
+      var ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      var doc = null;
+      var total = 0;
+      var pageNo = 1;
+      var zoom = 1;
+      var rendering = false;
+      var pending = false;
+
+      function stageWidth() {
+        var parent = canvas.parentElement;
+        var w = parent ? parent.clientWidth : 720;
+        return Math.max(240, Math.min(w, root.clientWidth || 720));
+      }
+
+      function highlightThumb(n) {
+        if (!thumbsBox) return;
+        var buttons = thumbsBox.querySelectorAll("[data-pdfr-thumb]");
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].classList.toggle("is-active", Number(buttons[i].dataset.pdfrThumb) === n);
+        }
+        var active = buttons[n - 1];
+        if (!active) return;
+        var box = thumbsBox.getBoundingClientRect();
+        var r = active.getBoundingClientRect();
+        if (r.left < box.left || r.right > box.right) {
+          thumbsBox.scrollLeft += r.left - box.left - box.width / 2 + r.width / 2;
+        }
+      }
+
+      function renderPage(n) {
+        if (!doc) return Promise.resolve();
+        if (rendering) {
+          pending = true;
+          return Promise.resolve();
+        }
+        rendering = true;
+        return doc
+          .getPage(n)
+          .then(function (page) {
+            var base = page.getViewport({ scale: 1 });
+            var cssWidth = (stageWidth() - 24) * zoom;
+            var scale = cssWidth / base.width;
+            var viewport = page.getViewport({ scale: scale });
+            var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+            canvas.width = Math.floor(viewport.width * dpr);
+            canvas.height = Math.floor(viewport.height * dpr);
+            canvas.style.width = Math.floor(viewport.width) + "px";
+            canvas.style.height = "auto";
+            return page
+              .render({
+                canvasContext: ctx,
+                viewport: viewport,
+                transform: dpr === 1 ? null : [dpr, 0, 0, dpr, 0, 0],
+              })
+              .promise;
+          })
+          .then(function () {
+            canvas.classList.add("is-ready");
+            if (pageLabel) pageLabel.textContent = String(n);
+            if (fill) fill.style.width = (n / total) * 100 + "%";
+            if (zoomLabel) zoomLabel.textContent = Math.round(zoom * 100) + "%";
+            if (prevBtn) prevBtn.disabled = n <= 1;
+            if (nextBtn) nextBtn.disabled = n >= total;
+            highlightThumb(n);
+          })
+          .catch(function () {})
+          .then(function () {
+            rendering = false;
+            if (pending) {
+              pending = false;
+              renderPage(pageNo);
+            }
+          });
+      }
+
+      function buildThumbs() {
+        if (!thumbsBox) return Promise.resolve();
+        var chain = Promise.resolve();
+        var make = function (n) {
+          return function () {
+            var btn = document.createElement("button");
+            btn.className = "pdfr-thumb";
+            btn.dataset.pdfrThumb = String(n);
+            btn.setAttribute("aria-label", "跳到第 " + n + " 页");
+            var c = document.createElement("canvas");
+            btn.appendChild(c);
+            btn.addEventListener("click", function () {
+              go(n);
+            });
+            thumbsBox.appendChild(btn);
+            return doc
+              .getPage(n)
+              .then(function (page) {
+                var base = page.getViewport({ scale: 1 });
+                var vp = page.getViewport({ scale: 86 / base.width });
+                var dpr = Math.min(window.devicePixelRatio || 1, 2);
+                c.width = Math.floor(vp.width * dpr);
+                c.height = Math.floor(vp.height * dpr);
+                c.style.width = "100%";
+                c.style.height = "auto";
+                var cctx = c.getContext("2d");
+                if (!cctx) return;
+                return page.render({
+                  canvasContext: cctx,
+                  viewport: vp,
+                  transform: dpr === 1 ? null : [dpr, 0, 0, dpr, 0, 0],
+                }).promise;
+              })
+              .catch(function () {});
+          };
+        };
+        for (var n = 1; n <= total; n++) chain = chain.then(make(n));
+        return chain.then(function () {
+          highlightThumb(pageNo);
+        });
+      }
+
+      function go(n) {
+        pageNo = Math.min(total || 1, Math.max(1, n));
+        renderPage(pageNo);
+      }
+
+      prevBtn &&
+        prevBtn.addEventListener("click", function () {
+          go(pageNo - 1);
+        });
+      nextBtn &&
+        nextBtn.addEventListener("click", function () {
+          go(pageNo + 1);
+        });
+      zoomIn &&
+        zoomIn.addEventListener("click", function () {
+          zoom = Math.min(3, zoom + 0.25);
+          renderPage(pageNo);
+        });
+      zoomOut &&
+        zoomOut.addEventListener("click", function () {
+          zoom = Math.max(0.5, zoom - 0.25);
+          renderPage(pageNo);
+        });
+      root.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowLeft") go(pageNo - 1);
+        if (e.key === "ArrowRight") go(pageNo + 1);
+      });
+      canvas.addEventListener("click", function (e) {
+        var r = canvas.getBoundingClientRect();
+        go(e.clientX - r.left < r.width / 2 ? pageNo - 1 : pageNo + 1);
+      });
+
+      var resizeTimer = 0;
+      window.addEventListener("resize", function () {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(function () {
+          renderPage(pageNo);
+        }, 220);
+      });
+
+      loadPdfjs()
+        .then(function (pdfjs) {
+          return pdfjs.getDocument(src).promise;
+        })
+        .then(function (pdf) {
+          doc = pdf;
+          total = pdf.numPages;
+          if (loading) loading.setAttribute("hidden", "");
+          if (totalLabel) totalLabel.textContent = String(total);
+          return renderPage(1).then(buildThumbs);
+        })
+        .catch(function (err) {
+          if (loading) loading.textContent = "PDF 加载失败：" + err;
+        });
+    }
+
+    function boot() {
+      var nodes = document.querySelectorAll("[data-pdfr]");
+      for (var i = 0; i < nodes.length; i++) initReader(nodes[i]);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", boot, { once: true });
+    } else {
+      boot();
+    }
+    document.addEventListener("astro:page-load", boot);
+  })();
+</script>

@@ -50,12 +50,20 @@ export const commonLinks: FriendLink[] = [
     url: "https://yuzhexzf.top/index.html",
     avatar: "https://yuzhexzf.top/mysource/img/avatar/mmexport1779381309495.jpg",
   },
+  {
+    name: "艺圃 khan",
+    desc: "我的 Daybook",
+    url: "https://183208.xyz/",
+    // 首页 hero 那张头像（不是站点 favicon）
+    avatar: "https://183208.xyz/assets/Calabi%E2%80%93Yau-manifold.jpg",
+    rss: "https://183208.xyz/rss.xml",
+  },
 ];
 
 /** 申请友链时展示的本站信息（点击即可复制）。 */
 export const siteCard = {
   name: "master's blog",
-  desc: "生活、音乐与知识的切片",
+  desc: "hungry humble smart clarity",
   link: "https://brianwang2007.com",
   avatar: "https://brianwang2007.com/favicon.svg",
 };

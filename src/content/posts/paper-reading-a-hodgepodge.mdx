@@ -1,0 +1,129 @@
+---
+title: "Paper Reading: A Hodgepodge"
+author: master
+pubDatetime: 2026-11-17T00:00:00Z
+category: research
+tags:
+  - paper-reading
+  - ai-paper
+  - world-model
+  - jepa
+  - representation-learning
+description: "表征学习和 WM 的大杂烩 📝 ～"
+cover: "/papers/SpecWM.png"
+accent: "#dc9d86"
+---
+
+import PaperNote from "@/components/PaperNote.astro";
+
+## SpecWM
+
+<PaperNote
+  title="SpecWM"
+  arxivId="2610.15429"
+  noteUrl="https://raw.githubusercontent.com/brianwang2007xjtu/ai-paper-reading/main/papers/SpecWM.pdf"
+  summary="从谱表征学习出发，重新思考世界模型应该保留什么信息"
+  images={["/papers/SpecWM.png"]}
+>
+
+世界模型需要从高维观测中提取与环境动力学和下游任务相关的信息，但究竟应该保留什么，始终是一个值得讨论的问题。传统方法通常通过预测未来状态间接学习表征，却很难保证预测目标与真正需要的信息完全一致。SpecWM 从谱表征学习（Spectral Representation Learning）出发，尝试直接定义表征空间中不同观测之间应该具有怎样的相似性。
+
+具体而言，论文通过构造**目标相似性核**（Similarity Kernel），将信息保留的偏好显式融入表征学习。不同的核函数对应不同的归纳偏置，既可以利用物理状态信息构造有监督的核，也可以仅利用轨迹中的时间顺序构造**自监督时序核**。论文还分析了全局最优解、线性可恢复性以及对干扰信息的不变性，并讨论了时序核与行为后继测度之间的联系。私以为这种设计非常巧妙，**它将原本隐含在训练目标中的信息偏好变成了可以显式调整的结构**，为理解世界模型究竟学到了什么提供了新的视角。
+
+</PaperNote>
+
+## SuperMimic
+
+<PaperNote
+  title="SuperMimic"
+  arxivId="2610.28480"
+  noteUrl="https://raw.githubusercontent.com/brianwang2007xjtu/ai-paper-reading/main/papers/SuperMimic.pdf"
+  summary="利用可微世界模型摊销动作跟踪训练，单卡数小时达到 SOTA"
+  images={["/papers/SuperMimic.png"]}
+>
+
+动作跟踪通常依赖大规模并行强化学习，在物理仿真器中反复采样和优化策略。一个明显的问题是，每增加一条需要跟踪的动作，都可能需要重新支付大量训练成本。SuperMimic 试图改变这一范式，通过学习**可微世界模型**，将不同动作的策略优化统一到同一个动力学模型中。
+
+作者利用刚体仿真器产生的 logged transitions 训练世界模型，再通过短程想象 rollout 展开未来状态，直接利用 Backpropagation Through Time（BPTT）将跟踪误差的梯度传递给策略。相比传统强化学习依赖采样和回报估计，这种方式能够利用模型计算解析梯度，从而显著降低策略优化成本。论文报告仅使用单张 GPU、约三小时训练，就取得了超过此前 state-of-the-art 的表现。笔者此前也在消费级单卡上完整复现过该工作，在 40 条 LAFAN1 动作上的整段平均归一化回报达到 **0.882**，训练耗时约 **4.3 小时**。相比单纯将世界模型用于未来预测，这篇工作更进一步，让世界模型直接成为策略优化的**可微计算环境**。
+
+</PaperNote>
+
+## LeHami
+
+<PaperNote
+  title="LeHami"
+  arxivId="2610.15267"
+  noteUrl="https://raw.githubusercontent.com/brianwang2007xjtu/ai-paper-reading/main/papers/LeHami.pdf"
+  summary="将辛哈密顿动力学引入 JEPA 预测器，通过结构约束改善潜空间动力学"
+  images={["/papers/LeHami.png"]}
+>
+
+JEPA 在潜空间中预测未来，避免了直接重建高维观测所带来的大量冗余计算。然而，普通神经网络预测器缺乏明确的动力学结构约束，反复进行自回归预测时，潜表示可能逐渐收缩，导致不同状态之间的区分能力下降。LeHami 尝试从经典力学中寻找解决方案，将预测器构造成满足**辛结构**的**哈密顿动力学系统**。
+
+具体来说，模型将潜状态组织为位置和动量两个部分，通过哈密顿流描述状态演化，并采用 leapfrog 积分器进行数值更新。**辛映射具有相空间体积保持性质**，因此能够从结构上限制潜状态分布的整体收缩。论文还通过时间导数将动量与位置表征联系起来，使预测器具有显式的二阶动力学结构。这篇工作最有意思的地方在于，它没有简单地为潜空间坍缩增加一个正则项，而是直接改变了预测器所遵循的数学结构。当然，体积保持并不意味着任意方向上的距离都不会收缩，但它确实为潜空间动力学提供了一种不同于普通神经网络的约束方式。
+
+</PaperNote>
+
+## RISE
+
+<PaperNote
+  title="RISE"
+  arxivId="2602.11075"
+  noteUrl="https://raw.githubusercontent.com/brianwang2007xjtu/ai-paper-reading/main/papers/RISE.pdf"
+  summary="将可组合世界模型与进度价值模型结合，在想象空间中进行机器人强化学习"
+  images={["/papers/RISE.png"]}
+>
+
+VLA 在接触密集的动态操作任务中仍然面临较大的执行挑战，微小的动作偏差就可能不断累积，最终导致任务失败。强化学习能够通过反馈改善策略，但真实机器人上的 on-policy RL 又受到硬件成本、安全风险和环境重置等因素限制。RISE 将策略优化转移到想象空间，尝试利用世界模型降低真实环境交互的成本。
+
+论文设计了一个**可组合世界模型**，将环境动力学预测与任务进度评价分开建模。**Controllable Dynamics Model** 根据当前状态和动作预测未来的多视角观测，**Progress Value Model** 则负责评价想象轨迹中的任务进展，为策略更新提供优势信号。前者回答未来会发生什么，后者判断这些变化是否有助于完成任务。策略可以在模型提供的想象环境中进行强化学习优化，再部署到真实机器人上。**这种解耦设计让世界模型不再局限于预测未来，而是进一步参与策略改进。** 当然，想象空间中的模型误差和价值估计偏差仍然是影响实际效果的重要因素。
+
+</PaperNote>
+
+## AIM
+
+<PaperNote
+  title="AIM"
+  arxivId="2412.03248"
+  noteUrl="https://raw.githubusercontent.com/brianwang2007xjtu/ai-paper-reading/main/papers/AIM.pdf"
+  summary="无需额外训练，通过视觉 Token 合并与渐进式剪枝降低多模态推理开销"
+  images={["/papers/AIM.png"]}
+>
+
+随着视觉语言模型逐渐扩展到视频理解，视觉 Token 数量已经成为影响推理效率的重要因素。高分辨率图像和长视频会产生大量视觉 Token，其中相当一部分可能存在语义冗余。AIM 不选择额外训练模型来学习 Token 重要性，而是尝试在推理过程中动态压缩输入和中间表示。
+
+方法分为两个阶段。首先，在视觉 Token 进入 LLM 之前，根据 embedding 相似度进行迭代式 **Token Merging**，合并语义相近的 Token。随后，在 LLM 内部根据多模态重要性进行**渐进式剪枝**（Progressive Pruning），逐步移除贡献较小的 Token。前者主要减少输入冗余，后者进一步利用模型内部信息优化计算预算。**整个过程不需要额外训练模型参数。** 笔者认为，这种动态分配视觉计算资源的思路对视频理解尤其有价值。不同帧和不同区域的重要性并不相同，固定的 Token 预算未必是最合理的选择，如何根据任务需求动态决定模型应该关注多少视觉信息，仍然有很大的探索空间。
+
+</PaperNote>
+
+## VICReg
+
+<PaperNote
+  title="VICReg"
+  arxivId="2105.04906"
+  noteUrl="https://raw.githubusercontent.com/brianwang2007xjtu/ai-paper-reading/main/papers/VICReg.pdf"
+  summary="通过方差、不变性和协方差三个目标，从统计角度解决自监督表征坍缩"
+  images={["/papers/VICReg.png"]}
+>
+
+自监督表征学习中，一个基本问题是如何避免 Representation Collapse。仅仅要求同一图像不同增强视图的 embedding 保持接近，并不能保证模型学到有区分能力的表示，所有样本映射到同一个常量向量同样满足这一要求。VICReg 从统计约束出发，将表征学习拆分为**三个相互配合的目标**。
+
+**Invariance Loss** 保证同一样本不同增强视图的表示保持一致，**Variance Loss** 要求每个特征维度维持足够的标准差，避免特征退化，而 **Covariance Loss** 则通过惩罚不同维度之间的协方差减少特征冗余。三个目标分别约束表征的一致性、非退化性和维度间的相关性。与许多同期方法不同，VICReg 不依赖负样本，也不需要通过 BatchNorm、stop-gradient 或输出量化等技巧维持非坍缩表征。**这篇论文的价值在于将自监督学习中的坍缩问题拆解成了清晰的统计约束。** 联系 SpecWM 来看，前者通过相似性核定义样本之间的关系，VICReg 则进一步约束特征自身的分布结构，两者提供了理解表征空间的不同视角。
+
+</PaperNote>
+
+## LoRA
+
+<PaperNote
+  title="LoRA"
+  arxivId="2106.09685"
+  noteUrl="https://raw.githubusercontent.com/brianwang2007xjtu/ai-paper-reading/main/papers/LoRA.pdf"
+  summary="冻结预训练权重，通过低秩矩阵分解实现高效参数微调"
+  images={["/papers/LoRA.png"]}
+>
+
+随着预训练模型规模不断增长，全参数微调的存储和计算成本也越来越高。以 GPT-3 175B 为例，为每个下游任务保存一份完整模型显然并不经济。LoRA（Low-Rank Adaptation）基于一个重要观察，即下游任务所需的权重更新可能具有**较低的内在秩**，因此不一定需要在完整参数空间中进行优化。
+
+对于预训练权重，LoRA 将参数更新表示为两个**低秩矩阵**的乘积。其中原始权重保持冻结，只有低秩矩阵参与训练。这样便将原本针对完整权重矩阵的优化转化为低秩空间中的参数更新，大幅减少**可训练参数量**和优化器状态开销。训练结束后，还可以将低秩增量直接合并回原始权重，不引入额外推理延迟。论文在 GPT-3 等模型上的实验表明，LoRA 能够将可训练参数量减少最多约 10,000 倍，同时显著降低 GPU 显存需求，并取得与全参数微调相当甚至更好的表现。**LoRA 最有价值的地方在于将低秩假设转化成了一种简单而通用的参数高效微调方法。** 后续的 QLoRA、DoRA 等工作也进一步拓展了这条路线。
+
+</PaperNote>

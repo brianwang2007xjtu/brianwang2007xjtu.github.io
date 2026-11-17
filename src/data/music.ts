@@ -340,6 +340,26 @@ export const albums: Album[] = [
     releaseDate: "2024",
     listenUrl: "https://music.163.com/#/album?id=188284703",
   },
+  {
+    cover: "/covers/music-covers/weithaas_bach_ysaye2.jpg",
+    slug: "bach-ysaye-vol-2",
+    title: "Bach & Ysaÿe (Vol. 2)",
+    artist: "Bach & Ysaÿe",
+    category: "classical",
+    subCategory: "others",
+    description:
+      "The second instalment of Antje Weithaas’s Bach and Ysaÿe project, released by CAvi-music in 2016 and distributed by Deutsche Grammophon. The programme sets the two composers in direct conversation: Bach’s Partita No. 3 in E major, BWV 1006, with its airy Gavotte en Rondeau, is placed beside Ysaÿe’s Fifth Sonata, a work of fierce narrative drama written for the same unaccompanied instrument two centuries later. Weithaas keeps her bow poised between Baroque reason and modern sensibility, holding Bach’s architecture in place while letting Ysaÿe’s rhetoric breathe.",
+    details:
+      "Studio recording released on 15 April 2016 by CAvi-music, catalogue number CAVI8553346D, distributed by Deutsche Grammophon GmbH, Berlin. Antje Weithaas plays the complete Bach and Ysaÿe cycles across four volumes, deliberately pairing each Bach sonata or partita with a Ysaÿe sonata so that the two bodies of music illuminate one another. Volume 2 pairs the Partita No. 3 in E major, BWV 1006 with Ysaÿe’s Sonata No. 5 in G major, Op. 27 No. 5.",
+    recommendation:
+      "Got her autograph on 31 Oct 2026.",
+    soloist: "Antje Weithaas",
+    releaseDate: "2016-04-15",
+    catalogNumber: "CAVI8553346D",
+    albumType: "studio",
+    listenUrl:
+      "https://www.prestomusic.com/classical/products/8117558--js-bach-ysaye-vol-2",
+  },
 
   // non-classical
   {

@@ -36,6 +36,11 @@ export const GRAPH_ROOT = "AI";
 
 export const paperMeta: Record<string, PaperMeta> = {
   /* ---------- 2026 ---------- */
+  // A Hodgepodge 杂谈（顺序即大小：4,5,3,3,3,3,5）
+  "2610.15429": { importance: 4, branch: "Embodied/JEPA" },  // SpecWM
+  "2610.28480": { importance: 5, branch: "Embodied/WAM" },  // SuperMimic
+  "2610.15267": { importance: 3, branch: "Embodied/JEPA" },  // LeHami
+  "2602.11075": { importance: 3, branch: "Embodied/WAM" },  // RISE
   // Recent Work 系列（按文章里的出场顺序：2,4,1,2,4,2,4）
   "2610.10528": { importance: 2, branch: "Embodied/WAM" },  // Long-WAM
   "2608.24882": { importance: 4, branch: "Embodied/WAM" },  // LAWA
@@ -72,6 +77,7 @@ export const paperMeta: Record<string, PaperMeta> = {
   "2512.10942": { importance: 2, branch: "Embodied/JEPA" },  // VL-JEPA
 
   /* ---------- 2024 ---------- */
+  "2412.03248": { importance: 3, branch: "CV/Backbone" },  // AIM
   "2410.11758": { importance: 4, branch: "Embodied/VLA", venue: "ICLR 2025", year: 2025 },  // LAPA
   "2410.24164": { importance: 3, branch: "Embodied/VLA", venue: "RSS 2025", year: 2025, label: "$\\pi_0$" },  // pi_0
   "2404.08471": { importance: 3, branch: "Embodied/JEPA", venue: "CVPR 2024", year: 2024 },  // V-JEPA
@@ -83,10 +89,12 @@ export const paperMeta: Record<string, PaperMeta> = {
   "2302.00111": { importance: 3, branch: "Embodied/VLA", venue: "ICLR 2023", year: 2023 },  // Unipi
 
   /* ---------- 2022 ---------- */
+  "2105.04906": { importance: 3, branch: "CV/Backbone", venue: "ICLR 2022", year: 2022 },  // VICReg
   "2204.06125": { importance: 3, branch: "Generative/Diffusion" },  // DALLE2
   "2212.09748": { importance: 5, branch: "Generative/Diffusion", venue: "ICCV 2023", year: 2023 },  // DiT
 
   /* ---------- 2021 ---------- */
+  "2106.09685": { importance: 5, branch: "Others/Efficient Fine-tuning" },  // LoRA
   "2112.10752": { importance: 3, branch: "Generative/Diffusion", venue: "CVPR 2022", year: 2022 },  // Stable-Diffusion
 
   /* ---------- 2020 ---------- */
